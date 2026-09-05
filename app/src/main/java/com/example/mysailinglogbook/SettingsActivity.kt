@@ -76,6 +76,18 @@ class SettingsActivity : AppCompatActivity() {
             store.sftpEblBackupRemotePath,
         )
 
+        // The host-key fingerprint (see SftpUploader.kt) isn't a credential -- it's the server's
+        // own public key, used to reject a *later, different* key instead of silently trusting it
+        // (could mean a man-in-the-middle). Left empty (the default), it's pinned automatically on
+        // the very first connection (trust-on-first-use) -- filled in here instead, that first
+        // connection is verified against it too, rather than blindly trusted. sshj reports it in
+        // the same colon-separated-hex form ssh-keygen -lf/-E md5 shows.
+        val sftpHostKeyField = field(
+            "SFTP host-key fingerprint (optioneel; leeg = automatisch vertrouwen bij eerste " +
+                "verbinding)",
+            store.sftpHostKeyFingerprint,
+        )
+
         val saveButton = Button(this).apply {
             text = "Opslaan"
             setPadding(0, padding, 0, 0)
@@ -101,6 +113,7 @@ class SettingsActivity : AppCompatActivity() {
                 store.sftpPassword = sftpPasswordField.text.toString()
                 store.sftpRemotePath = sftpRemotePathField.text.toString().trim()
                 store.sftpEblBackupRemotePath = sftpEblBackupPathField.text.toString().trim()
+                store.sftpHostKeyFingerprint = sftpHostKeyField.text.toString().trim()
                 Toast.makeText(this@SettingsActivity, "Instellingen opgeslagen", Toast.LENGTH_SHORT).show()
                 finish()
             }

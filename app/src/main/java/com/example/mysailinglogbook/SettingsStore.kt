@@ -89,9 +89,11 @@ class SettingsStore(context: Context) {
         get() = prefs.getString(KEY_SFTP_EBL_BACKUP_REMOTE_PATH, "") ?: ""
         set(value) = prefs.edit().putString(KEY_SFTP_EBL_BACKUP_REMOTE_PATH, value).apply()
 
-    // Trust-on-first-use host key pin (see SftpUploader) -- not user-editable, just remembered
-    // between connections so a later, different key (e.g. a man-in-the-middle) gets rejected
-    // instead of silently trusted again.
+    // Optionally user-editable (see SettingsActivity): filled in, the very first SFTP connection
+    // is verified against it instead of blindly trusted; empty (the default), it's pinned
+    // automatically on that first connection (trust-on-first-use) instead. Either way, a later
+    // connection presenting a *different* key than what's stored here gets rejected (see
+    // SftpUploader) -- could mean a man-in-the-middle.
     var sftpHostKeyFingerprint: String
         get() = prefs.getString(KEY_SFTP_HOST_KEY_FINGERPRINT, "") ?: ""
         set(value) = prefs.edit().putString(KEY_SFTP_HOST_KEY_FINGERPRINT, value).apply()

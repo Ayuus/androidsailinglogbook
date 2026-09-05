@@ -19,11 +19,14 @@ class SftpUploadError(message: String, cause: Throwable? = null) : Exception(mes
  */
 object SftpUploader {
 
-    // Trust-on-first-use: the first connection this app ever makes pins the server's host key
-    // fingerprint in SettingsStore; every later connection is rejected if the key ever changes
-    // (a changed key on a previously-trusted host is what you actually want flagged -- could mean
-    // a man-in-the-middle) -- mirrors upload.py's "StrictHostKeyChecking=accept-new", just without
-    // a known_hosts file to keep the pin in.
+    // Trust-on-first-use by default: if SettingsStore.sftpHostKeyFingerprint is still empty, the
+    // first connection this app makes pins whatever key the server presents. The owner can also
+    // fill that setting in themselves ahead of time (a known-correct fingerprint from a trusted
+    // source), in which case even that very first connection is verified against it instead of
+    // blindly trusted. Either way, every later connection is rejected if the key ever changes (a
+    // changed key on a previously-trusted host is what you actually want flagged -- could mean a
+    // man-in-the-middle) -- mirrors upload.py's "StrictHostKeyChecking=accept-new", just without a
+    // known_hosts file to keep the pin in.
     private fun hostKeyVerifier(settingsStore: SettingsStore): HostKeyVerifier =
         object : HostKeyVerifier {
             override fun verify(hostname: String, port: Int, key: PublicKey): Boolean {
