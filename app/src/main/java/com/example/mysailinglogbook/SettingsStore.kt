@@ -7,7 +7,7 @@ import androidx.security.crypto.MasterKey
 
 /**
  * Wraps EncryptedSharedPreferences for the handful of settings this app needs -- W2K-2 login,
- * boat identity, and the sync interval. Replaces nmea2log.ini on Android (see
+ * boat identity, and the SFTP publish settings. Replaces nmea2log.ini on Android (see
  * docs/android-app-plan.md): no config file, values entered once via SettingsActivity.
  */
 class SettingsStore(context: Context) {
@@ -44,13 +44,6 @@ class SettingsStore(context: Context) {
     var callSign: String
         get() = prefs.getString(KEY_CALL_SIGN, "") ?: ""
         set(value) = prefs.edit().putString(KEY_CALL_SIGN, value).apply()
-
-    // WorkManager's own 15-minute floor applies once Milestone B wires up periodic scheduling
-    // (see docs/android-app-plan.md) -- a lower value is accepted here but won't be honored by
-    // the OS yet.
-    var syncIntervalMinutes: Int
-        get() = prefs.getInt(KEY_SYNC_INTERVAL_MINUTES, DEFAULT_SYNC_INTERVAL_MINUTES)
-        set(value) = prefs.edit().putInt(KEY_SYNC_INTERVAL_MINUTES, value).apply()
 
     val isW2k2ConfigComplete: Boolean
         get() = w2k2User.isNotBlank() && w2k2Password.isNotBlank()
@@ -99,7 +92,6 @@ class SettingsStore(context: Context) {
         set(value) = prefs.edit().putString(KEY_SFTP_HOST_KEY_FINGERPRINT, value).apply()
 
     companion object {
-        const val DEFAULT_SYNC_INTERVAL_MINUTES = 60
         const val DEFAULT_SFTP_HOST = "ayuusc.ssh.transip.me"
         const val DEFAULT_SFTP_PORT = 22
         const val DEFAULT_SFTP_REMOTE_PATH = "private/little_endian/logbook.html"
@@ -108,7 +100,6 @@ class SettingsStore(context: Context) {
         private const val KEY_BOAT_NAME = "boat_name"
         private const val KEY_MMSI = "mmsi"
         private const val KEY_CALL_SIGN = "call_sign"
-        private const val KEY_SYNC_INTERVAL_MINUTES = "sync_interval_minutes"
         private const val KEY_SFTP_HOST = "sftp_host"
         private const val KEY_SFTP_PORT = "sftp_port"
         private const val KEY_SFTP_USER = "sftp_user"

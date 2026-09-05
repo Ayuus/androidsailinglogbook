@@ -13,10 +13,10 @@ import androidx.core.view.ViewCompat
 import androidx.core.view.WindowInsetsCompat
 
 /**
- * Plain form for the settings SettingsStore holds -- W2K-2 login, boat identity, sync interval,
- * and (Milestone B) SFTP publish settings. Only W2K-2 user/password are required to Save -- SFTP
- * fields can stay empty until the owner is ready to publish; that's checked separately when the
- * "logboek naar ayuus.com" icon is tapped (see MainActivity.runUpload()).
+ * Plain form for the settings SettingsStore holds -- W2K-2 login, boat identity, and SFTP publish
+ * settings. Only W2K-2 user/password are required to Save -- SFTP fields can stay empty until the
+ * owner is ready to publish; that's checked separately (isSftpConfigComplete) when the ☁️ icon is
+ * tapped or a sync's own auto-publish runs (see MainActivity.uploadIfConfigured()).
  */
 class SettingsActivity : AppCompatActivity() {
 
@@ -63,7 +63,6 @@ class SettingsActivity : AppCompatActivity() {
         val boatNameField = field("Bootnaam", store.boatName)
         val mmsiField = field("MMSI", store.mmsi)
         val callSignField = field("Roepnaam", store.callSign)
-        val intervalField = field("Sync-interval (minuten, minimaal 15)", store.syncIntervalMinutes.toString())
 
         sectionHeader("Publiceren naar ayuus.com")
         val sftpHostField = field("SFTP host", store.sftpHost)
@@ -105,8 +104,6 @@ class SettingsActivity : AppCompatActivity() {
                 store.boatName = boatNameField.text.toString().trim()
                 store.mmsi = mmsiField.text.toString().trim()
                 store.callSign = callSignField.text.toString().trim()
-                store.syncIntervalMinutes = intervalField.text.toString().toIntOrNull()
-                    ?.coerceAtLeast(15) ?: SettingsStore.DEFAULT_SYNC_INTERVAL_MINUTES
                 store.sftpHost = sftpHostField.text.toString().trim()
                 store.sftpPort = sftpPortField.text.toString().toIntOrNull() ?: SettingsStore.DEFAULT_SFTP_PORT
                 store.sftpUser = sftpUserField.text.toString().trim()
