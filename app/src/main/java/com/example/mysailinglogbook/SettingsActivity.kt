@@ -118,9 +118,22 @@ class SettingsActivity : AppCompatActivity() {
                 finish()
             }
         }
-        layout.addView(saveButton)
 
-        val root = ScrollView(this).apply { addView(layout) }
+        // Opslaan lives outside the ScrollView, not at the bottom of the scrolling field list --
+        // with this many fields (W2K-2, boat identity, and the whole SFTP section) the button used
+        // to only be reachable by scrolling all the way down, and a quick "fill in the SFTP fields,
+        // then just tap back" felt like it saved but silently didn't (found in practice, asked for
+        // explicitly to fix: settings appeared not to be remembered at all). Now it's always
+        // visible regardless of scroll position, so there's no way to miss it.
+        val scrollArea = ScrollView(this).apply {
+            addView(layout)
+            layoutParams = LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, 0, 1f)
+        }
+        val root = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            addView(scrollArea)
+            addView(saveButton)
+        }
         // Same edge-to-edge insets fix as MainActivity (found in practice during spike 2).
         ViewCompat.setOnApplyWindowInsetsListener(root) { view, insets ->
             val bars = insets.getInsets(WindowInsetsCompat.Type.systemBars())
