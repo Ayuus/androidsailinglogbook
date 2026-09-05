@@ -30,7 +30,7 @@ import java.security.Security
  * The full sync flow: hotspot detection, download from the W2K-2, decode+build the logbook, show
  * it in-app, then (only if the owner filled in the "Publiceren naar ayuus.com" settings) publish
  * it and back up new .ebl files over SFTP -- see SftpUploader. Runs automatically once per app
- * launch (see SyncState.autoStartedThisProcess) and via the manual "Nu synchroniseren" button.
+ * launch (see onCreate()'s own savedInstanceState check) and via the manual "Nu synchroniseren" button.
  * WorkManager-based periodic background scheduling (no app open at all) is still a later step.
  */
 class MainActivity : AppCompatActivity() {
@@ -54,7 +54,24 @@ class MainActivity : AppCompatActivity() {
         Security.removeProvider("BC")
         Security.insertProviderAt(BouncyCastleProvider(), 1)
 
-        settingsStore = SettingsStore(this)
+        // Found in practice: the app sometimes closed immediately on launch with no visible error
+        // at all -- SettingsStore's EncryptedSharedPreferences relies on the Android Keystore,
+        // which can transiently fail (e.g. right after boot, or in certain lock states). Without a
+        // real crash log yet to pin down the exact failure, this at least turns a silent crash
+        // (nothing ever got past this point before) into a visible, retryable message instead.
+        val store = try {
+            SettingsStore(this)
+        } catch (e: Exception) {
+            setContentView(
+                TextView(this).apply {
+                    val padding = (16 * resources.displayMetrics.density).toInt()
+                    text = "Instellingen konden niet worden geladen:\n$e\n\nProbeer de app opnieuw te openen."
+                    setPadding(padding, padding, padding, padding)
+                }
+            )
+            return
+        }
+        settingsStore = store
         ensureNotificationPermission()
 
         val padding = (16 * resources.displayMetrics.density).toInt()
@@ -119,13 +136,22 @@ class MainActivity : AppCompatActivity() {
         }
         setContentView(layout)
 
-        // Auto-start once per process, not on every onCreate() (a screen rotation re-runs
-        // onCreate() without a new process -- see SyncState.autoStartedThisProcess) -- asked for
-        // explicitly: opening the app should try to reach the W2K-2 right away instead of waiting
-        // for a manual tap, with the not-found/failure case still handled the same way a manual
-        // attempt's failure is (see showRetryOrCloseDialog()).
-        if (!SyncState.autoStartedThisProcess && settingsStore.isW2k2ConfigComplete) {
-            SyncState.autoStartedThisProcess = true
+        // Auto-start on a genuinely fresh launch, not on every onCreate() -- asked for explicitly:
+        // opening the app should try to reach the W2K-2 right away instead of waiting for a manual
+        // tap, with the not-found/failure case still handled the same way a manual attempt's
+        // failure is (see showRetryOrCloseDialog()). savedInstanceState == null is what actually
+        // distinguishes the two cases: non-null for a screen rotation (this exact session/Activity
+        // being restored, must not silently kick off a second sync on top of -- or right after --
+        // whatever the first one already did), null for a real fresh start.
+        //
+        // A previous version instead gated this on a custom "already auto-started once this
+        // process" flag (SyncState.autoStartedThisProcess), which assumed a "restart" always means
+        // a new OS process -- found in practice not reliably true: closing and reopening the app
+        // (e.g. to un-stick a frozen sync, see onDestroy()'s own notes on OS-level freezes) can
+        // leave the same process alive underneath a brand new Activity, which left that flag stuck
+        // "already done" and silently disabled auto-start until the user noticed and tapped 🔄
+        // themselves.
+        if (savedInstanceState == null && settingsStore.isW2k2ConfigComplete) {
             runSync()
         }
     }
@@ -161,15 +187,24 @@ class MainActivity : AppCompatActivity() {
         SyncState.cancelled = false
         syncButton.isEnabled = false
         publishButton.isEnabled = false
-        statusView.text = "Hotspot controleren..."
+        val initialStatusText = "Hotspot controleren..."
+        statusView.text = initialStatusText
         logView.text = ""
         setLogExpanded(true)
+        // Shown immediately, before hotspot detection even starts -- not only once the first
+        // "Downloaden: 1/X" progress update arrives (asked for explicitly: hotspot detection and
+        // then listing every folder that still needs checking can itself take a real moment on a
+        // big archive, during which nothing was visible outside the app at all before this).
+        val startIntent = Intent(this, SyncNotificationService::class.java)
+            .putExtra(SyncNotificationService.EXTRA_STATUS_TEXT, initialStatusText)
+        startSyncNotification(startIntent)
 
         Thread {
             val subnetPrefix = HotspotDetector.detectSubnetPrefix()
             if (subnetPrefix == null) {
                 runOnUiThread {
-                    showRetryOrCloseDialog(
+                    stopService(Intent(this, SyncNotificationService::class.java))
+                    showOfflineOrCloseDialog(
                         "Hotspot staat uit (of de W2K-2 is er niet mee verbonden). Zet 'm aan om te " +
                             "synchroniseren."
                     )
@@ -180,12 +215,12 @@ class MainActivity : AppCompatActivity() {
                 return@Thread
             }
 
-            val initialStatusText = "Bestandenlijst ophalen (subnet ${subnetPrefix}0/24)..."
+            val listingStatusText = "Bestandenlijst ophalen (subnet ${subnetPrefix}0/24)..."
             runOnUiThread {
-                statusView.text = initialStatusText
-                val startIntent = Intent(this, SyncNotificationService::class.java)
-                    .putExtra(SyncNotificationService.EXTRA_STATUS_TEXT, initialStatusText)
-                startSyncNotification(startIntent)
+                statusView.text = listingStatusText
+                val listingIntent = Intent(this, SyncNotificationService::class.java)
+                    .putExtra(SyncNotificationService.EXTRA_STATUS_TEXT, listingStatusText)
+                startSyncNotification(listingIntent)
             }
             try {
                 val result = syncFromW2k2(subnetPrefix)
@@ -348,7 +383,13 @@ class MainActivity : AppCompatActivity() {
 
     private fun showSyncResult(result: SyncResult) {
         if (result.ok && result.htmlPath != null) {
-            statusView.text = "Klaar: ${result.tripCount} reis(en), ${result.downloadedCount} bestand(en) gedownload."
+            // downloadedCount is null for runOfflineBuild()'s own result (no download happened
+            // that run at all) -- omit that clause entirely rather than showing a literal "null".
+            statusView.text = if (result.downloadedCount != null) {
+                "Klaar: ${result.tripCount} reis(en), ${result.downloadedCount} bestand(en) gedownload."
+            } else {
+                "Klaar: ${result.tripCount} reis(en) (bestaande gegevens, niet opnieuw gedownload)."
+            }
             setLogExpanded(false)
             webView.loadUrl("file://${result.htmlPath}")
         } else if (result.cancelled) {
@@ -365,7 +406,7 @@ class MainActivity : AppCompatActivity() {
             // accidentally show; this dialog is the only thing the user sees (asked for
             // explicitly).
             statusView.text = "Fout: ${result.error ?: "onbekende fout"}"
-            showRetryOrCloseDialog("Fout: ${result.error ?: "onbekende fout"}")
+            showOfflineOrCloseDialog("Fout: ${result.error ?: "onbekende fout"}")
         }
     }
 
@@ -375,80 +416,92 @@ class MainActivity : AppCompatActivity() {
      * obvious next step. Not cancelable by tapping outside/back -- one of the two buttons is the
      * only way out.
      *
-     * The non-closing button doesn't retry immediately -- an immediate retry while genuinely out
-     * of range of the W2K-2 (asked to expect this regularly, e.g. sailing away from the boat)
-     * would just fail again right away and show this exact same dialog again, which reads as
-     * nagging (asked for explicitly to fix). It waits quietly instead (see
-     * waitForConnectionThenAsk()) and only asks again once the W2K-2 is actually reachable
-     * again. */
-    private fun showRetryOrCloseDialog(message: String) {
+     * No "wait for connection" option (an earlier version had one, polling in the background) --
+     * found in practice not actually useful, closing the app and trying again later reads better
+     * than a long silent wait with an uncertain outcome. Offers building/showing the logbook from
+     * whatever's already been downloaded instead, since that's genuinely useful precisely when the
+     * W2K-2 can't be reached right now (asked for explicitly), and closing the app remains always
+     * available as the simple way out. */
+    private fun showOfflineOrCloseDialog(message: String) {
         AlertDialog.Builder(this)
             .setMessage(message)
             .setCancelable(false)
-            .setPositiveButton("Wachten op verbinding") { _, _ -> waitForConnectionThenAsk() }
+            .setPositiveButton("Logboek tonen met bestaande data") { _, _ -> runOfflineBuild() }
             .setNegativeButton("App sluiten") { _, _ -> finishAffinity() }
             .show()
     }
 
-    /** Polls in the background for the W2K-2 to become reachable again, then asks once -- not
-     * repeatedly -- whether to resume or close. Checking the phone's own hotspot interface alone
-     * (see HotspotDetector) isn't enough here: the hotspot itself can stay switched on the whole
-     * time while the W2K-2 drops off it (found in practice: still out of range walking away from
-     * the boat, hotspot untouched) -- so each tick re-attempts the real discover_w2k2() scan, the
-     * same one a normal sync starts with. Shares SyncState.inProgress/cancelled with runSync() so
-     * this counts as "busy" the same way an active sync does (blocks the sync/publish icons, stops
-     * cleanly on onDestroy()) without needing its own separate state.
-     *
-     * Deliberately no foreground service for the wait itself (unlike an active sync): this can run
-     * for hours while genuinely out of range, and a "dataSync" foreground service is capped at 6
-     * cumulative hours per 24h on Android 15+ (this app targets 37) -- keeping one up the whole
-     * wait risks exhausting that budget before a real sync even gets to use it. Accepted trade-off:
-     * if Android eventually suspends this background Thread while the app sits unopened for a long
-     * time, the wait silently stops -- reopening the app re-triggers detection anyway (see
-     * onCreate()'s own auto-start), so nothing is lost, just delayed until next looked at. */
-    private fun waitForConnectionThenAsk() {
+    /** Builds and shows the logbook from whatever .ebl files are already sitting in filesDir --
+     * no W2K-2 connection needed at all, for exactly the case that's otherwise a dead end: the
+     * device can't be reached right now, but there's still real (if possibly not fully current)
+     * data already on the phone worth seeing (asked for explicitly). Publishes it too, same as a
+     * normal sync's own auto-publish, if the SFTP settings are filled in. fetch_failed=true marks
+     * the page's own "Laatst bijgewerkt" timestamp in red -- this run didn't actually fetch
+     * anything new, so the shown data may already be stale. */
+    private fun runOfflineBuild() {
+        if (SyncState.inProgress) return
         SyncState.inProgress = true
-        SyncState.cancelled = false
         syncButton.isEnabled = false
         publishButton.isEnabled = false
-        statusView.text = "Wachten op verbinding met de W2K-2..."
+        statusView.text = "Logboek opbouwen met bestaande gegevens..."
+        logView.text = ""
+        setLogExpanded(true)
 
         Thread {
-            while (!SyncState.cancelled) {
-                val subnetPrefix = HotspotDetector.detectSubnetPrefix()
-                val host = if (subnetPrefix != null) discoverW2k2(subnetPrefix) else null
-                if (host != null) {
-                    runOnUiThread {
-                        SyncState.inProgress = false
-                        syncButton.isEnabled = true
-                        publishButton.isEnabled = true
-                        if (SyncState.cancelled) return@runOnUiThread // app closed while waiting
-                        AlertDialog.Builder(this)
-                            .setMessage(
-                                "Verbinding met de W2K-2 is hersteld. Doorgaan met downloaden, of de app sluiten?"
-                            )
-                            .setCancelable(false)
-                            .setPositiveButton("Doorgaan") { _, _ -> runSync() }
-                            .setNegativeButton("App sluiten") { _, _ -> finishAffinity() }
-                            .show()
-                    }
-                    return@Thread
+            try {
+                val result = buildFromLocalFiles()
+                runOnUiThread { showSyncResult(result) }
+                if (result.ok && result.htmlPath != null) {
+                    uploadIfConfigured(result.htmlPath)
                 }
-                Thread.sleep(settingsStore.syncIntervalMinutes * 60_000L)
+            } catch (e: Exception) {
+                runOnUiThread { statusView.text = "Onverwachte fout: $e" }
+            } finally {
+                runOnUiThread {
+                    SyncState.inProgress = false
+                    syncButton.isEnabled = true
+                    publishButton.isEnabled = true
+                }
             }
         }.start()
     }
 
-    /** Chaquopy call to w2k2_download.discover_w2k2() -- the base URL if the W2K-2 answers on
-     * this subnet right now, or null if it doesn't. */
-    private fun discoverW2k2(subnetPrefix: String): String? {
+    /** Chaquopy call to android_entry.run_pipeline() -- decode/build/write only, no discovery or
+     * download, over every .ebl file already present under filesDir/Actisense. */
+    private fun buildFromLocalFiles(): SyncResult {
         if (!Python.isStarted()) {
             Python.start(AndroidPlatform(this))
         }
-        val module = Python.getInstance().getModule("nmea2000processor.w2k2_download")
-        val result = module.callAttr("discover_w2k2", subnetPrefix) ?: return null
-        val text = result.toString()
-        return if (text == "None") null else text
+        val androidEntry = Python.getInstance().getModule("nmea2000processor.android_entry")
+
+        val downloadDir = File(filesDir, "Actisense")
+        val outputHtmlPath = File(filesDir, "logbook.html")
+        val sampleCachePath = File(filesDir, "sample_cache.pkl")
+        val eblPaths = downloadDir.walkTopDown()
+            .filter { it.isFile && it.extension.equals("ebl", ignoreCase = true) }
+            .map { it.absolutePath }
+            .toList()
+
+        val result = androidEntry.callAttr(
+            "run_pipeline",
+            eblPaths,
+            outputHtmlPath.absolutePath,
+            sampleCachePath.absolutePath,
+            settingsStore.boatName,
+            settingsStore.mmsi,
+            settingsStore.callSign,
+            true, // fetch_failed
+        )
+
+        val ok = result.get("ok")?.toBoolean() ?: false
+        return SyncResult(
+            ok = ok,
+            cancelled = false,
+            error = result.get("error")?.toString(),
+            tripCount = if (ok) result.get("trip_count")?.toInt() else null,
+            htmlPath = if (ok) result.get("html_path")?.toString() else null,
+            downloadedCount = null, // no download happened this run
+        )
     }
 
     /** Uploads the fresh logbook (always, if SFTP publish settings are filled in) and backs up

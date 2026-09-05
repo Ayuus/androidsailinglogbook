@@ -13,12 +13,4 @@ object SyncState {
 
     @Volatile
     var cancelled = false
-
-    // Set once the very first time MainActivity.onCreate() auto-starts a sync after this process
-    // launched -- also process-wide, same reasoning as inProgress above: a screen rotation creates
-    // a new MainActivity instance (and re-runs onCreate()) without a new process, and without this
-    // flag every rotation after the first sync had already finished would silently kick off
-    // another one (found in practice).
-    @Volatile
-    var autoStartedThisProcess = false
 }
