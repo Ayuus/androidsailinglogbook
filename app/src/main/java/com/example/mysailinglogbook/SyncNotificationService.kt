@@ -2,6 +2,7 @@ package com.example.mysailinglogbook
 
 import android.app.NotificationChannel
 import android.app.NotificationManager
+import android.app.PendingIntent
 import android.app.Service
 import android.content.Intent
 import android.os.Build
@@ -32,12 +33,30 @@ class SyncNotificationService : Service() {
             statusText != null -> statusText
             else -> "Bezig met downloaden en verwerken..."
         }
+        // Tapping the notification opens the app (asked for explicitly) -- without a
+        // setContentIntent, tapping it did nothing at all. FLAG_IMMUTABLE is required since API 31
+        // (Android 12); this app's minSdk 24 means the flag itself must still be built
+        // conditionally for the OS versions where it doesn't exist yet.
+        // this.flags, not flags -- onStartCommand()'s own "flags: Int" parameter otherwise shadows
+        // Intent's own flags property inside this block (found in practice: "'val' cannot be
+        // reassigned", Kotlin resolved the unqualified name to that outer parameter instead).
+        val openAppIntent = Intent(this, MainActivity::class.java).apply {
+            this.flags = Intent.FLAG_ACTIVITY_SINGLE_TOP or Intent.FLAG_ACTIVITY_CLEAR_TOP
+        }
+        val pendingIntentFlags = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+        } else {
+            PendingIntent.FLAG_UPDATE_CURRENT
+        }
+        val contentIntent = PendingIntent.getActivity(this, 0, openAppIntent, pendingIntentFlags)
+
         val notification = NotificationCompat.Builder(this, CHANNEL_ID)
             .setContentTitle("Logboek synchroniseren")
             .setContentText(contentText)
             .setSmallIcon(android.R.drawable.stat_notify_sync)
             .setOngoing(true)
             .setPriority(NotificationCompat.PRIORITY_DEFAULT)
+            .setContentIntent(contentIntent)
             .build()
         // Calling this again on an already-foregrounded service just updates the existing
         // notification's content in place -- used both for the initial "bezig..." state and for

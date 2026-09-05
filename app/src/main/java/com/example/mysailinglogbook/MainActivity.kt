@@ -151,8 +151,25 @@ class MainActivity : AppCompatActivity() {
         // leave the same process alive underneath a brand new Activity, which left that flag stuck
         // "already done" and silently disabled auto-start until the user noticed and tapped 🔄
         // themselves.
-        if (savedInstanceState == null && settingsStore.isW2k2ConfigComplete) {
-            runSync()
+        if (savedInstanceState == null) {
+            if (settingsStore.isW2k2ConfigComplete) {
+                runSync()
+            } else {
+                // Found in practice (not fully understood yet, no crash log to pin it down):
+                // right after the OS kills and relaunches this app's process (e.g. after sitting
+                // backgrounded for a while), isW2k2ConfigComplete has sometimes read false here
+                // even though the real settings were still saved fine -- EncryptedSharedPreferences
+                // relies on the Android Keystore, which could plausibly still be settling right
+                // after a cold process start. One short, silent re-check before concluding
+                // settings are genuinely empty and showing that message -- cheap, and either
+                // papers over exactly that race or costs nothing if this was a real empty-settings
+                // case after all (the message still shows, just fractionally later).
+                android.os.Handler(mainLooper).postDelayed({
+                    if (settingsStore.isW2k2ConfigComplete) {
+                        runSync()
+                    }
+                }, 300L)
+            }
         }
     }
 
@@ -331,6 +348,24 @@ class MainActivity : AppCompatActivity() {
                 runOnUiThread {
                     logView.append(if (logView.text.isEmpty()) line else "\n$line")
                     logScroll.post { logScroll.fullScroll(View.FOCUS_DOWN) }
+                }
+                // A "[warning]" line (a failed attempt being retried, e.g. connection lost) means
+                // report()'s own "current/total" notification text is about to sit frozen and
+                // stale for a while -- found in practice: half an hour out of range looked from
+                // the notification alone like the app was just stuck on file 26/625, no
+                // indication anything had actually gone wrong. A short, plain message here, not
+                // the raw warning text itself (asked for explicitly) -- that's already visible
+                // verbatim in the in-app log for anyone who wants the technical detail (which
+                // host/file, the exact OS error, which retry attempt).
+                // contains(), not startsWith(): log.py's log() always prepends a "YYYY-MM-DD
+                // HH:MM:SS " timestamp before handing the line to this sink, so it never actually
+                // starts with the "[warning]" tag itself (found in practice: this check never
+                // matched at all, so the notification silently never updated during a real
+                // connection-loss test).
+                if (line.contains("[warning]")) {
+                    val warningIntent = Intent(this@MainActivity, SyncNotificationService::class.java)
+                        .putExtra(SyncNotificationService.EXTRA_STATUS_TEXT, "Verbinding verloren, opnieuw proberen...")
+                    startSyncNotification(warningIntent)
                 }
             }
 
