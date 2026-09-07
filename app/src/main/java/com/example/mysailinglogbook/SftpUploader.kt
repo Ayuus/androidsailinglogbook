@@ -2,10 +2,12 @@ package com.example.mysailinglogbook
 
 import net.schmizz.sshj.SSHClient
 import net.schmizz.sshj.common.SecurityUtils
+import net.schmizz.sshj.sftp.RenameFlags
 import net.schmizz.sshj.sftp.SFTPClient
 import net.schmizz.sshj.transport.verification.HostKeyVerifier
 import java.io.File
 import java.security.PublicKey
+import java.util.EnumSet
 
 class SftpUploadError(message: String, cause: Throwable? = null) : Exception(message, cause)
 
@@ -66,7 +68,16 @@ object SftpUploader {
      * WordPress gatekeeper, which reads this file fresh on every request) could see a truncated
      * file. No retry (matches upload.py's own upload_file(), retries=0): a single logbook upload
      * failing should surface immediately rather than silently costing the caller several seconds
-     * first. */
+     * first.
+     *
+     * RenameFlags.OVERWRITE, not the plain 2-arg rename() -- found in practice: every real run
+     * renames the temp file over an *already-existing* remotePath (that's the whole point --
+     * yesterday's logbook is still sitting there), and plain SFTP rename fails outright when the
+     * destination already exists (a real SSH_FXP_RENAME protocol rule, not a bug on the server's
+     * end). upload.py's own desktop equivalent never hit this: it shells out to the system sftp
+     * CLI, which transparently upgrades to the posix-rename@openssh.com extension (overwrite-
+     * capable) when the server supports it, same as this app's own target server clearly does --
+     * sshj's rename() doesn't do that upgrade on its own, it has to be asked for explicitly. */
     fun uploadLogbookAtomic(settingsStore: SettingsStore, localFile: File) {
         val remotePath = settingsStore.sftpRemotePath
         val remoteTmpPath = "$remotePath.tmp-upload"
@@ -74,7 +85,7 @@ object SftpUploader {
             client.newSFTPClient().use { sftp ->
                 try {
                     sftp.put(localFile.absolutePath, remoteTmpPath)
-                    sftp.rename(remoteTmpPath, remotePath)
+                    sftp.rename(remoteTmpPath, remotePath, EnumSet.of(RenameFlags.OVERWRITE))
                 } catch (e: Exception) {
                     throw SftpUploadError("Uploaden van logboek mislukt: ${e.message}", e)
                 }
