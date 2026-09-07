@@ -1,4 +1,4 @@
-# MySailingLogbook
+# My Sailing Logbook
 
 Android app that syncs voyage data from a boat's [Actisense W2K-2](https://actisense.com) NMEA
 2000-to-WiFi gateway, builds the same HTML sailing logbook the desktop
