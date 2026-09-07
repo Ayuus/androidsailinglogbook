@@ -1,13 +1,18 @@
 package com.example.mysailinglogbook
 
+import android.Manifest
 import android.app.NotificationChannel
 import android.app.NotificationManager
 import android.app.PendingIntent
+import android.content.Context
+import android.content.pm.PackageManager
 import android.app.Service
 import android.content.Intent
 import android.os.Build
 import android.os.IBinder
+import androidx.core.app.ActivityCompat
 import androidx.core.app.NotificationCompat
+import androidx.core.app.NotificationManagerCompat
 
 /**
  * Hosts the sync-in-progress notification as a real foreground service, not a notification
@@ -40,7 +45,13 @@ class SyncNotificationService : Service() {
         // this.flags, not flags -- onStartCommand()'s own "flags: Int" parameter otherwise shadows
         // Intent's own flags property inside this block (found in practice: "'val' cannot be
         // reassigned", Kotlin resolved the unqualified name to that outer parameter instead).
+        // A distinct action, not just the plain launch Intent a tap on the launcher icon would
+        // send -- MainActivity.onNewIntent() uses this to tell "the user tapped the notification"
+        // apart from any other way it might get resumed (icon tap, task switcher, ...), since only
+        // the notification tap should toggle the UI away again on a second tap (asked for
+        // explicitly: tapping the icon must always just show the app, never hide it).
         val openAppIntent = Intent(this, MainActivity::class.java).apply {
+            action = MainActivity.ACTION_TOGGLE_FROM_NOTIFICATION
             this.flags = Intent.FLAG_ACTIVITY_SINGLE_TOP or Intent.FLAG_ACTIVITY_CLEAR_TOP
         }
         val pendingIntentFlags = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
@@ -61,36 +72,112 @@ class SyncNotificationService : Service() {
         // Calling this again on an already-foregrounded service just updates the existing
         // notification's content in place -- used both for the initial "bezig..." state and for
         // every subsequent progress update (see MainActivity.syncFromW2k2()'s progress listener).
-        startForeground(NOTIFICATION_ID, notification)
+        //
+        // Wrapped in try/catch -- regression, found in practice: a real, repeated app crash. The
+        // caller (MainActivity.startSyncNotification()) already catches a refused
+        // startForegroundService() call on *its* end, but that only protects the call that
+        // dispatches this Intent to the service -- the service still independently has to call
+        // startForeground() itself, from here, within 5 seconds of being started, and *that* call
+        // can be refused on its own (same ForegroundServiceStartNotAllowedException) with nothing
+        // on the calling side able to catch it: it surfaced as an uncaught RuntimeException deep
+        // in ActivityThread.handleServiceArgs(), crashing the whole process -- and then crashed
+        // again immediately the same way when Android auto-restarted it right after, since nothing
+        // about the app's foreground eligibility had changed in between.
+        try {
+            startForeground(NOTIFICATION_ID, notification)
+        } catch (e: Exception) {
+            stopSelf()
+        }
         return START_NOT_STICKY
     }
 
-    private fun createChannel() {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            val manager = getSystemService(NotificationManager::class.java)
-            // IMPORTANCE_LOW put this notification in Samsung One UI's collapsed "Silent"
-            // section and made it trivially swipeable despite setOngoing(true) (found in
-            // practice, asked for explicitly) -- channel importance is fixed once created, so
-            // bumping it in code alone wouldn't affect the "sync" channel already on the test
-            // device; OLD_CHANNEL_ID is deleted here and a differently-named channel created
-            // instead, forcing a fresh one at the new importance.
-            manager.deleteNotificationChannel(OLD_CHANNEL_ID)
-            val channel = NotificationChannel(
-                CHANNEL_ID, "Synchronisatie", NotificationManager.IMPORTANCE_DEFAULT,
-            ).apply {
-                description = "Toont wanneer de app bezig is met het ophalen en verwerken van het logboek."
-            }
-            manager.createNotificationChannel(channel)
+    /** Fires specifically when the app's task is swept away from Recents (a swipe, or the system
+     * reclaiming it) -- unlike closeAppAndCancelSync() (the ✕ button in MainActivity), nothing
+     * calls this deliberately, so it can't cancel a sync in progress the same way that does (its
+     * whole point is to keep a real sync running across exactly this, per
+     * android:stopWithTask="false" -- see the class doc above). Only relevant when nothing is
+     * actually running: mirrors the ✕ button's own "tap to reopen" notification (asked for
+     * explicitly, for consistency between the two ways of leaving the app) so swiping away isn't a
+     * dead end either. A sync still in progress already has its own ongoing notification serving
+     * that same purpose -- left untouched here. */
+    override fun onTaskRemoved(rootIntent: Intent?) {
+        super.onTaskRemoved(rootIntent)
+        if (!SyncState.inProgress) {
+            postReopenNotification(this)
+            stopSelf()
         }
     }
 
+    private fun createChannel() {
+        // Once per process, not on every single onStartCommand() (a fresh sync's first call, and
+        // every progress update after it -- easily dozens of calls per run) -- deleting a channel
+        // that was already deleted, and recreating one that already exists with identical
+        // settings, are both wasted binder calls to NotificationManager on every single call,
+        // adding to (not the whole explanation for, but part of) the delay before the very first
+        // notification actually becomes visible (asked about explicitly).
+        if (channelCreated || Build.VERSION.SDK_INT < Build.VERSION_CODES.O) {
+            return
+        }
+        val manager = getSystemService(NotificationManager::class.java)
+        // IMPORTANCE_LOW put this notification in Samsung One UI's collapsed "Silent"
+        // section and made it trivially swipeable despite setOngoing(true) (found in
+        // practice, asked for explicitly) -- channel importance is fixed once created, so
+        // bumping it in code alone wouldn't affect the "sync" channel already on the test
+        // device; OLD_CHANNEL_ID is deleted here and a differently-named channel created
+        // instead, forcing a fresh one at the new importance.
+        manager.deleteNotificationChannel(OLD_CHANNEL_ID)
+        val channel = NotificationChannel(
+            CHANNEL_ID, "Synchronisatie", NotificationManager.IMPORTANCE_DEFAULT,
+        ).apply {
+            description = "Toont wanneer de app bezig is met het ophalen en verwerken van het logboek."
+        }
+        manager.createNotificationChannel(channel)
+        channelCreated = true
+    }
+
     companion object {
+        // Process-wide, not an instance field -- a new Service instance is created each time it's
+        // (re)started after fully stopping, but the channel itself, once created, persists at the
+        // OS level regardless; re-checking per process avoids redoing that work needlessly on a
+        // later sync within the same still-running process, without wrongly skipping it after a
+        // genuine process restart.
+        private var channelCreated = false
         private const val OLD_CHANNEL_ID = "sync"
         const val CHANNEL_ID = "sync_v2"
         const val NOTIFICATION_ID = 1
+        const val REOPEN_NOTIFICATION_ID = 2
         const val EXTRA_CURRENT = "current"
         const val EXTRA_TOTAL = "total"
         const val EXTRA_FILE_NAME = "file_name"
         const val EXTRA_STATUS_TEXT = "status_text"
+
+        // Shared between the ✕ button (MainActivity.closeAppAndCancelSync()) and swiping the app
+        // away from Recents (onTaskRemoved() above) -- both are "the user left the app", and both
+        // should leave behind the same "tap to reopen" notification rather than a dead end.
+        fun postReopenNotification(context: Context) {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU &&
+                ActivityCompat.checkSelfPermission(context, Manifest.permission.POST_NOTIFICATIONS) !=
+                    PackageManager.PERMISSION_GRANTED
+            ) {
+                return
+            }
+            val reopenIntent = Intent(context, MainActivity::class.java).apply {
+                flags = Intent.FLAG_ACTIVITY_NEW_TASK
+            }
+            val pendingIntentFlags = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+                PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+            } else {
+                PendingIntent.FLAG_UPDATE_CURRENT
+            }
+            val contentIntent = PendingIntent.getActivity(context, 0, reopenIntent, pendingIntentFlags)
+            val notification = NotificationCompat.Builder(context, CHANNEL_ID)
+                .setContentTitle("Sailing Logbook")
+                .setContentText("App gesloten. Tik om opnieuw te openen.")
+                .setSmallIcon(android.R.drawable.stat_notify_sync)
+                .setAutoCancel(true)
+                .setContentIntent(contentIntent)
+                .build()
+            NotificationManagerCompat.from(context).notify(REOPEN_NOTIFICATION_ID, notification)
+        }
     }
 }
