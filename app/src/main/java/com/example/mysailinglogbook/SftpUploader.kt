@@ -46,6 +46,14 @@ object SftpUploader {
 
     private fun connect(settingsStore: SettingsStore): SSHClient {
         val client = SSHClient()
+        // Found in practice, a real bug: sshj has no bounded default here -- a flaky/unresponsive
+        // server (or network) left the whole sync Thread stuck indefinitely inside connect() or a
+        // later blocking SFTP operation (put/ls/mkdirs), with no way out short of force-closing
+        // the app. connectTimeout bounds the initial TCP+SSH handshake; timeout bounds every
+        // later blocking read on the connection (channel open, SFTP request/response, ...) --
+        // both needed, since the hang isn't necessarily during the handshake itself.
+        client.connectTimeout = 15_000
+        client.timeout = 30_000
         client.addHostKeyVerifier(hostKeyVerifier(settingsStore))
         try {
             client.connect(settingsStore.sftpHost, settingsStore.sftpPort)
