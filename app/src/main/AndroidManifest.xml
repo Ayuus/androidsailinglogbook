@@ -24,7 +24,23 @@
 
         <activity
             android:name=".MainActivity"
-            android:exported="true">
+            android:exported="true"
+            android:configChanges="orientation|screenSize|screenLayout|keyboardHidden">
+            <!-- configChanges above: MainActivity builds its whole UI programmatically (one
+                 LinearLayout, no separate portrait/landscape resources) and drives it entirely
+                 from a long-lived background Thread plus SyncController callbacks captured
+                 against one specific Activity instance (see runSync()/syncFromW2k2()). The
+                 default destroy-and-recreate-on-rotation behavior orphaned that Thread's updates
+                 onto a dead Activity instance mid-sync, found in practice: a real, reproducible
+                 bug, not just the already-patched "stuck on a stale placeholder text" case (see
+                 onCreate()'s own SyncState.inProgress branch and autoStartSyncWithSettingsRetry()'s
+                 doc comment for two earlier, narrower patches of the same underlying issue reached
+                 via different paths). Rotating mid-sync silently froze the whole screen, with no
+                 further progress, log lines, or even the eventual success/failure result ever
+                 reaching the new (visible) Activity instance, since every one of those callbacks
+                 was still only updating the orphaned old instance's now-invisible views. This asks
+                 Android to keep reusing the same Activity instance across a rotation instead,
+                 which fixes the root cause directly rather than adding a third narrow patch. -->
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />

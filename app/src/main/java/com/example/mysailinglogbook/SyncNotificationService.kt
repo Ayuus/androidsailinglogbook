@@ -8,6 +8,7 @@ import android.content.Context
 import android.content.pm.PackageManager
 import android.app.Service
 import android.content.Intent
+import android.net.Uri
 import android.os.Build
 import android.os.IBinder
 import androidx.core.app.ActivityCompat
@@ -38,6 +39,14 @@ class SyncNotificationService : Service() {
             statusText != null -> statusText
             else -> "Bezig met downloaden en verwerken..."
         }
+        // A real Android progress bar in the notification shade, not just text -- same
+        // current/max MainActivity's own bottom progress bar shows (see updateProgressBar()),
+        // so the two stay in sync instead of the notification lagging behind on whichever phase
+        // last happened to update it (asked for explicitly: found in practice, the notification
+        // was still showing "opbouwen 2012/2012" well after decode itself had finished and the
+        // run had moved on to later phases with no progress update of their own reaching it).
+        val progressMax = intent?.getIntExtra(EXTRA_PROGRESS_MAX, -1) ?: -1
+        val progressCurrent = intent?.getIntExtra(EXTRA_PROGRESS_CURRENT, -1) ?: -1
         // Tapping the notification opens the app (asked for explicitly) -- without a
         // setContentIntent, tapping it did nothing at all. FLAG_IMMUTABLE is required since API 31
         // (Android 12); this app's minSdk 24 means the flag itself must still be built
@@ -68,6 +77,9 @@ class SyncNotificationService : Service() {
             .setOngoing(true)
             .setPriority(NotificationCompat.PRIORITY_DEFAULT)
             .setContentIntent(contentIntent)
+            .apply {
+                if (progressMax > 0 && progressCurrent >= 0) setProgress(progressMax, progressCurrent, false)
+            }
             .build()
         // Calling this again on an already-foregrounded service just updates the existing
         // notification's content in place -- used both for the initial "bezig..." state and for
@@ -150,6 +162,8 @@ class SyncNotificationService : Service() {
         const val EXTRA_TOTAL = "total"
         const val EXTRA_FILE_NAME = "file_name"
         const val EXTRA_STATUS_TEXT = "status_text"
+        const val EXTRA_PROGRESS_CURRENT = "progress_current"
+        const val EXTRA_PROGRESS_MAX = "progress_max"
 
         // Shared between the ✕ button (MainActivity.closeAppAndCancelSync()) and swiping the app
         // away from Recents (onTaskRemoved() above) -- both are "the user left the app", and both
@@ -178,6 +192,50 @@ class SyncNotificationService : Service() {
                 .setContentIntent(contentIntent)
                 .build()
             NotificationManagerCompat.from(context).notify(REOPEN_NOTIFICATION_ID, notification)
+        }
+
+        /** Replaces the ongoing sync notification with a final, dismissible one once a run
+         * finishes successfully -- found in practice, asked for explicitly: stopService() alone
+         * (MainActivity.runSync()'s own finally) just makes the notification disappear the
+         * instant a sync ends, with nothing left behind to say it actually finished (as opposed
+         * to, say, having been swiped away mid-run) or when. Posted under the same NOTIFICATION_ID
+         * as the ongoing one, so it replaces it in place rather than adding a second entry.
+         *
+         * publishedUrl is non-null only when this run's own publish step actually succeeded (see
+         * uploadIfConfigured() in MainActivity.kt) -- the "Bekijk live site" action only makes
+         * sense to offer then, not after a sync that only rebuilt the local logbook. */
+        fun postCompletionNotification(context: Context, resultText: String, publishedUrl: String?) {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU &&
+                ActivityCompat.checkSelfPermission(context, Manifest.permission.POST_NOTIFICATIONS) !=
+                    PackageManager.PERMISSION_GRANTED
+            ) {
+                return
+            }
+            val openAppIntent = Intent(context, MainActivity::class.java).apply {
+                flags = Intent.FLAG_ACTIVITY_NEW_TASK
+            }
+            val pendingIntentFlags = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+                PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+            } else {
+                PendingIntent.FLAG_UPDATE_CURRENT
+            }
+            val contentIntent = PendingIntent.getActivity(context, 0, openAppIntent, pendingIntentFlags)
+            val builder = NotificationCompat.Builder(context, CHANNEL_ID)
+                .setContentTitle("Logboek synchroniseren")
+                .setContentText(resultText)
+                .setSmallIcon(android.R.drawable.stat_notify_sync)
+                .setAutoCancel(true)
+                .setContentIntent(contentIntent)
+            if (publishedUrl != null) {
+                // A separate action, not the notification's own tap target -- tapping the body
+                // still opens the app itself (consistent with every other notification here),
+                // this is specifically for "go look at what just got published" without a detour
+                // through the app first.
+                val viewSiteIntent = Intent(Intent.ACTION_VIEW, Uri.parse(publishedUrl))
+                val viewSitePendingIntent = PendingIntent.getActivity(context, 1, viewSiteIntent, pendingIntentFlags)
+                builder.addAction(0, "Bekijk live site", viewSitePendingIntent)
+            }
+            NotificationManagerCompat.from(context).notify(NOTIFICATION_ID, builder.build())
         }
     }
 }

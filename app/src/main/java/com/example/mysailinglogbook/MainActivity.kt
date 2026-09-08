@@ -2,6 +2,7 @@ package com.example.mysailinglogbook
 
 import android.Manifest
 import android.app.ForegroundServiceStartNotAllowedException
+import android.app.NotificationManager
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.graphics.Typeface
@@ -56,6 +57,22 @@ class MainActivity : AppCompatActivity() {
     // group) so the progress bar (see updateProgressBar()) can set current/max separately,
     // without also having to re-parse the notification's own copy of this same text.
     private val decodeProgressRegex = Regex("""decoded (\d+)/(\d+) logfile\(s\) so far""")
+
+    // The trip-building phase after decode (android_entry.py/cli.py/tripbuilder.py's own
+    // checkpoint log() calls, added purely as a diagnostic aid -- see their own comments) has no
+    // "current/total" numbers of its own the way decodeProgressRegex's line does, just four fixed
+    // checkpoints in a always-the-same order -- so BUILD_PHASE_MARKERS below just counts which one
+    // last matched as "step X of 4" instead. Asked for explicitly: found in practice, the
+    // notification was still showing "opbouwen 2012/2012" (decodeProgressRegex's own last message,
+    // stale-but-not-wrong text left behind once decode itself was done) all the way through this
+    // phase, with nothing of its own updating it since build_trips() can run for a real,
+    // non-trivial amount of time on a full season's worth of samples.
+    private val buildPhaseMarkers = listOf(
+        Regex("""Reizen opbouwen uit \d+ GPS-posities"""),
+        Regex("""\d+ navigation samples merged, classifying trips"""),
+        Regex("""\d+ run\(s\) classified, computing per-trip statistics"""),
+        Regex("""\d+ trip\(s\) found, writing logbook"""),
+    )
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -199,15 +216,11 @@ class MainActivity : AppCompatActivity() {
             autoStartSyncWithSettingsRetry()
         } else if (SyncState.inProgress) {
             // The savedInstanceState != null branch above skips autoStartSyncWithSettingsRetry()
-            // entirely -- including its own "Synchronisatie loopt al..." guard (found in practice:
-            // a real, reproducible bug, not just the same one that guard already covers) -- so a
-            // brand new Activity instance recreated WITH saved state (e.g. this device's
-            // "Freecess" background-process freezer thawing it back out after unlocking the
-            // screen, see the isW2k2ConfigComplete doc comment above for the same underlying OS
-            // behavior) was left showing this function's onCreate()-time placeholder text
-            // indefinitely, same as the case that guard was written for -- just reached via a
-            // different path.
-            statusView.text = "Synchronisatie loopt al..."
+            // entirely -- including its own guard -- so a brand new Activity instance recreated
+            // WITH saved state (e.g. this device's "Freecess" background-process freezer thawing
+            // it back out after unlocking the screen, see the isW2k2ConfigComplete doc comment
+            // above for the same underlying OS behavior) needs the same live-state restore.
+            restoreLiveSyncUi()
         }
     }
 
@@ -229,6 +242,31 @@ class MainActivity : AppCompatActivity() {
             // stopService() call later is a harmless no-op against an already-stopped service.
             stopService(Intent(this, SyncNotificationService::class.java))
         }
+    }
+
+    /** Restores full live sync state (status text, log, progress bar) from SyncState's own
+     * cached fields (see there) -- called whenever this Activity instance becomes the active one
+     * while a sync is already known to be in progress, instead of showing a static, never-
+     * updating placeholder (found in practice, a real bug -- see SyncState.active's own doc
+     * comment). Harmless to call even when nothing has been cached yet (a sync that's only just
+     * started, before its very first progress update reached SyncState) -- falls back to the
+     * same placeholder text as before. */
+    private fun restoreLiveSyncUi() {
+        statusView.text = SyncState.lastStatusText ?: "Synchronisatie loopt al..."
+        logView.text = SyncState.lastLogText
+        logScroll.post { logScroll.fullScroll(View.FOCUS_DOWN) }
+        val phase = SyncState.lastProgressPhase
+        if (phase != null && SyncState.lastProgressTotal > 0) {
+            progressBar.visibility = View.VISIBLE
+            progressLabel.visibility = View.VISIBLE
+            progressBar.max = SyncState.lastProgressTotal
+            progressBar.progress = SyncState.lastProgressCurrent
+            progressLabel.text = "$phase: ${SyncState.lastProgressCurrent}/${SyncState.lastProgressTotal}"
+        } else {
+            progressBar.visibility = View.GONE
+            progressLabel.visibility = View.GONE
+        }
+        publishButton.isEnabled = !SyncState.inProgress
     }
 
     /** Found in practice, still not fully understood at the OS level: right after this Activity's
@@ -254,14 +292,13 @@ class MainActivity : AppCompatActivity() {
         // "vul eerst je instellingen in" over a sync that was actually still progressing fine,
         // confusing but not actually broken). Nothing to auto-start in that case.
         //
-        // statusView is still explicitly updated here, though (found in practice, a second real
-        // bug on top of the first): a brand new Activity instance's statusView always starts out
-        // showing its plain onCreate()-time placeholder text ("Vul eerst je instellingen..."), and
-        // returning here without touching it left that placeholder on screen indefinitely, even
-        // though the sync was genuinely progressing the whole time -- onResume()'s own restore
-        // logic only ever re-triggers the *notification*, never statusView.
+        // Full live state is restored here too (found in practice, a second real bug on top of
+        // the first): a brand new Activity instance's statusView always starts out showing its
+        // plain onCreate()-time placeholder text ("Vul eerst je instellingen..."), and returning
+        // here without touching it left that placeholder on screen indefinitely, even though the
+        // sync was genuinely progressing the whole time.
         if (SyncState.inProgress) {
-            statusView.text = "Synchronisatie loopt al..."
+            restoreLiveSyncUi()
             return
         }
         if (settingsStore.isW2k2ConfigComplete) {
@@ -301,6 +338,15 @@ class MainActivity : AppCompatActivity() {
         val initialStatusText = "Hotspot controleren..."
         statusView.text = initialStatusText
         logView.text = ""
+        // Reset alongside the views above -- a fresh sync's own state, not whatever a previous
+        // one within this same process left behind (see SyncState's own doc comment on why this
+        // is process-wide, not per-instance).
+        SyncState.lastStatusText = initialStatusText
+        SyncState.lastNotificationText = initialStatusText
+        SyncState.lastLogText = ""
+        SyncState.lastProgressPhase = null
+        SyncState.lastProgressCurrent = 0
+        SyncState.lastProgressTotal = 0
         setLogExpanded(true)
         // Shown immediately, before hotspot detection even starts -- not only once the first
         // "Downloaden: 1/X" progress update arrives (asked for explicitly: hotspot detection and
@@ -318,14 +364,14 @@ class MainActivity : AppCompatActivity() {
         Thread {
             val subnetPrefix = HotspotDetector.detectSubnetPrefix()
             if (subnetPrefix == null) {
-                runOnUiThread {
+                val message = "Hotspot staat uit (of de W2K-2 is er niet mee verbonden). Zet 'm aan om te " +
+                    "synchroniseren."
+                SyncState.lastStatusText = message
+                withActiveActivity {
                     stopService(Intent(this, SyncNotificationService::class.java))
-                    syncNotificationForegrounded = false
-                    syncNotificationStartFailed = false
-                    showOfflineOrCloseDialog(
-                        "Hotspot staat uit (of de W2K-2 is er niet mee verbonden). Zet 'm aan om te " +
-                            "synchroniseren."
-                    )
+                    SyncState.notificationForegrounded = false
+                    SyncState.notificationStartFailed = false
+                    showOfflineOrCloseDialog(message)
                     SyncState.inProgress = false
                     syncButton.isEnabled = true
                     publishButton.isEnabled = true
@@ -334,12 +380,19 @@ class MainActivity : AppCompatActivity() {
             }
 
             val listingStatusText = "Bestandenlijst ophalen (subnet ${subnetPrefix}0/24)..."
-            runOnUiThread {
+            SyncState.lastStatusText = listingStatusText
+            SyncState.lastNotificationText = listingStatusText
+            withActiveActivity {
                 statusView.text = listingStatusText
                 val listingIntent = Intent(this, SyncNotificationService::class.java)
                     .putExtra(SyncNotificationService.EXTRA_STATUS_TEXT, listingStatusText)
                 startSyncNotification(listingIntent)
             }
+            // Hoisted above the try block so the finally below can still see the outcome --
+            // needed to decide between a plain "sync stopped" cleanup and posting the "Voltooid"
+            // completion notification (see SyncNotificationService.postCompletionNotification()).
+            var syncSucceeded = false
+            var didPublish = false
             try {
                 var result = syncFromW2k2(subnetPrefix)
                 // Belt-and-suspenders on top of SyncController.onResult() (see its own doc
@@ -364,23 +417,53 @@ class MainActivity : AppCompatActivity() {
                         )
                     }
                 }
-                runOnUiThread { showSyncResult(result) }
+                syncSucceeded = result.ok
+                withActiveActivity { showSyncResult(result) }
                 // After showing the logbook, not before -- an upload problem (misconfigured
                 // credentials, server unreachable) shouldn't hide the fact that the download and
                 // decode themselves already succeeded. Still on this same background Thread, not
                 // re-dispatched: SftpUploader's calls are blocking network I/O same as the
                 // download itself was.
                 if (result.ok && result.htmlPath != null) {
-                    uploadIfConfigured(result.htmlPath)
+                    didPublish = uploadIfConfigured(result.htmlPath)
+                }
+                if (syncSucceeded) {
+                    // A plain Kotlin-originated line (not one of log.py's own), reused through
+                    // the exact same accumulator/log-view path as every other line -- asked for
+                    // explicitly: there was previously no single, unambiguous "this whole sync,
+                    // including any publish step, is now finished" marker in the log at all.
+                    val timeText = java.text.SimpleDateFormat("HH:mm", java.util.Locale.getDefault())
+                        .format(java.util.Date())
+                    handleLogLine("Voltooid: $timeText")
                 }
             } catch (e: Exception) {
-                runOnUiThread { statusView.text = "Onverwachte fout tijdens synchroniseren: $e" }
+                val message = "Onverwachte fout tijdens synchroniseren: $e"
+                SyncState.lastStatusText = message
+                withActiveActivity { statusView.text = message }
             } finally {
-                runOnUiThread {
-                    stopService(Intent(this, SyncNotificationService::class.java))
-                    syncNotificationForegrounded = false
-                    syncNotificationStartFailed = false
-                    SyncState.inProgress = false
+                // Real, must-always-happen state -- not gated behind withActiveActivity (which
+                // no-ops when nothing is currently active, e.g. the app is fully backgrounded
+                // right as the sync finishes): SyncState.inProgress staying stuck true forever
+                // would block every later sync attempt, and this instance is a valid Context for
+                // stopService()/postCompletionNotification() regardless of whether it's the
+                // currently active one.
+                stopService(Intent(this, SyncNotificationService::class.java))
+                if (syncSucceeded) {
+                    val timeText = java.text.SimpleDateFormat("HH:mm", java.util.Locale.getDefault())
+                        .format(java.util.Date())
+                    SyncNotificationService.postCompletionNotification(
+                        this,
+                        "Voltooid $timeText",
+                        if (didPublish) MainActivity.LIVE_SITE_URL else null,
+                    )
+                }
+                SyncState.notificationForegrounded = false
+                SyncState.notificationStartFailed = false
+                SyncState.inProgress = false
+                // Purely cosmetic UI state, safe to skip when nothing is active right now -- the
+                // next Activity to resume starts from a fresh, already-correct button/progress
+                // state on its own (see onCreate()/restoreLiveSyncUi()).
+                withActiveActivity {
                     syncButton.isEnabled = true
                     publishButton.isEnabled = true
                     hideProgressBar()
@@ -411,13 +494,14 @@ class MainActivity : AppCompatActivity() {
         syncButton.isEnabled = false
         publishButton.isEnabled = false
         statusView.text = "Publiceren naar ayuus.com..."
+        SyncState.lastStatusText = statusView.text.toString()
 
         Thread {
             try {
                 uploadIfConfigured(htmlFile.absolutePath)
             } finally {
-                runOnUiThread {
-                    SyncState.inProgress = false
+                SyncState.inProgress = false  // must always happen, see runSync()'s own finally
+                withActiveActivity {
                     syncButton.isEnabled = true
                     publishButton.isEnabled = true
                 }
@@ -461,7 +545,13 @@ class MainActivity : AppCompatActivity() {
         // onDestroy() sets the cancelled flag, instead of continuing after the app is closed.
         val controller = object : SyncController {
             override fun report(current: Int, total: Int, fileName: String) {
-                runOnUiThread { statusView.text = "Downloaden: $current/$total ($fileName)" }
+                val text = "Downloaden: $current/$total ($fileName)"
+                SyncState.lastStatusText = text
+                // Matches what SyncNotificationService itself independently computes from the
+                // current/total/fileName extras below -- cached here too so a later restore (see
+                // onResume()) has the right text without needing to resend those three extras.
+                SyncState.lastNotificationText = text
+                withActiveActivity { statusView.text = text }
                 // Also visible from the notification shade while the app isn't on screen -- see
                 // SyncNotificationService.onStartCommand(), which updates its existing
                 // notification in place rather than posting a new one each time.
@@ -531,6 +621,28 @@ class MainActivity : AppCompatActivity() {
         )
     }
 
+    /** Runs [block] against whichever Activity instance is currently active (see
+     * SyncState.active), with that instance as the receiver, on the main thread -- lets code
+     * reached from a background Thread/SyncController callback (report(), handleLogLine(), the
+     * sync Thread's own finally block, ...) update whichever Activity is actually on screen right
+     * now, not necessarily the specific instance that started the sync (see SyncState.active's
+     * own doc comment for why that distinction matters). A no-op when nothing is currently active
+     * (app fully backgrounded) -- there's nothing to update in that case; SyncState's own cached
+     * fields (updated separately, alongside every call site below) still let the next Activity
+     * that resumes restore the real state instead (see restoreLiveSyncUi()). */
+    private fun withActiveActivity(block: MainActivity.() -> Unit) {
+        val target = SyncState.active ?: return
+        target.runOnUiThread { target.block() }
+    }
+
+    /** Appends [suffix] to the running status text (see uploadIfConfigured()'s own multi-step
+     * "Uploaden... gelukt."-style progress) -- keeps SyncState.lastStatusText and whichever
+     * Activity is currently active in sync the same way the other status-setting call sites do. */
+    private fun appendStatus(suffix: String) {
+        SyncState.lastStatusText = (SyncState.lastStatusText ?: "") + suffix
+        withActiveActivity { statusView.append(suffix) }
+    }
+
     /** Shared between syncFromW2k2()'s and buildFromLocalFiles()'s own SyncController.onLogLine()
      * -- found in practice: the offline-build path (see runOfflineBuild()) had no log-line
      * handling of its own at all, so a real (not cache-hit) decode there left the screen stuck on
@@ -538,8 +650,12 @@ class MainActivity : AppCompatActivity() {
      * instead of the same "...decoded X/Y" progress a normal sync already shows via the block
      * below. */
     private fun handleLogLine(line: String) {
-        runOnUiThread {
-            logView.append(if (logView.text.isEmpty()) line else "\n$line")
+        // The accumulator, not logView.text itself -- logView may belong to an orphaned
+        // instance, or there may be no active instance at all right now (see withActiveActivity),
+        // so the running log has to live somewhere that survives either.
+        SyncState.lastLogText = if (SyncState.lastLogText.isEmpty()) line else "${SyncState.lastLogText}\n$line"
+        withActiveActivity {
+            logView.text = SyncState.lastLogText
             logScroll.post { logScroll.fullScroll(View.FOCUS_DOWN) }
         }
         // A "[warning]" line (a failed attempt being retried, e.g. connection lost) means
@@ -556,8 +672,10 @@ class MainActivity : AppCompatActivity() {
         // matched at all, so the notification silently never updated during a real
         // connection-loss test).
         if (line.contains("[warning]")) {
+            val text = "Verbinding verloren, opnieuw proberen..."
+            SyncState.lastNotificationText = text
             val warningIntent = Intent(this, SyncNotificationService::class.java)
-                .putExtra(SyncNotificationService.EXTRA_STATUS_TEXT, "Verbinding verloren, opnieuw proberen...")
+                .putExtra(SyncNotificationService.EXTRA_STATUS_TEXT, text)
             startSyncNotification(warningIntent)
         } else if (decodeProgressRegex.containsMatchIn(line)) {
             // Found in practice: decoding logfiles not already in the sample cache is
@@ -569,10 +687,26 @@ class MainActivity : AppCompatActivity() {
             val match = decodeProgressRegex.find(line)!!
             val current = match.groupValues[1].toInt()
             val total = match.groupValues[2].toInt()
+            val text = "Logboek opbouwen: $current/$total"
+            SyncState.lastNotificationText = text
             val progressIntent = Intent(this, SyncNotificationService::class.java)
-                .putExtra(SyncNotificationService.EXTRA_STATUS_TEXT, "Logboek opbouwen: $current/$total")
+                .putExtra(SyncNotificationService.EXTRA_STATUS_TEXT, text)
             startSyncNotification(progressIntent)
             updateProgressBar("Decoderen", current, total)
+        } else {
+            val step = buildPhaseMarkers.indexOfFirst { it.containsMatchIn(line) }
+            if (step >= 0) {
+                val current = step + 1
+                val total = buildPhaseMarkers.size
+                val text = "Reizen opbouwen: $current/$total"
+                SyncState.lastNotificationText = text
+                val progressIntent = Intent(this, SyncNotificationService::class.java)
+                    .putExtra(SyncNotificationService.EXTRA_STATUS_TEXT, text)
+                    .putExtra(SyncNotificationService.EXTRA_PROGRESS_CURRENT, current)
+                    .putExtra(SyncNotificationService.EXTRA_PROGRESS_MAX, total)
+                startSyncNotification(progressIntent)
+                updateProgressBar("Reizen opbouwen", current, total)
+            }
         }
     }
 
@@ -582,11 +716,14 @@ class MainActivity : AppCompatActivity() {
      * Hidden rather than shown at 0/0 for a total <= 0 (nothing meaningful to show yet, or the
      * phase hasn't started). */
     private fun updateProgressBar(phase: String, current: Int, total: Int) {
-        runOnUiThread {
+        SyncState.lastProgressPhase = if (total > 0) phase else null
+        SyncState.lastProgressCurrent = current
+        SyncState.lastProgressTotal = total
+        withActiveActivity {
             if (total <= 0) {
                 progressBar.visibility = View.GONE
                 progressLabel.visibility = View.GONE
-                return@runOnUiThread
+                return@withActiveActivity
             }
             progressBar.visibility = View.VISIBLE
             progressLabel.visibility = View.VISIBLE
@@ -597,7 +734,10 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun hideProgressBar() {
-        runOnUiThread {
+        SyncState.lastProgressPhase = null
+        SyncState.lastProgressCurrent = 0
+        SyncState.lastProgressTotal = 0
+        withActiveActivity {
             progressBar.visibility = View.GONE
             progressLabel.visibility = View.GONE
         }
@@ -632,6 +772,7 @@ class MainActivity : AppCompatActivity() {
             } else {
                 "Klaar: ${result.tripCount} reis(en) (bestaande gegevens, niet opnieuw gedownload)."
             }
+            SyncState.lastStatusText = statusView.text.toString()
             setLogExpanded(false)
             loadLogbookIntoWebView(result.htmlPath)
         } else if (result.cancelled) {
@@ -640,6 +781,7 @@ class MainActivity : AppCompatActivity() {
             // (config change) instead. The next "Nu synchroniseren" simply resumes where it left
             // off, no special handling needed (see _needs_download() in w2k2_download.py).
             statusView.text = "Synchronisatie gestopt. Volgende keer wordt verdergegaan waar het gebleven was."
+            SyncState.lastStatusText = statusView.text.toString()
         } else {
             // Covers every non-cancelled failure, including the download never reaching a usable
             // state at all (e.g. the W2K-2/host becoming unreachable partway through) -- Python's
@@ -648,6 +790,7 @@ class MainActivity : AppCompatActivity() {
             // accidentally show; this dialog is the only thing the user sees (asked for
             // explicitly).
             statusView.text = "Fout: ${result.error ?: "onbekende fout"}"
+            SyncState.lastStatusText = statusView.text.toString()
             showOfflineOrCloseDialog("Fout: ${result.error ?: "onbekende fout"}")
         }
     }
@@ -667,10 +810,18 @@ class MainActivity : AppCompatActivity() {
             File(htmlPath).readText()
         } catch (e: Exception) {
             statusView.text = "${statusView.text}\n(logboek kon niet worden getoond: $e)"
+            SyncState.lastStatusText = statusView.text.toString()
             return
         }
         webView.loadDataWithBaseURL("file://${File(htmlPath).parent}/", html, "text/html", "utf-8", null)
+        lastLoadedHtmlMtime = File(htmlPath).lastModified()
     }
+
+    // Tracks which version of logbook.html is currently showing (see onResume()'s own reload
+    // guard) -- lastModified(), not a content hash: cheap, and this file is only ever written
+    // whole by write_html_logbook(), never appended to, so its mtime alone is enough to tell
+    // "already showing this" from "there's a newer build to load".
+    private var lastLoadedHtmlMtime: Long = -1L
 
     /** Two-button dialog for "the app just tried to reach the W2K-2 (on launch or on retry) and
      * that didn't work" -- asked for explicitly, covers both the hotspot-not-detected case and any
@@ -716,8 +867,8 @@ class MainActivity : AppCompatActivity() {
     private fun cancelSync() {
         SyncState.cancelled = true
         stopService(Intent(this, SyncNotificationService::class.java))
-        syncNotificationForegrounded = false
-        syncNotificationStartFailed = false
+        SyncState.notificationForegrounded = false
+        SyncState.notificationStartFailed = false
     }
 
     /** "App sluiten" above -- cancelSync() plus actually leaving, unlike
@@ -742,6 +893,7 @@ class MainActivity : AppCompatActivity() {
     private fun cancelSyncStayInApp() {
         cancelSync()
         statusView.text = "Synchronisatie geannuleerd."
+        SyncState.lastStatusText = statusView.text.toString()
         hideProgressBar()
     }
 
@@ -761,20 +913,57 @@ class MainActivity : AppCompatActivity() {
         publishButton.isEnabled = false
         statusView.text = "Logboek opbouwen met bestaande gegevens..."
         logView.text = ""
+        SyncState.lastStatusText = statusView.text.toString()
+        // No initial notification text of its own here (unlike runSync()) -- this path doesn't
+        // start the notification until handleLogLine()'s first progress line arrives, so there's
+        // nothing yet for a restore to show; null rather than stale text from a previous run.
+        SyncState.lastNotificationText = null
+        SyncState.lastLogText = ""
+        SyncState.lastProgressPhase = null
+        SyncState.lastProgressCurrent = 0
+        SyncState.lastProgressTotal = 0
         setLogExpanded(true)
 
         Thread {
+            var syncSucceeded = false
+            var didPublish = false
             try {
                 val result = buildFromLocalFiles()
-                runOnUiThread { showSyncResult(result) }
+                syncSucceeded = result.ok
+                withActiveActivity { showSyncResult(result) }
                 if (result.ok && result.htmlPath != null) {
-                    uploadIfConfigured(result.htmlPath)
+                    didPublish = uploadIfConfigured(result.htmlPath)
+                }
+                if (syncSucceeded) {
+                    val timeText = java.text.SimpleDateFormat("HH:mm", java.util.Locale.getDefault())
+                        .format(java.util.Date())
+                    handleLogLine("Voltooid: $timeText")
                 }
             } catch (e: Exception) {
-                runOnUiThread { statusView.text = "Onverwachte fout: $e" }
+                val message = "Onverwachte fout: $e"
+                SyncState.lastStatusText = message
+                withActiveActivity { statusView.text = message }
             } finally {
-                runOnUiThread {
-                    SyncState.inProgress = false
+                // Same "Voltooid"-completion treatment as runSync() -- see its own finally for
+                // the full reasoning. Only posted if a notification was ever actually shown for
+                // this run (see startSyncNotification()'s own eligibility check) -- this path,
+                // unlike runSync(), doesn't start one up front, only lazily once handleLogLine()
+                // sees real decode progress, so a short cache-hit-only rebuild may never have
+                // shown one at all.
+                stopService(Intent(this, SyncNotificationService::class.java))
+                if (syncSucceeded && SyncState.notificationForegrounded) {
+                    val timeText = java.text.SimpleDateFormat("HH:mm", java.util.Locale.getDefault())
+                        .format(java.util.Date())
+                    SyncNotificationService.postCompletionNotification(
+                        this,
+                        "Voltooid $timeText",
+                        if (didPublish) MainActivity.LIVE_SITE_URL else null,
+                    )
+                }
+                SyncState.notificationForegrounded = false
+                SyncState.notificationStartFailed = false
+                SyncState.inProgress = false  // must always happen, see runSync()'s own finally
+                withActiveActivity {
                     syncButton.isEnabled = true
                     publishButton.isEnabled = true
                     hideProgressBar()
@@ -863,48 +1052,45 @@ class MainActivity : AppCompatActivity() {
      * SettingsStore.sftpEblBackupRemotePath) -- called after a successful sync, still on its
      * background Thread. Runs at most once per sync; failures here are reported in statusView but
      * never hide the logbook that's already showing in the WebView by that point. */
-    private fun uploadIfConfigured(htmlPath: String) {
-        if (!settingsStore.isSftpConfigComplete) return
-        runOnUiThread { statusView.append("\nUploaden naar ayuus.com...") }
+    private fun uploadIfConfigured(htmlPath: String): Boolean {
+        if (!settingsStore.isSftpConfigComplete) return false
+        appendStatus("\nUploaden naar ayuus.com...")
         try {
             SftpUploader.uploadLogbookAtomic(settingsStore, File(htmlPath))
-            runOnUiThread { statusView.append(" gelukt.") }
+            appendStatus(" gelukt.")
         } catch (e: SftpUploadError) {
-            runOnUiThread { statusView.append(" mislukt: ${e.message}") }
-            return // the .ebl backup uses the same connection settings -- no point trying those too
+            appendStatus(" mislukt: ${e.message}")
+            return false // the .ebl backup uses the same connection settings -- no point trying those too
         }
 
         val eblBackupRemotePath = settingsStore.sftpEblBackupRemotePath
-        if (eblBackupRemotePath.isBlank()) return
-        val downloadDir = File(filesDir, "Actisense")
-        val relativePaths = downloadDir.walkTopDown()
-            .filter { it.isFile && it.extension.equals("ebl", ignoreCase = true) }
-            .map { it.relativeTo(downloadDir).path.replace(File.separatorChar, '/') }
-            .toList()
-        if (relativePaths.isEmpty()) return
-        runOnUiThread { statusView.append("\nBack-up van .ebl-bestanden...") }
-        try {
-            SftpUploader.backupEblFiles(settingsStore, downloadDir, relativePaths)
-            runOnUiThread { statusView.append(" gelukt.") }
-        } catch (e: SftpUploadError) {
-            runOnUiThread { statusView.append(" mislukt: ${e.message}") }
+        if (eblBackupRemotePath.isNotBlank()) {
+            val downloadDir = File(filesDir, "Actisense")
+            val relativePaths = downloadDir.walkTopDown()
+                .filter { it.isFile && it.extension.equals("ebl", ignoreCase = true) }
+                .map { it.relativeTo(downloadDir).path.replace(File.separatorChar, '/') }
+                .toList()
+            if (relativePaths.isNotEmpty()) {
+                appendStatus("\nBack-up van .ebl-bestanden...")
+                try {
+                    SftpUploader.backupEblFiles(settingsStore, downloadDir, relativePaths)
+                    appendStatus(" gelukt.")
+                } catch (e: SftpUploadError) {
+                    appendStatus(" mislukt: ${e.message}")
+                }
+            }
         }
+        // The logbook publish itself is what "Bekijk live site" cares about -- a failed/skipped
+        // .ebl backup afterward doesn't change that the site itself was just updated.
+        return true
     }
 
     // Set by showOfflineOrCloseDialog() when it couldn't show right away because the Activity
     // wasn't visible -- shown as soon as onResume() sees it's non-null instead.
     private var pendingOfflineOrCloseMessage: String? = null
 
-    // Whether the sync notification's underlying service is currently up and already in the
-    // foreground state -- see startSyncNotification() for why this matters. Reset to false
-    // alongside every stopService(SyncNotificationService) call.
-    private var syncNotificationForegrounded = false
-
-    // Set once a startForegroundService() attempt is refused while not yet foregrounded -- see
-    // startSyncNotification(). Stops it from being retried on every subsequent call (each one
-    // doomed to fail the same way) until onResume() gets a fresh chance; reset alongside
-    // syncNotificationForegrounded everywhere that's reset to false too.
-    private var syncNotificationStartFailed = false
+    // The notification-foregrounded/start-failed flags live on SyncState now (process-wide, not
+    // per-instance) -- see SyncState.notificationForegrounded's own doc comment for why.
 
     /** Starts/updates the sync notification, tolerating Android refusing to start it -- a
      * "dataSync" foreground service is capped at 6 cumulative hours per 24h on Android 15+ (this
@@ -928,24 +1114,24 @@ class MainActivity : AppCompatActivity() {
      * That fix alone wasn't enough, though (found in practice, again): if the *very first* call
      * of a run is itself refused -- now routine since the app minimizes itself shortly after
      * starting (see autoStartSyncWithSettingsRetry()), which is exactly the kind of state change
-     * that can revoke foreground-start eligibility -- syncNotificationForegrounded never becomes
+     * that can revoke foreground-start eligibility -- SyncState.notificationForegrounded never becomes
      * true, so *every* later call kept retrying startForegroundService() and hitting the same
-     * refusal, reproducing the exact same flood one level up. syncNotificationStartFailed short-
+     * refusal, reproducing the exact same flood one level up. SyncState.notificationStartFailed short-
      * circuits that: once refused, silently skip every further attempt (no repeated failure text
      * either) until onResume() restores it -- see onResume(). */
     private fun startSyncNotification(intent: Intent) {
-        if (syncNotificationStartFailed) {
+        if (SyncState.notificationStartFailed) {
             return
         }
         try {
-            if (syncNotificationForegrounded) {
+            if (SyncState.notificationForegrounded) {
                 startService(intent)
             } else {
                 ContextCompat.startForegroundService(this, intent)
-                syncNotificationForegrounded = true
+                SyncState.notificationForegrounded = true
             }
         } catch (e: Exception) {
-            syncNotificationStartFailed = true
+            SyncState.notificationStartFailed = true
             // A short, plain message, not the raw exception -- found in practice: dumping
             // "android.app.ForegroundServiceStartNotAllowedException: startForegroundService()
             // not allowed due to mAllowStartForeground false: service com.example...." onto
@@ -958,7 +1144,7 @@ class MainActivity : AppCompatActivity() {
             } else {
                 e.toString()
             }
-            runOnUiThread { statusView.text = "${statusView.text}\n(melding kon niet worden getoond: $reason)" }
+            withActiveActivity { statusView.text = "${statusView.text}\n(melding kon niet worden getoond: $reason)" }
         }
     }
 
@@ -1025,19 +1211,80 @@ class MainActivity : AppCompatActivity() {
 
     override fun onResume() {
         super.onResume()
+        // This instance is now the one live sync updates should reach -- set before
+        // restoreLiveSyncUi() below, whose whole point is to bring THIS instance's own views up
+        // to date (see SyncState.active's own doc comment for the bug this fixes).
+        SyncState.active = this
+        // Brings statusView/logView/the progress bar up to date with whatever a sync -- still in
+        // progress, or one that already finished while this Activity wasn't the active one --
+        // has produced so far. Not gated on SyncState.inProgress alone: found in practice, a
+        // real, reported "app hangs" bug -- a sync that finishes while the app is backgrounded
+        // runs its own finally block (showSyncResult()/hideProgressBar()) entirely through
+        // withActiveActivity, which no-ops with nothing active to update; by the time this
+        // Activity resumes, inProgress is already back to false, so the old "still in progress"-
+        // only condition here skipped restoring anything at all, leaving whatever mid-sync
+        // progress bar/log text was on screen before backgrounding frozen there indefinitely --
+        // looking exactly like a hang, even though the sync itself had completed normally.
+        // lastStatusText is only ever null before the very first sync this install has ever run,
+        // in which case there's nothing to restore and onCreate()'s own placeholder text is
+        // still correct as-is.
+        if (SyncState.inProgress || SyncState.lastStatusText != null) {
+            restoreLiveSyncUi()
+        }
+        // Same background-completion gap as above, but for the WebView specifically: loading the
+        // freshly-built logbook only ever happens inside showSyncResult()'s own success branch,
+        // which (like the rest of that finally block) silently no-ops via withActiveActivity if
+        // this Activity wasn't the active one when a sync finished. Without this, the status text
+        // above would correctly say "Klaar: N reis(en)..." after reopening the app, while the map/
+        // table underneath it kept showing whatever logbook (possibly none at all) was loaded
+        // before backgrounding -- reopening the app to check on the wait wouldn't actually show
+        // its result. Gated on the file's own mtime, not reloaded unconditionally: this runs on
+        // every resume (including a plain app-switch with nothing new to show), and force-
+        // reloading an unchanged page would discard an unsaved Remarks edit sitting open in the
+        // WebView for no reason.
+        if (!SyncState.inProgress) {
+            val htmlFile = File(filesDir, "logbook.html")
+            if (htmlFile.exists() && htmlFile.lastModified() != lastLoadedHtmlMtime) {
+                loadLogbookIntoWebView(htmlFile.absolutePath)
+            }
+        }
         // Covers being brought back via the launcher icon (or the task switcher) while a sync is
         // still genuinely running but its notification isn't up right now -- e.g. the brief
         // download-to-decode transition gap, or an earlier startForegroundService() refusal while
         // the app was in the background (see startSyncNotification()) -- now that the app is
         // visibly in the foreground again, a fresh start is allowed to go through, restoring it
         // instead of leaving the user with no visible sync indicator at all outside the app.
-        if (SyncState.inProgress && !syncNotificationForegrounded) {
+        //
+        // Checks the real, current notification shade (this app's own postable notifications --
+        // no special permission needed, unlike reading *other* apps' notifications), not just
+        // SyncState.notificationForegrounded -- found in practice, a real bug reported directly:
+        // that flag only ever gets set back to false by this app's own code (the sync Thread's
+        // finally block, cancelSync(), ...), so if the service or its notification instead
+        // disappeared some other way (the OS reclaiming it, a crash inside the service itself),
+        // the flag stayed stuck "still up" and this restore never fired at all.
+        // NotificationManagerCompat has no activeNotifications accessor -- only the platform
+        // NotificationManager does (API 23+, well below this app's minSdk 24).
+        val notificationActuallyUp = (getSystemService(NOTIFICATION_SERVICE) as NotificationManager)
+            .activeNotifications.any { it.id == SyncNotificationService.NOTIFICATION_ID }
+        if (SyncState.inProgress && !notificationActuallyUp) {
             // Give it a fresh chance even if an earlier attempt was refused -- see
-            // syncNotificationStartFailed's own doc on startSyncNotification() -- now that the app
+            // SyncState.notificationStartFailed's own doc on startSyncNotification() -- now that the app
             // is genuinely foreground again, that earlier refusal no longer applies.
-            syncNotificationStartFailed = false
+            SyncState.notificationForegrounded = false
+            SyncState.notificationStartFailed = false
+            // SyncState.lastNotificationText, not statusView.text -- found in practice, a real
+            // bug (twice over): first, this instance's own possibly-stale onCreate()-time
+            // placeholder used to get pushed into the notification, permanently overwriting
+            // whatever live progress text it already had; then, even after restoreLiveSyncUi()
+            // fixed statusView.text itself, decode/build's own progress ("Reizen opbouwen: 3/4")
+            // only ever gets written straight into the notification (see handleLogLine()) and was
+            // never reflected in statusView.text at all -- so reading statusView.text here still
+            // restored the wrong, stale text (e.g. "Logboek opbouwen met bestaande gegevens...",
+            // correct only at the very start of an offline build) well into that later phase.
+            // lastNotificationText is kept in lockstep with the notification's own real content
+            // at every call site that sets it, so restoring from it can't drift the same way.
             val restoreIntent = Intent(this, SyncNotificationService::class.java)
-                .putExtra(SyncNotificationService.EXTRA_STATUS_TEXT, statusView.text.toString())
+                .putExtra(SyncNotificationService.EXTRA_STATUS_TEXT, SyncState.lastNotificationText ?: statusView.text.toString())
             startSyncNotification(restoreIntent)
         }
         pendingOfflineOrCloseMessage?.let { message ->
@@ -1046,7 +1293,24 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
+    override fun onPause() {
+        super.onPause()
+        // Only clear if this instance is still the one recorded as active -- a newer instance's
+        // own onResume() (already having set itself) must never be undone by this older
+        // instance's onPause() running after it, which order-of-events would otherwise allow
+        // (Android pauses the old instance only partway through creating/resuming the new one).
+        if (SyncState.active === this) {
+            SyncState.active = null
+        }
+    }
+
     companion object {
         const val ACTION_TOGGLE_FROM_NOTIFICATION = "com.example.mysailinglogbook.ACTION_TOGGLE_FROM_NOTIFICATION"
+
+        // The public, WordPress-gated view of whatever was just published (see uploadIfConfigured()
+        // and the "Bekijk live site" notification action) -- not derived from SettingsStore's own
+        // sftpRemotePath, which is the *private* SFTP destination (outside the web root, see
+        // little_endian-index.php's own doc comment), not a browsable URL at all.
+        const val LIVE_SITE_URL = "https://ayuus.com/little_endian/"
     }
 }
