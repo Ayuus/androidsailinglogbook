@@ -11,6 +11,14 @@
         <item name="colorOnSecondary">@color/black</item>
         <!-- Status bar color. -->
         <item name="android:statusBarColor">?attr/colorPrimaryVariant</item>
+        <!-- Material's default button style forces button text to ALL CAPS regardless of how
+             it's written in code: every plain Button(context) in this app (Opslaan, the cache
+             clear buttons, ...) inherits this via the theme, not via any per-button styling of
+             its own. Disabled app-wide here (asked for explicitly) instead of setting
+             app:textAllCaps="false" on each button individually, which would need repeating
+             everywhere a Button is created and silently regress the next time a new one is
+             added without it. -->
+        <item name="android:textAllCaps">false</item>
         <!-- Customize your theme here. -->
     </style>
 </resources>

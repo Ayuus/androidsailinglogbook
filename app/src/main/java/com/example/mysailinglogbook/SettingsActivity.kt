@@ -8,9 +8,11 @@ import android.widget.LinearLayout
 import android.widget.ScrollView
 import android.widget.TextView
 import android.widget.Toast
+import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.view.ViewCompat
 import androidx.core.view.WindowInsetsCompat
+import java.io.File
 
 /**
  * Plain form for the settings SettingsStore holds -- W2K-2 login, boat identity, and SFTP publish
@@ -86,6 +88,60 @@ class SettingsActivity : AppCompatActivity() {
                 "verbinding)",
             store.sftpHostKeyFingerprint,
         )
+
+        // Cache-legen: two separate buttons rather than one "clear everything" -- the two caches
+        // are cleared for different reasons (a decode/trip-build bug vs. a wrong/stale place
+        // name or weather value) and clearing the wrong one is real, avoidable extra network/CPU
+        // cost (a cleared "data" cache re-decodes and re-classifies every .ebl file from
+        // scratch; a cleared "plaatsnamen" cache re-does every geocoding/weather/marine lookup),
+        // so keeping them separate lets whichever one is actually the problem be cleared without
+        // paying for the other (asked for explicitly).
+        sectionHeader("Cache")
+
+        // deleteRecursively() rather than delete() -- sample_cache.pkl is a *directory* (one
+        // small file per decoded .ebl file, see sample_cache.py's own module docstring for why),
+        // not a plain file despite the name; delete() alone silently does nothing to a non-empty
+        // directory. Harmless to call on a file that doesn't exist (or doesn't exist at all yet,
+        // e.g. before the very first sync) -- deleteRecursively() returns false either way and
+        // there's nothing further to do.
+        fun clearCacheButton(label: String, confirmMessage: String, files: () -> List<File>) {
+            layout.addView(
+                Button(this).apply {
+                    text = label
+                    setPadding(0, padding, 0, 0)
+                    setOnClickListener {
+                        AlertDialog.Builder(this@SettingsActivity)
+                            .setMessage(confirmMessage)
+                            .setPositiveButton("Legen") { _, _ ->
+                                files().forEach { it.deleteRecursively() }
+                                Toast.makeText(this@SettingsActivity, "Cache geleegd", Toast.LENGTH_SHORT).show()
+                            }
+                            .setNegativeButton("Annuleren", null)
+                            .show()
+                    }
+                },
+            )
+        }
+
+        clearCacheButton(
+            "Cache: Data",
+            "Alle gedecodeerde en opgebouwde reisdata wissen? De eerstvolgende synchronisatie " +
+                "decodeert en verwerkt dan alle .ebl-bestanden opnieuw vanaf het begin (duurt " +
+                "langer, maar er gaat niets verloren -- de .ebl-bestanden zelf blijven staan).",
+        ) {
+            listOf(File(filesDir, "sample_cache.pkl"), File(filesDir, ".trip_cache.pkl"))
+        }
+        clearCacheButton(
+            "Cache: Plaatsnamen",
+            "Alle opgezochte plaatsnamen, weer- en golfgegevens wissen? De eerstvolgende " +
+                "synchronisatie zoekt deze dan opnieuw op (kost extra mobiele data).",
+        ) {
+            listOf(
+                File(filesDir, ".geocode_cache.json"),
+                File(filesDir, ".weather_cache.json"),
+                File(filesDir, ".marine_cache.json"),
+            )
+        }
 
         val saveButton = Button(this).apply {
             text = "Opslaan"
