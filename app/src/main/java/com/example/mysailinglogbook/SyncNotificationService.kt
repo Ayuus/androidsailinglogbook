@@ -211,21 +211,23 @@ class SyncNotificationService : Service() {
             ) {
                 return
             }
-            val openAppIntent = Intent(context, MainActivity::class.java).apply {
-                flags = Intent.FLAG_ACTIVITY_NEW_TASK
-            }
             val pendingIntentFlags = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
                 PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
             } else {
                 PendingIntent.FLAG_UPDATE_CURRENT
             }
-            val contentIntent = PendingIntent.getActivity(context, 0, openAppIntent, pendingIntentFlags)
+            // Deliberately no setContentIntent() here -- found in practice that reopening
+            // MainActivity from a *finished* run's notification looks like it "hangs": the
+            // sync already completed, but a fresh launch starts the whole app (and its own
+            // sync-on-launch flow) from scratch, which reads as the previous run never
+            // finishing. Tapping the body just dismisses the notification (setAutoCancel);
+            // "Bekijk live site" below is its own explicit action for when there's somewhere
+            // useful to go.
             val builder = NotificationCompat.Builder(context, CHANNEL_ID)
                 .setContentTitle("Logboek synchroniseren")
                 .setContentText(resultText)
                 .setSmallIcon(android.R.drawable.stat_notify_sync)
                 .setAutoCancel(true)
-                .setContentIntent(contentIntent)
             if (publishedUrl != null) {
                 // A separate action, not the notification's own tap target -- tapping the body
                 // still opens the app itself (consistent with every other notification here),
