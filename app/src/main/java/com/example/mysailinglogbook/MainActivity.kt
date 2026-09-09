@@ -875,7 +875,7 @@ class MainActivity : AppCompatActivity() {
         AlertDialog.Builder(this)
             .setMessage(message)
             .setCancelable(false)
-            .setPositiveButton("Logboek tonen met bestaande data") { _, _ -> runOfflineBuild() }
+            .setPositiveButton("Logboek bouwen...") { _, _ -> runOfflineBuild() }
             .setNegativeButton("App sluiten") { _, _ -> closeAppAndCancelSync() }
             .show()
     }
@@ -896,13 +896,21 @@ class MainActivity : AppCompatActivity() {
     /** "App sluiten" above -- cancelSync() plus actually leaving, unlike
      * cancelSyncStayInApp() below. Leaves behind a plain, dismissible "tap to reopen" notification
      * (asked for explicitly) so closing the app doesn't mean hunting down the launcher icon again
-     * afterwards. */
+     * afterwards.
+     *
+     * finishAffinity() alone (the "normal" way to close every Activity in the task) still leaves
+     * the process itself alive in the background -- ordinarily fine (that's how most Android apps
+     * behave, including this one everywhere else), but found in practice: asked for explicitly
+     * that this specific button, unlike just backgrounding the app, actually exits -- Process.
+     * killProcess() is the standard way to guarantee that, rather than leave it to the OS's own
+     * discretion about when (or whether) to reclaim a merely-backgrounded process. */
     private fun closeAppAndCancelSync() {
         cancelSync()
         // Shared with onTaskRemoved() (swiping the app away instead of using ✕) -- both leave
         // behind the same "tap to reopen" notification.
         SyncNotificationService.postReopenNotification(this)
         finishAffinity()
+        android.os.Process.killProcess(android.os.Process.myPid())
     }
 
     /** Tapping ↺ again while the app's own auto-start sync (see autoStartSyncWithSettingsRetry())
