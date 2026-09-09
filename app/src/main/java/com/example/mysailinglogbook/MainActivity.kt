@@ -901,9 +901,7 @@ class MainActivity : AppCompatActivity() {
      * no W2K-2 connection needed at all, for exactly the case that's otherwise a dead end: the
      * device can't be reached right now, but there's still real (if possibly not fully current)
      * data already on the phone worth seeing (asked for explicitly). Publishes it too, same as a
-     * normal sync's own auto-publish, if the SFTP settings are filled in. fetch_failed=true marks
-     * the page's own "Laatst bijgewerkt" timestamp in red -- this run didn't actually fetch
-     * anything new, so the shown data may already be stale. */
+     * normal sync's own auto-publish, if the SFTP settings are filled in. */
     private fun runOfflineBuild() {
         if (SyncState.inProgress) return
         SyncState.inProgress = true
@@ -1037,7 +1035,6 @@ class MainActivity : AppCompatActivity() {
             settingsStore.boatName,
             settingsStore.mmsi,
             settingsStore.callSign,
-            true, // fetch_failed
             controller,
         )
 
