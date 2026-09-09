@@ -104,10 +104,6 @@ class SettingsActivity : AppCompatActivity() {
         val sftpUserField = field("SFTP gebruikersnaam", store.sftpUser)
         val sftpPasswordField = field("SFTP wachtwoord", store.sftpPassword, isPassword = true)
         val sftpRemotePathField = field("SFTP pad op de server", store.sftpRemotePath)
-        val sftpEblBackupPathField = field(
-            "Back-up map voor .ebl-bestanden (leeg = geen back-up)",
-            store.sftpEblBackupRemotePath,
-        )
 
         // The host-key fingerprint (see SftpUploader.kt) isn't a credential -- it's the server's
         // own public key, used to reject a *later, different* key instead of silently trusting it
@@ -203,7 +199,6 @@ class SettingsActivity : AppCompatActivity() {
                 store.sftpUser = sftpUserField.text.toString().trim()
                 store.sftpPassword = sftpPasswordField.text.toString()
                 store.sftpRemotePath = sftpRemotePathField.text.toString().trim()
-                store.sftpEblBackupRemotePath = sftpEblBackupPathField.text.toString().trim()
                 store.sftpHostKeyFingerprint = sftpHostKeyField.text.toString().trim()
                 Toast.makeText(this@SettingsActivity, "Instellingen opgeslagen", Toast.LENGTH_SHORT).show()
                 finish()

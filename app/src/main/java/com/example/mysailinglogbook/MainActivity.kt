@@ -36,7 +36,7 @@ import java.security.Security
 /**
  * The full sync flow: hotspot detection, download from the W2K-2, decode+build the logbook, show
  * it in-app, then (only if the owner filled in the "Publiceren naar ayuus.com" settings) publish
- * it and back up new .ebl files over SFTP -- see SftpUploader. Runs automatically once per app
+ * it via REST or SFTP -- see RestUploader/SftpUploader. Runs automatically once per app
  * launch (see onCreate()'s own savedInstanceState check) and via the manual "Nu synchroniseren" button.
  * WorkManager-based periodic background scheduling (no app open at all) is still a later step.
  */
@@ -494,9 +494,9 @@ class MainActivity : AppCompatActivity() {
         }.start()
     }
 
-    /** Manual re-publish (the ☁️ icon): re-uploads the *already-built* local logbook.html (and
-     * backs up any not-yet-backed-up .ebl files) without running a new sync first -- for when a
-     * sync already succeeded but the upload step itself failed (wrong SFTP password just fixed in
+    /** Manual re-publish (the ☁️ icon): re-uploads the *already-built* local logbook.html
+     * without running a new sync first -- for when a sync already succeeded but the upload step
+     * itself failed (wrong SFTP password just fixed in
      * Instellingen, server was briefly unreachable, ...) and re-fetching from the W2K-2 again
      * would be pointless. Shares SyncState.inProgress with runSync() so this can't run at the same
      * time as a sync's own automatic upload at the end of it. */
@@ -1080,11 +1080,10 @@ class MainActivity : AppCompatActivity() {
         )
     }
 
-    /** Uploads the fresh logbook (always, if SFTP publish settings are filled in) and backs up
-     * any not-yet-backed-up .ebl files (only if a back-up folder is configured, see
-     * SettingsStore.sftpEblBackupRemotePath) -- called after a successful sync, still on its
-     * background Thread. Runs at most once per sync; failures here are reported in statusView but
-     * never hide the logbook that's already showing in the WebView by that point. */
+    /** Uploads the fresh logbook (always, if SFTP or REST publish settings are filled in) --
+     * called after a successful sync, still on its background Thread. Runs at most once per
+     * sync; failures here are reported in statusView but never hide the logbook that's already
+     * showing in the WebView by that point. */
     /** True when the currently active network's own internet path is cellular, not wifi -- the
      * W2K-2's own hotspot has no internet capability at all, so it never counts as "cellular"
      * here, it just isn't a usable path either way (uploadIfConfigured() would fail regardless of
@@ -1130,31 +1129,11 @@ class MainActivity : AppCompatActivity() {
             appendStatus(" gelukt.")
         } catch (e: RestUploadError) {
             appendStatus(" mislukt: ${e.message}")
-            return false // the .ebl backup uses the SFTP connection settings -- no point trying those too
+            return false
         } catch (e: SftpUploadError) {
             appendStatus(" mislukt: ${e.message}")
-            return false // the .ebl backup uses the same connection settings -- no point trying those too
+            return false
         }
-
-        val eblBackupRemotePath = settingsStore.sftpEblBackupRemotePath
-        if (eblBackupRemotePath.isNotBlank()) {
-            val downloadDir = File(filesDir, "Actisense")
-            val relativePaths = downloadDir.walkTopDown()
-                .filter { it.isFile && it.extension.equals("ebl", ignoreCase = true) }
-                .map { it.relativeTo(downloadDir).path.replace(File.separatorChar, '/') }
-                .toList()
-            if (relativePaths.isNotEmpty()) {
-                appendStatus("\nBack-up van .ebl-bestanden...")
-                try {
-                    SftpUploader.backupEblFiles(settingsStore, downloadDir, relativePaths)
-                    appendStatus(" gelukt.")
-                } catch (e: SftpUploadError) {
-                    appendStatus(" mislukt: ${e.message}")
-                }
-            }
-        }
-        // The logbook publish itself is what "Bekijk live site" cares about -- a failed/skipped
-        // .ebl backup afterward doesn't change that the site itself was just updated.
         return true
     }
 

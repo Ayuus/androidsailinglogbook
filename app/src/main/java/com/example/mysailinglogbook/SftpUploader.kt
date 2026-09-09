@@ -3,7 +3,6 @@ package com.example.mysailinglogbook
 import net.schmizz.sshj.SSHClient
 import net.schmizz.sshj.common.SecurityUtils
 import net.schmizz.sshj.sftp.RenameFlags
-import net.schmizz.sshj.sftp.SFTPClient
 import net.schmizz.sshj.transport.verification.HostKeyVerifier
 import java.io.File
 import java.security.PublicKey
@@ -100,65 +99,4 @@ object SftpUploader {
             }
         }
     }
-
-    /** Backs up .ebl files to the configured remote folder, preserving each file's own EBL#####
-     * subfolder remotely (unlike upload.py's flat upload_files(), asked for explicitly) -- so the
-     * remote copy mirrors downloadDir's own EBL000000/, EBL000001/, ... structure instead of one
-     * flat directory of thousands of same-shaped filenames. relativePaths are paths like
-     * "EBL000018/000018_067.ebl", relative to downloadDir. A no-op if the backup path isn't
-     * configured or there's nothing to back up -- no reason to even open a connection then.
-     * Retries the whole batch up to twice on failure (5s apart), same as upload.py's
-     * _BACKUP_MAX_RETRIES/_BACKUP_RETRY_DELAY_S -- backing up many files in a row against shared
-     * hosting has been seen to reset the connection out of the blue (see upload.py). Skips a file
-     * that's already present remotely (by name, within its own subfolder) instead of re-uploading
-     * every file on every run. */
-    fun backupEblFiles(settingsStore: SettingsStore, downloadDir: File, relativePaths: List<String>) {
-        val remoteBaseDir = settingsStore.sftpEblBackupRemotePath
-        if (remoteBaseDir.isBlank() || relativePaths.isEmpty()) return
-
-        val byFolder: Map<String, List<String>> = relativePaths.groupBy { it.substringBefore("/") }
-        var lastError: Exception? = null
-        for (attempt in 0..BACKUP_MAX_RETRIES) {
-            if (attempt > 0) Thread.sleep((BACKUP_RETRY_DELAY_S * 1000).toLong())
-            try {
-                connect(settingsStore).use { client ->
-                    client.newSFTPClient().use { sftp ->
-                        sftp.mkdirsIfMissing(remoteBaseDir)
-                        for ((folder, relPaths) in byFolder) {
-                            val remoteFolderDir = remoteJoin(remoteBaseDir, folder)
-                            sftp.mkdirsIfMissing(remoteFolderDir)
-                            val alreadyRemote = sftp.ls(remoteFolderDir).map { it.name }.toSet()
-                            for (relPath in relPaths) {
-                                val fileName = relPath.substringAfterLast("/")
-                                if (fileName in alreadyRemote) continue
-                                val local = File(downloadDir, relPath)
-                                sftp.put(local.absolutePath, remoteJoin(remoteFolderDir, fileName))
-                            }
-                        }
-                    }
-                }
-                return
-            } catch (e: Exception) {
-                lastError = e
-            }
-        }
-        throw SftpUploadError("Back-up van .ebl-bestanden mislukt: ${lastError?.message}", lastError)
-    }
-
-    // sshj's SFTPClient.mkdir() (and mkdirs()) throws if the directory already exists, unlike
-    // upload.py's "-mkdir" (a leading "-" makes the sftp CLI ignore that specific error) -- this
-    // is the same "ignore only already-exists, propagate anything else" behavior via a plain
-    // try/catch, since sshj doesn't expose a distinguishable exception type for it either.
-    private fun SFTPClient.mkdirsIfMissing(path: String) {
-        try {
-            mkdirs(path)
-        } catch (e: Exception) {
-            // Already exists (the common case on every run after the first) or a real problem --
-            // either way, the very next operation on this path (ls/put) will fail loudly if it
-            // genuinely doesn't exist and couldn't be created.
-        }
-    }
-
-    private const val BACKUP_MAX_RETRIES = 2
-    private const val BACKUP_RETRY_DELAY_S = 5.0
 }

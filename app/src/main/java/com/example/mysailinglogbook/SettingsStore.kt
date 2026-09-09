@@ -115,14 +115,6 @@ class SettingsStore(context: Context) {
     val isSftpConfigComplete: Boolean
         get() = sftpHost.isNotBlank() && sftpUser.isNotBlank() && sftpPassword.isNotBlank() && sftpRemotePath.isNotBlank()
 
-    // Empty (the default) means "don't back up .ebl files" -- the owner opts in by filling in a
-    // remote folder, same as the desktop CLI's backup_ebl/backup_remote_path pair, but collapsed
-    // into one field since Android has no separate on/off toggle to keep in sync with it (asked
-    // for explicitly: "alleen doen als in instellingen een map staat waar ze naar toe moeten").
-    var sftpEblBackupRemotePath: String
-        get() = prefs.getString(KEY_SFTP_EBL_BACKUP_REMOTE_PATH, "") ?: ""
-        set(value) = prefs.edit().putString(KEY_SFTP_EBL_BACKUP_REMOTE_PATH, value).apply()
-
     // Optionally user-editable (see SettingsActivity): filled in, the very first SFTP connection
     // is verified against it instead of blindly trusted; empty (the default), it's pinned
     // automatically on that first connection (trust-on-first-use) instead. Either way, a later
@@ -154,7 +146,6 @@ class SettingsStore(context: Context) {
         private const val KEY_SFTP_USER = "sftp_user"
         private const val KEY_SFTP_PASSWORD = "sftp_password"
         private const val KEY_SFTP_REMOTE_PATH = "sftp_remote_path"
-        private const val KEY_SFTP_EBL_BACKUP_REMOTE_PATH = "sftp_ebl_backup_remote_path"
         private const val KEY_SFTP_HOST_KEY_FINGERPRINT = "sftp_host_key_fingerprint"
     }
 }
