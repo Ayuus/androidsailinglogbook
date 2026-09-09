@@ -1,8 +1,9 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- All content stays within ~30dp of center (54,54): Android's adaptive icon safe zone is a
-     centered circle of diameter 66dp (radius 33) within the 108dp canvas; anything further out
-     gets cropped by a circular/squircle launcher mask (found in practice: the first version of
-     this icon put page corners ~47dp from center, well outside that circle). -->
+<!-- Deliberately well inside the 66dp-diameter adaptive icon safe circle (radius 33 around
+     center 54,54) rather than filling it: a glyph that only just fits the safe zone still
+     reads as cramped/edge-to-edge once the launcher's own mask and padding are applied (found in
+     practice, asked for explicitly: still looked too large at the full safe-zone size). Scaled to
+     about 75% of that, keeping the same centered layout. -->
 <vector xmlns:android="http://schemas.android.com/apk/res/android"
     android:width="108dp"
     android:height="108dp"
@@ -10,20 +11,20 @@
     android:viewportHeight="108">
     <path
         android:fillColor="#F5F1E6"
-        android:pathData="M34,31 L54,34 L54,74 L34,77 Z" />
+        android:pathData="M39,37 L54,39 L54,69 L39,71 Z" />
     <path
         android:fillColor="#F5F1E6"
-        android:pathData="M74,31 L54,34 L54,74 L74,77 Z" />
+        android:pathData="M69,37 L54,39 L54,69 L69,71 Z" />
     <path
         android:fillColor="#00000000"
         android:strokeColor="#0D3358"
-        android:strokeWidth="2.5"
+        android:strokeWidth="2.2"
         android:strokeLineCap="round"
-        android:pathData="M36,72 C44,58 48,76 54,60 C60,44 66,62 72,36" />
+        android:pathData="M40.5,67.5 C46.5,57 49.5,70.5 54,58.5 C58.5,46.5 63,60 67.5,40.5" />
     <path
         android:fillColor="#0D3358"
-        android:pathData="M36,72 m-3.5,0 a3.5,3.5 0 1,0 7,0 a3.5,3.5 0 1,0 -7,0" />
+        android:pathData="M40.5,67.5 m-3,0 a3,3 0 1,0 6,0 a3,3 0 1,0 -6,0" />
     <path
         android:fillColor="#0D3358"
-        android:pathData="M72,36 m-3.5,0 a3.5,3.5 0 1,0 7,0 a3.5,3.5 0 1,0 -7,0" />
+        android:pathData="M67.5,40.5 m-3,0 a3,3 0 1,0 6,0 a3,3 0 1,0 -6,0" />
 </vector>
