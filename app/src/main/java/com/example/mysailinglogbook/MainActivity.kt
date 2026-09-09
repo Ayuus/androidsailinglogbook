@@ -304,14 +304,33 @@ class MainActivity : AppCompatActivity() {
             return
         }
         if (settingsStore.isW2k2ConfigComplete) {
-            // No longer minimized automatically after starting (tried this -- see git history for
-            // both a fixed-delay and an event-based version) -- asked for explicitly: the app
-            // should only minimize once its notification is fully visible, and since Android has
-            // no callback for "now visually rendered" (only for the startForeground() call itself,
-            // which found in practice can precede the real, on-screen appearance by several
-            // seconds, especially right after a fresh install), that can't be guaranteed -- so per
-            // the fallback instruction, it just stays open instead of guessing at a delay again.
-            runSync()
+            // Only actually starts a sync when the W2K-2's own hotspot looks reachable right now
+            // (a cheap, local, synchronous check -- see HotspotDetector, no network I/O) -- asked
+            // for explicitly: always trying (and usually failing, away from the boat) on every
+            // single app launch used to mean a visible "Hotspot controleren..."/dialog cycle each
+            // time, for no benefit when there was never any real chance of finding it. A real full
+            // sync (see runSync()) still does its own, more thorough discover_w2k2() scan and
+            // shows the normal "niet gevonden" dialog when the ↺ button is tapped explicitly --
+            // this only skips the automatic, on-launch attempt, not manual ones.
+            if (HotspotDetector.detectSubnetPrefix() != null) {
+                // No longer minimized automatically after starting (tried this -- see git history
+                // for both a fixed-delay and an event-based version) -- asked for explicitly: the
+                // app should only minimize once its notification is fully visible, and since
+                // Android has no callback for "now visually rendered" (only for the
+                // startForeground() call itself, which found in practice can precede the real,
+                // on-screen appearance by several seconds, especially right after a fresh
+                // install), that can't be guaranteed -- so per the fallback instruction, it just
+                // stays open instead of guessing at a delay again.
+                runSync()
+            } else {
+                val existing = File(filesDir, "logbook.html")
+                if (existing.exists()) {
+                    loadLogbookIntoWebView(existing.absolutePath)
+                }
+                statusView.text = "W2K-2 niet gevonden -- bestaande gegevens getoond. Tik ↺ om " +
+                    "opnieuw te proberen."
+                SyncState.lastStatusText = statusView.text.toString()
+            }
         } else if (attemptsLeft > 0) {
             android.os.Handler(mainLooper).postDelayed(
                 { autoStartSyncWithSettingsRetry(attemptsLeft - 1) }, 300L
