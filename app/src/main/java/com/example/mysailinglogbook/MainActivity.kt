@@ -6,6 +6,8 @@ import android.app.NotificationManager
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.graphics.Typeface
+import android.net.ConnectivityManager
+import android.net.NetworkCapabilities
 import android.os.Build
 import android.os.Bundle
 import android.util.TypedValue
@@ -610,6 +612,7 @@ class MainActivity : AppCompatActivity() {
             settingsStore.mmsi,
             settingsStore.callSign,
             controller,
+            settingsStore.minStopMinutes,
         )
 
         // onResult() is always called, unconditionally, right before sync_from_w2k2() returns
@@ -1036,6 +1039,7 @@ class MainActivity : AppCompatActivity() {
             settingsStore.mmsi,
             settingsStore.callSign,
             controller,
+            settingsStore.minStopMinutes,
         )
 
         return capturedResult ?: SyncResult(
@@ -1049,8 +1053,31 @@ class MainActivity : AppCompatActivity() {
      * SettingsStore.sftpEblBackupRemotePath) -- called after a successful sync, still on its
      * background Thread. Runs at most once per sync; failures here are reported in statusView but
      * never hide the logbook that's already showing in the WebView by that point. */
+    /** True when the currently active network's own internet path is cellular, not wifi -- the
+     * W2K-2's own hotspot has no internet capability at all, so it never counts as "cellular"
+     * here, it just isn't a usable path either way (uploadIfConfigured() would fail regardless of
+     * this check, same as it always did before this existed). Ethernet/VPN-over-wifi etc. all
+     * count as "not cellular", same treatment as plain wifi. */
+    private fun isOnCellularOnly(): Boolean {
+        val connectivityManager = getSystemService(ConnectivityManager::class.java) ?: return false
+        val network = connectivityManager.activeNetwork ?: return false
+        val capabilities = connectivityManager.getNetworkCapabilities(network) ?: return false
+        return capabilities.hasTransport(NetworkCapabilities.TRANSPORT_CELLULAR) &&
+            !capabilities.hasTransport(NetworkCapabilities.TRANSPORT_WIFI)
+    }
+
     private fun uploadIfConfigured(htmlPath: String): Boolean {
         if (!settingsStore.isSftpConfigComplete) return false
+        // Off by default (see SettingsStore.allowMobileDataUpload's own doc comment) -- the real
+        // workflow is to switch to a real internet wifi before publishing, using the "Publiceren"
+        // button for exactly this case, rather than silently spending mobile data every sync.
+        if (isOnCellularOnly() && !settingsStore.allowMobileDataUpload) {
+            appendStatus(
+                "\nUploaden overgeslagen: alleen mobiele data beschikbaar (zie Instellingen). " +
+                    "Gebruik Publiceren zodra je weer wifi hebt.",
+            )
+            return false
+        }
         appendStatus("\nUploaden naar ayuus.com...")
         try {
             SftpUploader.uploadLogbookAtomic(settingsStore, File(htmlPath))

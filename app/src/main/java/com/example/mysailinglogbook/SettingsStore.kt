@@ -51,6 +51,24 @@ class SettingsStore(context: Context) {
     // Password auth, not a private key -- confirmed working against the real TransIP account
     // (2026-09-02), unlike the Ed25519-key account spike 4 used. Host and remote path default to
     // the real production values (not secret); user/password are never defaulted.
+    // Minimum stationary duration (minutes) to count as a real port visit -- same threshold as
+    // the desktop CLI's --min-stop-minutes, but a real app setting here instead of an ini value
+    // (there's no ini file on Android, see android_entry.py's run_pipeline docstring), asked for
+    // explicitly. Stored as a Float (SharedPreferences has no Double getter/setter); Double at
+    // the call site since that's what run_pipeline()'s own min_stop_minutes parameter expects.
+    var minStopMinutes: Double
+        get() = prefs.getFloat(KEY_MIN_STOP_MINUTES, DEFAULT_MIN_STOP_MINUTES).toDouble()
+        set(value) = prefs.edit().putFloat(KEY_MIN_STOP_MINUTES, value.toFloat()).apply()
+
+    // Off by default -- asked for explicitly: the real workflow is to download while connected to
+    // the W2K-2's own hotspot, then switch to a real internet wifi to publish (see the existing
+    // "Publiceren" re-upload button, for exactly the case an automatic upload right after download
+    // can't reach the internet yet). Turning this on lets a sync's own auto-publish step go ahead
+    // over mobile data too instead of silently skipping it until the next wifi connection.
+    var allowMobileDataUpload: Boolean
+        get() = prefs.getBoolean(KEY_ALLOW_MOBILE_DATA_UPLOAD, false)
+        set(value) = prefs.edit().putBoolean(KEY_ALLOW_MOBILE_DATA_UPLOAD, value).apply()
+
     var sftpHost: String
         get() = prefs.getString(KEY_SFTP_HOST, DEFAULT_SFTP_HOST) ?: DEFAULT_SFTP_HOST
         set(value) = prefs.edit().putString(KEY_SFTP_HOST, value).apply()
@@ -95,11 +113,15 @@ class SettingsStore(context: Context) {
         const val DEFAULT_SFTP_HOST = "ayuusc.ssh.transip.me"
         const val DEFAULT_SFTP_PORT = 22
         const val DEFAULT_SFTP_REMOTE_PATH = "private/little_endian/logbook.html"
+        // Same default as build_arg_parser()'s own --min-stop-minutes (see cli.py).
+        const val DEFAULT_MIN_STOP_MINUTES = 10.0f
         private const val KEY_W2K2_USER = "w2k2_user"
         private const val KEY_W2K2_PASSWORD = "w2k2_password"
         private const val KEY_BOAT_NAME = "boat_name"
         private const val KEY_MMSI = "mmsi"
         private const val KEY_CALL_SIGN = "call_sign"
+        private const val KEY_MIN_STOP_MINUTES = "min_stop_minutes"
+        private const val KEY_ALLOW_MOBILE_DATA_UPLOAD = "allow_mobile_data_upload"
         private const val KEY_SFTP_HOST = "sftp_host"
         private const val KEY_SFTP_PORT = "sftp_port"
         private const val KEY_SFTP_USER = "sftp_user"

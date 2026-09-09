@@ -3,6 +3,7 @@ package com.example.mysailinglogbook
 import android.os.Bundle
 import android.text.InputType
 import android.widget.Button
+import android.widget.CheckBox
 import android.widget.EditText
 import android.widget.LinearLayout
 import android.widget.ScrollView
@@ -49,6 +50,16 @@ class SettingsActivity : AppCompatActivity() {
             return editText
         }
 
+        fun checkbox(label: String, initialValue: Boolean): CheckBox {
+            val box = CheckBox(this).apply {
+                text = label
+                isChecked = initialValue
+                setPadding(0, padding, 0, 0)
+            }
+            layout.addView(box)
+            return box
+        }
+
         fun sectionHeader(text: String) {
             layout.addView(
                 TextView(this).apply {
@@ -66,7 +77,18 @@ class SettingsActivity : AppCompatActivity() {
         val mmsiField = field("MMSI", store.mmsi)
         val callSignField = field("Roepnaam", store.callSign)
 
+        sectionHeader("Reizen")
+        val minStopMinutesField = field(
+            "Minimale stop-tijd om als havenbezoek te tellen (minuten)",
+            store.minStopMinutes.toString(),
+        ).apply { inputType = InputType.TYPE_CLASS_NUMBER or InputType.TYPE_NUMBER_FLAG_DECIMAL }
+
         sectionHeader("Publiceren naar ayuus.com")
+        val allowMobileDataUploadBox = checkbox(
+            "Upload toestaan via mobiele data (anders alleen via wifi -- gebruik dan de " +
+                "Publiceren-knop zodra je weer wifi hebt)",
+            store.allowMobileDataUpload,
+        )
         val sftpHostField = field("SFTP host", store.sftpHost)
         val sftpPortField = field("SFTP poort", store.sftpPort.toString())
         val sftpUserField = field("SFTP gebruikersnaam", store.sftpUser)
@@ -160,6 +182,9 @@ class SettingsActivity : AppCompatActivity() {
                 store.boatName = boatNameField.text.toString().trim()
                 store.mmsi = mmsiField.text.toString().trim()
                 store.callSign = callSignField.text.toString().trim()
+                store.minStopMinutes = minStopMinutesField.text.toString().toDoubleOrNull()
+                    ?: SettingsStore.DEFAULT_MIN_STOP_MINUTES.toDouble()
+                store.allowMobileDataUpload = allowMobileDataUploadBox.isChecked
                 store.sftpHost = sftpHostField.text.toString().trim()
                 store.sftpPort = sftpPortField.text.toString().toIntOrNull() ?: SettingsStore.DEFAULT_SFTP_PORT
                 store.sftpUser = sftpUserField.text.toString().trim()
