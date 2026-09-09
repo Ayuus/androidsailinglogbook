@@ -1,4 +1,8 @@
 <?xml version="1.0" encoding="utf-8"?>
+<!-- All content stays within ~30dp of center (54,54): Android's adaptive icon safe zone is a
+     centered circle of diameter 66dp (radius 33) within the 108dp canvas; anything further out
+     gets cropped by a circular/squircle launcher mask (found in practice: the first version of
+     this icon put page corners ~47dp from center, well outside that circle). -->
 <vector xmlns:android="http://schemas.android.com/apk/res/android"
     android:width="108dp"
     android:height="108dp"
@@ -6,20 +10,20 @@
     android:viewportHeight="108">
     <path
         android:fillColor="#F5F1E6"
-        android:pathData="M24,30 L54,26 L54,84 L24,90 Z" />
+        android:pathData="M34,31 L54,34 L54,74 L34,77 Z" />
     <path
         android:fillColor="#F5F1E6"
-        android:pathData="M84,30 L54,26 L54,84 L84,90 Z" />
+        android:pathData="M74,31 L54,34 L54,74 L74,77 Z" />
     <path
         android:fillColor="#00000000"
         android:strokeColor="#0D3358"
-        android:strokeWidth="3"
+        android:strokeWidth="2.5"
         android:strokeLineCap="round"
-        android:pathData="M30,80 C40,58 46,86 54,68 C62,50 70,74 78,42" />
+        android:pathData="M36,72 C44,58 48,76 54,60 C60,44 66,62 72,36" />
     <path
         android:fillColor="#0D3358"
-        android:pathData="M30,80 m-4,0 a4,4 0 1,0 8,0 a4,4 0 1,0 -8,0" />
+        android:pathData="M36,72 m-3.5,0 a3.5,3.5 0 1,0 7,0 a3.5,3.5 0 1,0 -7,0" />
     <path
         android:fillColor="#0D3358"
-        android:pathData="M78,42 m-4,0 a4,4 0 1,0 8,0 a4,4 0 1,0 -8,0" />
+        android:pathData="M72,36 m-3.5,0 a3.5,3.5 0 1,0 7,0 a3.5,3.5 0 1,0 -7,0" />
 </vector>

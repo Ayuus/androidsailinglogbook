@@ -22,6 +22,7 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.app.ActivityCompat
+import androidx.core.app.NotificationManagerCompat
 import androidx.core.content.ContextCompat
 import androidx.core.view.ViewCompat
 import androidx.core.view.WindowInsetsCompat
@@ -893,10 +894,15 @@ class MainActivity : AppCompatActivity() {
         SyncState.notificationStartFailed = false
     }
 
-    /** "App sluiten" above -- cancelSync() plus actually leaving, unlike
-     * cancelSyncStayInApp() below. Leaves behind a plain, dismissible "tap to reopen" notification
-     * (asked for explicitly) so closing the app doesn't mean hunting down the launcher icon again
-     * afterwards.
+    /** "App sluiten" above -- cancelSync() plus actually leaving, unlike cancelSyncStayInApp()
+     * below. Used to also leave behind a plain, dismissible "tap to reopen" notification (the
+     * same one onTaskRemoved() below still posts for a swipe-away) -- dropped here specifically,
+     * asked for explicitly: a real close via this button left a notification sitting in the
+     * shade, which read as "still not actually closed" rather than the convenience it was meant
+     * to be. Explicitly cancels both notification ids too, not just relying on cancelSync()'s own
+     * stopService() -- that only tears down the foreground service's own notification (id 1);
+     * nothing else here would otherwise clear an already-posted reopen notification (id 2) if one
+     * happened to exist from an earlier close.
      *
      * finishAffinity() alone (the "normal" way to close every Activity in the task) still leaves
      * the process itself alive in the background -- ordinarily fine (that's how most Android apps
@@ -906,9 +912,8 @@ class MainActivity : AppCompatActivity() {
      * discretion about when (or whether) to reclaim a merely-backgrounded process. */
     private fun closeAppAndCancelSync() {
         cancelSync()
-        // Shared with onTaskRemoved() (swiping the app away instead of using ✕) -- both leave
-        // behind the same "tap to reopen" notification.
-        SyncNotificationService.postReopenNotification(this)
+        NotificationManagerCompat.from(this).cancel(SyncNotificationService.NOTIFICATION_ID)
+        NotificationManagerCompat.from(this).cancel(SyncNotificationService.REOPEN_NOTIFICATION_ID)
         finishAffinity()
         android.os.Process.killProcess(android.os.Process.myPid())
     }
