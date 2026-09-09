@@ -540,6 +540,38 @@ class MainActivity : AppCompatActivity() {
         val downloadedCount: Int?,
     )
 
+    /** Where downloaded .ebl files live -- app-specific *external* storage (Android/data/
+     * <package>/files/Actisense), not filesDir (internal storage, completely inaccessible from
+     * outside the app) -- asked for explicitly: the raw .ebl archive gets large over a full
+     * season and the owner wants to browse/copy it from a PC over USB, which only works for
+     * external storage. No extra permission needed for an app's own external directory (unlike
+     * the public Downloads folder, which would need "All files access" -- incompatible with an
+     * eventual Play Store release).
+     *
+     * One-time migration on top: earlier versions of this app kept the same folder under filesDir
+     * -- moved wholesale into place here (not deleted-and-redownloaded) the first time this runs
+     * after updating, so a real, possibly gigabytes-large existing archive doesn't have to come
+     * back down over the W2K-2's own slow hotspot connection again. Falls back to the internal
+     * folder (old behavior) if external storage isn't currently available at all (rare -- e.g.
+     * briefly right after boot on some devices) or the migration copy itself fails partway --
+     * either way, nothing already downloaded is lost, and a failed copy's partial leftovers are
+     * cleaned up so the next launch retries instead of getting stuck thinking it already moved. */
+    private fun eblDownloadDir(): File {
+        val oldDir = File(filesDir, "Actisense")
+        val externalBase = getExternalFilesDir(null) ?: return oldDir
+        val newDir = File(externalBase, "Actisense")
+        if (oldDir.exists() && !newDir.exists()) {
+            try {
+                oldDir.copyRecursively(newDir, overwrite = false)
+                oldDir.deleteRecursively()
+            } catch (e: Exception) {
+                newDir.deleteRecursively()
+                return oldDir
+            }
+        }
+        return newDir
+    }
+
     /** Runs android_entry.sync_from_w2k2() via Chaquopy -- one Python call does discovery,
      * download, and the decode/build/write pipeline (see android_entry.py for why this isn't
      * split into several separate Chaquopy calls). Must be called off the main thread: Python
@@ -552,7 +584,7 @@ class MainActivity : AppCompatActivity() {
         val py = Python.getInstance()
         val androidEntry = py.getModule("nmea2000processor.android_entry")
 
-        val downloadDir = File(filesDir, "Actisense")
+        val downloadDir = eblDownloadDir()
         val outputHtmlPath = File(filesDir, "logbook.html")
         val sampleCachePath = File(filesDir, "sample_cache.pkl")
 
@@ -932,8 +964,9 @@ class MainActivity : AppCompatActivity() {
         hideProgressBar()
     }
 
-    /** Builds and shows the logbook from whatever .ebl files are already sitting in filesDir --
-     * no W2K-2 connection needed at all, for exactly the case that's otherwise a dead end: the
+    /** Builds and shows the logbook from whatever .ebl files are already sitting in
+     * eblDownloadDir() -- no W2K-2 connection needed at all, for exactly the case that's
+     * otherwise a dead end: the
      * device can't be reached right now, but there's still real (if possibly not fully current)
      * data already on the phone worth seeing (asked for explicitly). Publishes it too, same as a
      * normal sync's own auto-publish, if the SFTP settings are filled in. */
@@ -1006,14 +1039,14 @@ class MainActivity : AppCompatActivity() {
     }
 
     /** Chaquopy call to android_entry.build_from_local_files() -- decode/build/write only, no
-     * discovery or download, over every .ebl file already present under filesDir/Actisense. */
+     * discovery or download, over every .ebl file already present under eblDownloadDir(). */
     private fun buildFromLocalFiles(): SyncResult {
         if (!Python.isStarted()) {
             Python.start(AndroidPlatform(this))
         }
         val androidEntry = Python.getInstance().getModule("nmea2000processor.android_entry")
 
-        val downloadDir = File(filesDir, "Actisense")
+        val downloadDir = eblDownloadDir()
         val outputHtmlPath = File(filesDir, "logbook.html")
         val sampleCachePath = File(filesDir, "sample_cache.pkl")
         // A plain array, not a Kotlin List -- found in practice: passing a List straight across
