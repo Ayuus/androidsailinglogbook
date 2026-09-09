@@ -89,6 +89,16 @@ class SettingsActivity : AppCompatActivity() {
                 "Publiceren-knop zodra je weer wifi hebt)",
             store.allowMobileDataUpload,
         )
+        // REST is preferred over SFTP below whenever both happen to be filled in (see
+        // MainActivity.uploadIfConfigured()) -- needs no SSH key/password on this device at all,
+        // just a WordPress Application Password (Users > Profile > Application Passwords on the
+        // account's own profile page, not the account's real login password) for an account in
+        // the logboek_editor role.
+        val restUploadUrlField = field("REST upload-URL (WordPress-plugin)", store.restUploadUrl)
+        val restUploadUserField = field("WordPress gebruikersnaam", store.restUploadUser)
+        val restUploadPasswordField = field(
+            "WordPress application password", store.restUploadPassword, isPassword = true,
+        )
         val sftpHostField = field("SFTP host", store.sftpHost)
         val sftpPortField = field("SFTP poort", store.sftpPort.toString())
         val sftpUserField = field("SFTP gebruikersnaam", store.sftpUser)
@@ -185,6 +195,9 @@ class SettingsActivity : AppCompatActivity() {
                 store.minStopMinutes = minStopMinutesField.text.toString().toDoubleOrNull()
                     ?: SettingsStore.DEFAULT_MIN_STOP_MINUTES.toDouble()
                 store.allowMobileDataUpload = allowMobileDataUploadBox.isChecked
+                store.restUploadUrl = restUploadUrlField.text.toString().trim()
+                store.restUploadUser = restUploadUserField.text.toString().trim()
+                store.restUploadPassword = restUploadPasswordField.text.toString()
                 store.sftpHost = sftpHostField.text.toString().trim()
                 store.sftpPort = sftpPortField.text.toString().toIntOrNull() ?: SettingsStore.DEFAULT_SFTP_PORT
                 store.sftpUser = sftpUserField.text.toString().trim()

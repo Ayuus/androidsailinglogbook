@@ -1099,7 +1099,14 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun uploadIfConfigured(htmlPath: String): Boolean {
-        if (!settingsStore.isSftpConfigComplete) return false
+        // REST (see RestUploader.kt) is preferred over SFTP whenever both happen to be
+        // configured, same choice cli.py's own _run() makes -- needs no SSH key/password on this
+        // device at all, just a WordPress Application Password. Not "REST, falling back to SFTP
+        // if REST fails" within the same run: a failed upload should surface as a failed upload,
+        // not silently retry a completely different transport the owner may not have intended to
+        // lean on at all.
+        val useRest = settingsStore.isRestUploadConfigComplete
+        if (!useRest && !settingsStore.isSftpConfigComplete) return false
         // Off by default (see SettingsStore.allowMobileDataUpload's own doc comment) -- the real
         // workflow is to switch to a real internet wifi before publishing, using the "Publiceren"
         // button for exactly this case, rather than silently spending mobile data every sync.
@@ -1112,8 +1119,18 @@ class MainActivity : AppCompatActivity() {
         }
         appendStatus("\nUploaden naar ayuus.com...")
         try {
-            SftpUploader.uploadLogbookAtomic(settingsStore, File(htmlPath))
+            if (useRest) {
+                RestUploader.uploadLogbook(
+                    settingsStore.restUploadUrl, settingsStore.restUploadUser,
+                    settingsStore.restUploadPassword, File(htmlPath),
+                )
+            } else {
+                SftpUploader.uploadLogbookAtomic(settingsStore, File(htmlPath))
+            }
             appendStatus(" gelukt.")
+        } catch (e: RestUploadError) {
+            appendStatus(" mislukt: ${e.message}")
+            return false // the .ebl backup uses the SFTP connection settings -- no point trying those too
         } catch (e: SftpUploadError) {
             appendStatus(" mislukt: ${e.message}")
             return false // the .ebl backup uses the same connection settings -- no point trying those too

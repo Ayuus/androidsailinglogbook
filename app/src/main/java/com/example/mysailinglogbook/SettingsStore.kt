@@ -69,6 +69,29 @@ class SettingsStore(context: Context) {
         get() = prefs.getBoolean(KEY_ALLOW_MOBILE_DATA_UPLOAD, false)
         set(value) = prefs.edit().putBoolean(KEY_ALLOW_MOBILE_DATA_UPLOAD, value).apply()
 
+    // Preferred over SFTP below when configured (see MainActivity.uploadIfConfigured()) -- posts
+    // straight to the WordPress REST endpoint (see wordpress-plugin/nmea2log-remarks.php's
+    // /logbook route, and upload.py's own upload_via_rest() on the desktop side, which this calls
+    // into over Chaquopy rather than reimplementing HTTP + Basic Auth here), so publishing needs
+    // no SSH key/password on this device at all -- just a WordPress Application Password for an
+    // account in the logboek_editor role. URL defaults to the real production value (not secret,
+    // same reasoning as DEFAULT_SFTP_HOST/DEFAULT_SFTP_REMOTE_PATH below); user/password are
+    // never defaulted.
+    var restUploadUrl: String
+        get() = prefs.getString(KEY_REST_UPLOAD_URL, DEFAULT_REST_UPLOAD_URL) ?: DEFAULT_REST_UPLOAD_URL
+        set(value) = prefs.edit().putString(KEY_REST_UPLOAD_URL, value).apply()
+
+    var restUploadUser: String
+        get() = prefs.getString(KEY_REST_UPLOAD_USER, "") ?: ""
+        set(value) = prefs.edit().putString(KEY_REST_UPLOAD_USER, value).apply()
+
+    var restUploadPassword: String
+        get() = prefs.getString(KEY_REST_UPLOAD_PASSWORD, "") ?: ""
+        set(value) = prefs.edit().putString(KEY_REST_UPLOAD_PASSWORD, value).apply()
+
+    val isRestUploadConfigComplete: Boolean
+        get() = restUploadUrl.isNotBlank() && restUploadUser.isNotBlank() && restUploadPassword.isNotBlank()
+
     var sftpHost: String
         get() = prefs.getString(KEY_SFTP_HOST, DEFAULT_SFTP_HOST) ?: DEFAULT_SFTP_HOST
         set(value) = prefs.edit().putString(KEY_SFTP_HOST, value).apply()
@@ -113,6 +136,7 @@ class SettingsStore(context: Context) {
         const val DEFAULT_SFTP_HOST = "ayuusc.ssh.transip.me"
         const val DEFAULT_SFTP_PORT = 22
         const val DEFAULT_SFTP_REMOTE_PATH = "private/little_endian/logbook.html"
+        const val DEFAULT_REST_UPLOAD_URL = "https://ayuus.com/wp-json/nmea2log/v1/logbook"
         // Same default as build_arg_parser()'s own --min-stop-minutes (see cli.py).
         const val DEFAULT_MIN_STOP_MINUTES = 10.0f
         private const val KEY_W2K2_USER = "w2k2_user"
@@ -122,6 +146,9 @@ class SettingsStore(context: Context) {
         private const val KEY_CALL_SIGN = "call_sign"
         private const val KEY_MIN_STOP_MINUTES = "min_stop_minutes"
         private const val KEY_ALLOW_MOBILE_DATA_UPLOAD = "allow_mobile_data_upload"
+        private const val KEY_REST_UPLOAD_URL = "rest_upload_url"
+        private const val KEY_REST_UPLOAD_USER = "rest_upload_user"
+        private const val KEY_REST_UPLOAD_PASSWORD = "rest_upload_password"
         private const val KEY_SFTP_HOST = "sftp_host"
         private const val KEY_SFTP_PORT = "sftp_port"
         private const val KEY_SFTP_USER = "sftp_user"
