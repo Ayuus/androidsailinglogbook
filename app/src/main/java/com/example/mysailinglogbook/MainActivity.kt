@@ -1116,22 +1116,29 @@ class MainActivity : AppCompatActivity() {
             )
             return false
         }
-        appendStatus("\nUploaden naar ayuus.com...")
+        appendStatus(if (useRest) "\nUploaden naar ayuus.com (via plugin)..." else "\nUploaden naar ayuus.com (via SFTP)...")
         try {
             if (useRest) {
                 RestUploader.uploadLogbook(
                     settingsStore.restUploadUrl, settingsStore.restUploadUser,
                     settingsStore.restUploadPassword, File(htmlPath),
                 )
+                handleLogLine("[ok] Uploaded via plugin to ${settingsStore.restUploadUrl}")
             } else {
                 SftpUploader.uploadLogbookAtomic(settingsStore, File(htmlPath))
+                handleLogLine(
+                    "[ok] Uploaded via SFTP to ${settingsStore.sftpUser}@${settingsStore.sftpHost}:" +
+                        settingsStore.sftpRemotePath,
+                )
             }
             appendStatus(" gelukt.")
         } catch (e: RestUploadError) {
             appendStatus(" mislukt: ${e.message}")
+            handleLogLine("[error] upload via plugin failed: ${e.message}")
             return false
         } catch (e: SftpUploadError) {
             appendStatus(" mislukt: ${e.message}")
+            handleLogLine("[error] upload via SFTP failed: ${e.message}")
             return false
         }
         return true
