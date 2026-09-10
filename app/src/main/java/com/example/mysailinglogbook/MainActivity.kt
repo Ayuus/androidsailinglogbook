@@ -10,6 +10,7 @@ import android.graphics.Typeface
 import android.os.Build
 import android.os.Bundle
 import android.util.TypedValue
+import android.view.Gravity
 import android.view.View
 import android.webkit.WebView
 import android.widget.Button
@@ -182,6 +183,15 @@ class MainActivity : AppCompatActivity() {
         // second, nested layout.
         val buttonRow = LinearLayout(this).apply {
             orientation = LinearLayout.HORIZONTAL
+            // Off by default a horizontal LinearLayout aligns children on their text baseline --
+            // harmless while every button used the same emoji textSize, but syncButton's larger,
+            // bolder ↺ (see iconButton()'s emojiSize/emojiBold) sits on a different baseline than
+            // the plain-icon buttons (no text at all) and settingsButton's smaller ⚙, so it drifted
+            // a few pixels above the rest (found in practice). Centering vertically instead ignores
+            // baselines entirely and keeps every button's visual center aligned regardless of its
+            // own content size.
+            isBaselineAligned = false
+            gravity = Gravity.CENTER_VERTICAL
             addView(syncButton)
             addView(publishButton)
             addView(viewLocalButton)
