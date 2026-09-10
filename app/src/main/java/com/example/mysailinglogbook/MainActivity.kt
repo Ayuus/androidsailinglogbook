@@ -117,7 +117,9 @@ class MainActivity : AppCompatActivity() {
         // selector, requesting *text* presentation instead) render as plain glyphs with no badge.
         // Tapping this while a sync (or offline build) is already running cancels it instead of
         // starting a new one -- see cancelSyncStayInApp()'s own doc comment for why.
-        syncButton = iconButton("Synchroniseren", emoji = "↺", emojiSize = 30f, emojiBold = true) {
+        syncButton = iconButton(
+            "Synchroniseren", emoji = "↺", emojiSize = 30f, emojiBold = true, verticalNudgePx = -12f,
+        ) {
             if (SyncState.inProgress) cancelSyncStayInApp() else runSync()
         } // ↺
         // Material's own "upload" icon (ic_upload_24), not the ☁️ emoji it replaced -- asked for
@@ -1388,6 +1390,7 @@ class MainActivity : AppCompatActivity() {
         iconRes: Int? = null,
         emojiSize: Float = 26f,
         emojiBold: Boolean = false,
+        verticalNudgePx: Float = 0f,
         onClick: () -> Unit,
     ): Button {
         val size = (16 * resources.displayMetrics.density).toInt()
@@ -1415,6 +1418,12 @@ class MainActivity : AppCompatActivity() {
                 if (emojiBold) setTypeface(typeface, android.graphics.Typeface.BOLD)
             }
             setPadding(size, size / 2, size, size / 2)
+            // Row-level centering (see buttonRow's isBaselineAligned/gravity) aligns each button's
+            // whole bounding box, not the visible ink inside it -- doesn't help when a specific
+            // glyph's own font metrics place its ink off-center within that box. Measured directly
+            // on-device (found in practice): ↺ at emojiBold/30f sits ~12px lower than the vector
+            // icons' visible ink even though their boxes now line up, so it alone gets nudged.
+            if (verticalNudgePx != 0f) translationY = verticalNudgePx
             setBackgroundResource(backgroundValue.resourceId)
             minWidth = 0
             minimumWidth = 0
