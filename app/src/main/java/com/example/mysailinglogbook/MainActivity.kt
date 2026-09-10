@@ -360,13 +360,12 @@ class MainActivity : AppCompatActivity() {
         // disabled for as long as that auto-started sync kept running.
         publishButton.isEnabled = false
         val initialStatusText = "Hotspot controleren..."
-        logView.text = ""
-        // Reset alongside the views above -- a fresh sync's own state, not whatever a previous
-        // one within this same process left behind (see SyncState's own doc comment on why this
-        // is process-wide, not per-instance).
+        // Log deliberately NOT cleared here (asked for explicitly) -- it now accumulates across
+        // every sync this process runs instead of starting over each time, so a run's own history
+        // stays visible/scrollable-back-to after later runs. Only the progress state below still
+        // resets per-run, since that's specifically about the run in progress right now.
         SyncState.lastStatusText = initialStatusText
         SyncState.lastNotificationText = initialStatusText
-        SyncState.lastLogText = ""
         SyncState.lastProgressPhase = null
         SyncState.lastProgressCurrent = 0
         SyncState.lastProgressTotal = 0
@@ -1008,14 +1007,14 @@ class MainActivity : AppCompatActivity() {
         // comment: a long local decode (see run_pipeline()'s should_cancel) should be cancellable
         // by tapping it again, same as a normal sync.
         publishButton.isEnabled = false
-        logView.text = ""
+        // Log deliberately NOT cleared here (asked for explicitly, see runSync()'s own matching
+        // comment) -- it accumulates across every run this process makes instead.
         SyncState.lastStatusText = "Logboek opbouwen met bestaande gegevens..."
         handleLogLine("[info] ${SyncState.lastStatusText}")
         // No initial notification text of its own here (unlike runSync()) -- this path doesn't
         // start the notification until handleLogLine()'s first progress line arrives, so there's
         // nothing yet for a restore to show; null rather than stale text from a previous run.
         SyncState.lastNotificationText = null
-        SyncState.lastLogText = ""
         SyncState.lastProgressPhase = null
         SyncState.lastProgressCurrent = 0
         SyncState.lastProgressTotal = 0
