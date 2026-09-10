@@ -115,9 +115,16 @@ class MainActivity : AppCompatActivity() {
         // selector, requesting *text* presentation instead) render as plain glyphs with no badge.
         // Tapping this while a sync (or offline build) is already running cancels it instead of
         // starting a new one -- see cancelSyncStayInApp()'s own doc comment for why.
-        syncButton = iconButton("↺") { if (SyncState.inProgress) cancelSyncStayInApp() else runSync() } // ↺
-        publishButton = iconButton("☁️") { runPublish() } // ☁️
-        val settingsButton = iconButton("⚙") {
+        syncButton = iconButton("↺", "Synchroniseren") {
+            if (SyncState.inProgress) cancelSyncStayInApp() else runSync()
+        } // ↺
+        publishButton = iconButton("☁️", "Publiceren naar ayuus.com") { runPublish() } // ☁️
+        // Loads whatever logbook.html is already on the phone into the WebView, without syncing
+        // or publishing anything -- asked for explicitly, for when the owner just wants to check
+        // the already-built logbook (e.g. after switching "Automatisch publiceren na bouwen" off
+        // in Instellingen) without that also sending it to ayuus.com.
+        val viewLocalButton = iconButton("📖", "Logboek lokaal bekijken (niet publiceren)") { viewLocalLogbook() } // 📖
+        val settingsButton = iconButton("⚙", "Instellingen") {
             startActivity(Intent(this@MainActivity, SettingsActivity::class.java))
         } // ⚙
         // No standalone toolbar close button (removed -- asked for explicitly, found in
@@ -160,13 +167,14 @@ class MainActivity : AppCompatActivity() {
             visibility = View.GONE
         }
 
-        // Sync + publish icons top-left, settings top-right (asked for explicitly) -- a weight-1
-        // empty spacer pushes settingsButton to the far right without needing a second, nested
-        // layout.
+        // Sync + publish + view-local icons top-left, settings top-right (asked for explicitly)
+        // -- a weight-1 empty spacer pushes settingsButton to the far right without needing a
+        // second, nested layout.
         val buttonRow = LinearLayout(this).apply {
             orientation = LinearLayout.HORIZONTAL
             addView(syncButton)
             addView(publishButton)
+            addView(viewLocalButton)
             addView(View(this@MainActivity), LinearLayout.LayoutParams(0, 0, 1f))
             addView(settingsButton)
         }
@@ -457,8 +465,10 @@ class MainActivity : AppCompatActivity() {
                 // credentials, server unreachable) shouldn't hide the fact that the download and
                 // decode themselves already succeeded. Still on this same background Thread, not
                 // re-dispatched: SftpUploader's calls are blocking network I/O same as the
-                // download itself was.
-                if (result.ok && result.htmlPath != null) {
+                // download itself was. Gated on the setting (asked for explicitly) -- off, this
+                // sync only ever builds the logbook locally; the owner checks it via 📖 and
+                // publishes on their own terms via ☁️ (runPublish(), unaffected by this setting).
+                if (result.ok && result.htmlPath != null && settingsStore.autoPublishAfterBuild) {
                     didPublish = uploadIfConfigured(result.htmlPath)
                 }
                 if (syncSucceeded) {
@@ -504,6 +514,20 @@ class MainActivity : AppCompatActivity() {
                 }
             }
         }.start()
+    }
+
+    /** 📖 icon: shows whatever logbook.html is already on the phone, purely local -- no sync, no
+     * publish, nothing sent anywhere. Doesn't touch SyncState at all, so it works even while a
+     * sync is running (just shows the *previous* build until that one finishes and replaces it
+     * via showSyncResult()'s own success branch). */
+    private fun viewLocalLogbook() {
+        val htmlFile = File(filesDir, "logbook.html")
+        if (!htmlFile.exists()) {
+            handleLogLine("[info] Nog geen logboek om te bekijken -- synchroniseer eerst.")
+            return
+        }
+        setLogExpanded(false)
+        loadLogbookIntoWebView(htmlFile.absolutePath)
     }
 
     /** Manual re-publish (the ☁️ icon): re-uploads the *already-built* local logbook.html
@@ -1053,7 +1077,8 @@ class MainActivity : AppCompatActivity() {
                 val result = buildFromLocalFiles()
                 syncSucceeded = result.ok
                 withActiveActivity { showSyncResult(result) }
-                if (result.ok && result.htmlPath != null) {
+                // Same "Automatisch publiceren na bouwen" gate as runSync()'s own matching call.
+                if (result.ok && result.htmlPath != null && settingsStore.autoPublishAfterBuild) {
                     didPublish = uploadIfConfigured(result.htmlPath)
                 }
                 if (syncSucceeded) {
@@ -1302,8 +1327,11 @@ class MainActivity : AppCompatActivity() {
 
     /** A Button whose label is a single emoji, styled to read as a toolbar icon (larger glyph,
      * tight padding, no background) rather than a normal text button -- see the buttonRow comment
-     * in onCreate() for why this is emoji rather than a drawable/vector asset. */
-    private fun iconButton(emoji: String, onClick: () -> Unit): Button {
+     * in onCreate() for why this is emoji rather than a drawable/vector asset. tooltip shows on a
+     * long-press (standard Android behavior for View.setTooltipText(), asked for explicitly:
+     * found in practice, a plain emoji alone -- ☁️ especially -- doesn't read as obviously as
+     * "publish" the way a real, recognized Material icon would). */
+    private fun iconButton(emoji: String, tooltip: String, onClick: () -> Unit): Button {
         val size = (16 * resources.displayMetrics.density).toInt()
         // Borderless + no minimum size: a plain Button here still carries the default Material
         // button chrome (background box, shadow/elevation, a fairly large minimum touch target)
@@ -1323,6 +1351,7 @@ class MainActivity : AppCompatActivity() {
             minHeight = 0
             minimumHeight = 0
             stateListAnimator = null // drops the default press elevation animation/shadow
+            ViewCompat.setTooltipText(this, tooltip)
             setOnClickListener { onClick() }
         }
     }

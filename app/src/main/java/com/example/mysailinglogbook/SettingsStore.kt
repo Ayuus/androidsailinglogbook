@@ -56,6 +56,15 @@ class SettingsStore(context: Context) {
         get() = prefs.getBoolean(KEY_AUTO_SYNC_ON_LAUNCH, true)
         set(value) = prefs.edit().putBoolean(KEY_AUTO_SYNC_ON_LAUNCH, value).apply()
 
+    // On by default too (same reasoning as autoSyncOnLaunch above) -- asked for explicitly: the
+    // owner wants to choose whether a successful sync/offline-build also publishes on its own
+    // (see MainActivity.uploadIfConfigured()'s two call sites) or just builds the logbook locally
+    // -- checked via MainActivity's own new 📖 button (viewLocalLogbook()) and the ☁️ button still
+    // publishes on demand either way.
+    var autoPublishAfterBuild: Boolean
+        get() = prefs.getBoolean(KEY_AUTO_PUBLISH_AFTER_BUILD, true)
+        set(value) = prefs.edit().putBoolean(KEY_AUTO_PUBLISH_AFTER_BUILD, value).apply()
+
     // Password auth, not a private key -- confirmed working against the real TransIP account
     // (2026-09-02), unlike the Ed25519-key account spike 4 used. Host and remote path default to
     // the real production values (not secret); user/password are never defaulted.
@@ -136,6 +145,7 @@ class SettingsStore(context: Context) {
         private const val KEY_MMSI = "mmsi"
         private const val KEY_CALL_SIGN = "call_sign"
         private const val KEY_AUTO_SYNC_ON_LAUNCH = "auto_sync_on_launch"
+        private const val KEY_AUTO_PUBLISH_AFTER_BUILD = "auto_publish_after_build"
         private const val KEY_MIN_STOP_MINUTES = "min_stop_minutes"
         private const val KEY_REST_UPLOAD_URL = "rest_upload_url"
         private const val KEY_REST_UPLOAD_USER = "rest_upload_user"

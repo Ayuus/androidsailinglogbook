@@ -88,6 +88,10 @@ class SettingsActivity : AppCompatActivity() {
         ).apply { inputType = InputType.TYPE_CLASS_NUMBER or InputType.TYPE_NUMBER_FLAG_DECIMAL }
 
         sectionHeader("Publiceren naar ayuus.com")
+        val autoPublishAfterBuildBox = checkbox(
+            "Automatisch publiceren na bouwen (anders alleen via ☁️)",
+            store.autoPublishAfterBuild,
+        )
         // REST is preferred over SFTP below whenever both happen to be filled in (see
         // MainActivity.uploadIfConfigured()) -- needs no SSH key/password on this device at all,
         // just a WordPress Application Password (Users > Profile > Application Passwords on the
@@ -210,6 +214,7 @@ class SettingsActivity : AppCompatActivity() {
                 store.autoSyncOnLaunch = autoSyncOnLaunchBox.isChecked
                 store.minStopMinutes = minStopMinutesField.text.toString().toDoubleOrNull()
                     ?: SettingsStore.DEFAULT_MIN_STOP_MINUTES.toDouble()
+                store.autoPublishAfterBuild = autoPublishAfterBuildBox.isChecked
                 store.restUploadUrl = restUploadUrlField.text.toString().trim()
                 store.restUploadUser = restUploadUserField.text.toString().trim()
                 store.restUploadPassword = restUploadPasswordField.text.toString()
