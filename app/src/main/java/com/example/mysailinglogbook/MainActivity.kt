@@ -648,8 +648,15 @@ class MainActivity : AppCompatActivity() {
         }
         // Asked for explicitly, now that USB file transfer to this exact path is the owner's own
         // way to browse the .ebl archive from a PC -- one line per sync/offline-build run (both
-        // callers only ever call this once each), not spammy.
-        handleLogLine("[info] .ebl-bestanden staan in: ${result.absolutePath}")
+        // callers only ever call this once each), not spammy. "/storage/emulated/0/" dropped
+        // (asked for explicitly too) -- that prefix is never what's shown in Explorer/a file
+        // picker on the PC side, just noise; starts at "Android/..." instead, which is. Falls
+        // back to the full path on the rare internal-storage fallback (eblDownloadDir() above),
+        // whose path never has an "/Android/" segment to trim from in the first place.
+        val fullPath = result.absolutePath
+        val androidIndex = fullPath.indexOf("/Android/")
+        val shownPath = if (androidIndex >= 0) fullPath.substring(androidIndex + 1) else fullPath
+        handleLogLine("[info] .ebl-bestanden staan in: $shownPath")
         return result
     }
 
