@@ -514,8 +514,12 @@ class MainActivity : AppCompatActivity() {
      * time as a sync's own automatic upload at the end of it. */
     private fun runPublish() {
         if (SyncState.inProgress) return
-        if (!settingsStore.isSftpConfigComplete) {
-            handleLogLine("[info] Vul eerst de publiceer-instellingen (SFTP) in via Instellingen.")
+        // Both, not just SFTP -- found in practice, a real bug: an owner with only REST
+        // configured (no SFTP at all, the whole point of preferring REST) tapped ☁️ and got told
+        // to fill in "de publiceer-instellingen (SFTP)" even though publishing itself would have
+        // worked fine via REST. Matches uploadIfConfigured()'s own check exactly.
+        if (!settingsStore.isRestUploadConfigComplete && !settingsStore.isSftpConfigComplete) {
+            handleLogLine("[info] Vul eerst de publiceer-instellingen (REST of SFTP) in via Instellingen.")
             return
         }
         val htmlFile = File(filesDir, "logbook.html")
