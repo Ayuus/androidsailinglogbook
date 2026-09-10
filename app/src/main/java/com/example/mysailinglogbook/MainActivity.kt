@@ -207,7 +207,14 @@ class MainActivity : AppCompatActivity() {
         // "already done" and silently disabled auto-start until the user noticed and tapped 🔄
         // themselves.
         if (savedInstanceState == null) {
-            autoStartSyncWithSettingsRetry()
+            // Asked for explicitly: opt-out via Instellingen ("Automatisch downloaden bij
+            // starten") for whoever doesn't want opening the app to try reaching the W2K-2 on its
+            // own -- a manual ↺ tap still works exactly the same either way. Skipping this
+            // entirely (rather than also loading any existing logbook.html here) is enough:
+            // onResume(), called right after this regardless, already does that on its own.
+            if (settingsStore.autoSyncOnLaunch) {
+                autoStartSyncWithSettingsRetry()
+            }
         } else if (SyncState.inProgress) {
             // The savedInstanceState != null branch above skips autoStartSyncWithSettingsRetry()
             // entirely -- including its own guard -- so a brand new Activity instance recreated
@@ -296,14 +303,12 @@ class MainActivity : AppCompatActivity() {
             // Only actually starts a sync when the W2K-2's own hotspot looks reachable right now
             // (a cheap, local, synchronous check -- see HotspotDetector, no network I/O) -- asked
             // for explicitly: always trying (and usually failing, away from the boat) on every
-            // single app launch used to mean a visible "Hotspot controleren..."/dialog cycle each
-            // time, for no benefit when there was never any real chance of finding it. A real full
-            // sync (see runSync()) still does its own, more thorough discover_w2k2() scan, which
-            // can still come back "not found" (the hotspot's on, but the W2K-2 itself never
-            // actually joined it) -- isAutoStart=true means that specific outcome (and this cheap
-            // check's own, right below) stays a quiet status line instead of a popup for the
-            // automatic, on-launch attempt (asked for explicitly); a manual ↺ tap still gets the
-            // normal dialog either way, since that's a deliberate attempt being actively waited on.
+            // single app launch used to mean a visible "Hotspot controleren..." cycle each time,
+            // for no benefit when there was never any real chance of finding it. A real full sync
+            // (see runSync()) still does its own, more thorough discover_w2k2() scan, which can
+            // still come back "not found" (the hotspot's on, but the W2K-2 itself never actually
+            // joined it) -- that outcome (and this cheap check's own, right below) is always a
+            // quiet log line + notification rather than a popup, auto-started or manual alike.
             if (HotspotDetector.detectSubnetPrefix() != null) {
                 // No longer minimized automatically after starting (tried this -- see git history
                 // for both a fixed-delay and an event-based version) -- asked for explicitly: the
@@ -313,7 +318,7 @@ class MainActivity : AppCompatActivity() {
                 // on-screen appearance by several seconds, especially right after a fresh
                 // install), that can't be guaranteed -- so per the fallback instruction, it just
                 // stays open instead of guessing at a delay again.
-                runSync(isAutoStart = true)
+                runSync()
             } else {
                 val existing = File(filesDir, "logbook.html")
                 if (existing.exists()) {
@@ -338,7 +343,7 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
-    private fun runSync(isAutoStart: Boolean = false) {
+    private fun runSync() {
         if (SyncState.inProgress) return
         if (!settingsStore.isW2k2ConfigComplete) {
             handleLogLine("[info] Vul eerst de W2K-2 gebruikersnaam en het wachtwoord in via Instellingen.")
@@ -396,18 +401,12 @@ class MainActivity : AppCompatActivity() {
                     stopService(Intent(this, SyncNotificationService::class.java))
                     SyncState.notificationForegrounded = false
                     SyncState.notificationStartFailed = false
-                    // No popup for the auto-started attempt specifically (asked for explicitly) --
-                    // "W2K-2 not reachable yet" is the expected, common case right after opening
-                    // the app away from the boat, not something worth a modal interruption; the
-                    // log line above plus a real Android notification (so it's still visible when
-                    // not watching the app right at this moment) in place of the ongoing sync one
-                    // this replaces are enough. A manual ↺ tap still gets the dialog, since that's
-                    // a deliberate attempt being watched live.
-                    if (isAutoStart) {
-                        SyncNotificationService.postNotFoundNotification(this, message)
-                    } else {
-                        showOfflineOrCloseDialog(message)
-                    }
+                    // No popup, auto-started or manual ↺ tap alike (asked for explicitly) --
+                    // "W2K-2 not reachable yet" is the expected, common outcome of not being at
+                    // the boat, not something worth a modal interruption; the log line above plus
+                    // a real Android notification (in place of the ongoing sync one this
+                    // replaces) are enough either way.
+                    SyncNotificationService.postNotFoundNotification(this, message)
                     SyncState.inProgress = false
                     syncButton.isEnabled = true
                     publishButton.isEnabled = true
@@ -454,7 +453,7 @@ class MainActivity : AppCompatActivity() {
                     }
                 }
                 syncSucceeded = result.ok
-                withActiveActivity { showSyncResult(result, isAutoStart) }
+                withActiveActivity { showSyncResult(result) }
                 // After showing the logbook, not before -- an upload problem (misconfigured
                 // credentials, server unreachable) shouldn't hide the fact that the download and
                 // decode themselves already succeeded. Still on this same background Thread, not
@@ -820,7 +819,7 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
-    private fun showSyncResult(result: SyncResult, isAutoStart: Boolean = false) {
+    private fun showSyncResult(result: SyncResult) {
         if (result.ok && result.htmlPath != null) {
             // tripCount is null specifically for runSync()'s own "result.ok came back false with
             // no error text, but logbook.html's mtime proves it actually succeeded" recovery --
@@ -848,16 +847,16 @@ class MainActivity : AppCompatActivity() {
             SyncState.lastStatusText = resultText
             handleLogLine("[info] $resultText")
         } else {
-            // Same "no popup for the auto-started attempt" carve-out as the earlier "hotspot
+            // Same "no popup, auto-started or manual alike" carve-out as the earlier "hotspot
             // staat uit" case (see runSync()) -- "W2K-2 not found on this subnet" is the other
             // half of that same expected, common not-at-the-boat outcome, so it gets the same
             // calm treatment (existing logbook shown if there is one, a log line, a real
-            // notification in place of a popup) instead of the loud "Fout: ..." dialog; any
-            // other, genuinely unexpected error (a decode crash, HTTP 401, ...) still gets the
-            // normal treatment below even when auto-started, since that's worth surfacing loudly
-            // regardless of how the run was started.
+            // notification in place of a popup) instead of the loud "Fout: ..." dialog, regardless
+            // of how the run was started; any other, genuinely unexpected error (a decode crash,
+            // HTTP 401, ...) still gets the normal treatment below, since that's worth surfacing
+            // loudly no matter what.
             val isNotFoundError = result.error?.startsWith("No W2K-2 found") == true
-            if (isAutoStart && isNotFoundError) {
+            if (isNotFoundError) {
                 val existing = File(filesDir, "logbook.html")
                 if (existing.exists()) {
                     loadLogbookIntoWebView(existing.absolutePath)

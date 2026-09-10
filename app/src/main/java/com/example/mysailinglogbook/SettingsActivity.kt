@@ -2,6 +2,7 @@ package com.example.mysailinglogbook
 
 import android.os.Bundle
 import android.text.InputType
+import android.widget.CheckBox
 import android.widget.EditText
 import android.widget.LinearLayout
 import android.widget.ScrollView
@@ -60,11 +61,25 @@ class SettingsActivity : AppCompatActivity() {
             )
         }
 
+        fun checkbox(label: String, initialValue: Boolean): CheckBox {
+            val box = CheckBox(this).apply {
+                text = label
+                isChecked = initialValue
+                setPadding(0, padding, 0, 0)
+            }
+            layout.addView(box)
+            return box
+        }
+
         val userField = field("W2K-2 gebruikersnaam", store.w2k2User)
         val passwordField = field("W2K-2 wachtwoord", store.w2k2Password, isPassword = true)
         val boatNameField = field("Bootnaam", store.boatName)
         val mmsiField = field("MMSI", store.mmsi)
         val callSignField = field("Roepnaam", store.callSign)
+        val autoSyncOnLaunchBox = checkbox(
+            "Automatisch downloaden bij starten (anders alleen via ↺)",
+            store.autoSyncOnLaunch,
+        )
 
         sectionHeader("Reizen")
         val minStopMinutesField = field(
@@ -192,6 +207,7 @@ class SettingsActivity : AppCompatActivity() {
                 store.boatName = boatNameField.text.toString().trim()
                 store.mmsi = mmsiField.text.toString().trim()
                 store.callSign = callSignField.text.toString().trim()
+                store.autoSyncOnLaunch = autoSyncOnLaunchBox.isChecked
                 store.minStopMinutes = minStopMinutesField.text.toString().toDoubleOrNull()
                     ?: SettingsStore.DEFAULT_MIN_STOP_MINUTES.toDouble()
                 store.restUploadUrl = restUploadUrlField.text.toString().trim()

@@ -48,6 +48,14 @@ class SettingsStore(context: Context) {
     val isW2k2ConfigComplete: Boolean
         get() = w2k2User.isNotBlank() && w2k2Password.isNotBlank()
 
+    // On by default (preserves the original, always-on behavior for anyone upgrading) -- asked
+    // for explicitly: the owner wants to choose whether opening the app tries to reach the W2K-2
+    // right away (see MainActivity.onCreate()'s own autoStartSyncWithSettingsRetry() call) or
+    // only ever syncs on an explicit ↺ tap.
+    var autoSyncOnLaunch: Boolean
+        get() = prefs.getBoolean(KEY_AUTO_SYNC_ON_LAUNCH, true)
+        set(value) = prefs.edit().putBoolean(KEY_AUTO_SYNC_ON_LAUNCH, value).apply()
+
     // Password auth, not a private key -- confirmed working against the real TransIP account
     // (2026-09-02), unlike the Ed25519-key account spike 4 used. Host and remote path default to
     // the real production values (not secret); user/password are never defaulted.
@@ -127,6 +135,7 @@ class SettingsStore(context: Context) {
         private const val KEY_BOAT_NAME = "boat_name"
         private const val KEY_MMSI = "mmsi"
         private const val KEY_CALL_SIGN = "call_sign"
+        private const val KEY_AUTO_SYNC_ON_LAUNCH = "auto_sync_on_launch"
         private const val KEY_MIN_STOP_MINUTES = "min_stop_minutes"
         private const val KEY_REST_UPLOAD_URL = "rest_upload_url"
         private const val KEY_REST_UPLOAD_USER = "rest_upload_user"
