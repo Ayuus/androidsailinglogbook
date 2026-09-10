@@ -534,9 +534,24 @@ class MainActivity : AppCompatActivity() {
         SyncState.lastStatusText = "Publiceren naar ayuus.com..."
 
         Thread {
+            var didPublish = false
             try {
-                uploadIfConfigured(htmlFile.absolutePath)
+                didPublish = uploadIfConfigured(htmlFile.absolutePath)
             } finally {
+                // Same "stopService() + postCompletionNotification()" treatment as runSync()'s
+                // own finally block -- found in practice, a real bug: this one never had either,
+                // so the ongoing "Uploaden..." notification (or, if the app got closed mid-
+                // upload, "App wordt afgesloten...", see SyncNotificationService.onTaskRemoved())
+                // just sat there indefinitely afterward, with no "Voltooid" notification ever
+                // replacing it the way a full sync's own publish step always gets.
+                stopService(Intent(this, SyncNotificationService::class.java))
+                if (didPublish) {
+                    val timeText = java.text.SimpleDateFormat("HH:mm", java.util.Locale.getDefault())
+                        .format(java.util.Date())
+                    SyncNotificationService.postCompletionNotification(this, "Voltooid $timeText", MainActivity.LIVE_SITE_URL)
+                }
+                SyncState.notificationForegrounded = false
+                SyncState.notificationStartFailed = false
                 SyncState.inProgress = false  // must always happen, see runSync()'s own finally
                 withActiveActivity {
                     syncButton.isEnabled = true
@@ -573,18 +588,25 @@ class MainActivity : AppCompatActivity() {
      * cleaned up so the next launch retries instead of getting stuck thinking it already moved. */
     private fun eblDownloadDir(): File {
         val oldDir = File(filesDir, "Actisense")
-        val externalBase = getExternalFilesDir(null) ?: return oldDir
-        val newDir = File(externalBase, "Actisense")
-        if (oldDir.exists() && !newDir.exists()) {
-            try {
-                oldDir.copyRecursively(newDir, overwrite = false)
-                oldDir.deleteRecursively()
-            } catch (e: Exception) {
-                newDir.deleteRecursively()
-                return oldDir
+        val result = run {
+            val externalBase = getExternalFilesDir(null) ?: return@run oldDir
+            val newDir = File(externalBase, "Actisense")
+            if (oldDir.exists() && !newDir.exists()) {
+                try {
+                    oldDir.copyRecursively(newDir, overwrite = false)
+                    oldDir.deleteRecursively()
+                } catch (e: Exception) {
+                    newDir.deleteRecursively()
+                    return@run oldDir
+                }
             }
+            newDir
         }
-        return newDir
+        // Asked for explicitly, now that USB file transfer to this exact path is the owner's own
+        // way to browse the .ebl archive from a PC -- one line per sync/offline-build run (both
+        // callers only ever call this once each), not spammy.
+        handleLogLine("[info] .ebl-bestanden staan in: ${result.absolutePath}")
+        return result
     }
 
     /** Runs android_entry.sync_from_w2k2() via Chaquopy -- one Python call does discovery,
@@ -1174,9 +1196,12 @@ class MainActivity : AppCompatActivity() {
         // mid-upload no longer interrupts it, so the notification is now the only place this
         // phase is visible at all for as long as the owner's actually looking at it instead of
         // the app. Without this it kept showing whatever the last download/decode-phase text
-        // happened to be, well past the point that was still true.
+        // happened to be, well past the point that was still true. Shorter than the log line
+        // above, without "(via plugin)"/"(via SFTP)" -- asked for explicitly, that detail belongs
+        // in the log (which is right there to check), not repeated in the notification too.
         startSyncNotification(
-            Intent(this, SyncNotificationService::class.java).putExtra(SyncNotificationService.EXTRA_STATUS_TEXT, statusText),
+            Intent(this, SyncNotificationService::class.java)
+                .putExtra(SyncNotificationService.EXTRA_STATUS_TEXT, "Uploaden naar ayuus.com..."),
         )
         // Sets SyncState.uploading for SyncNotificationService.onTaskRemoved() -- unlike a
         // download (resumes cleanly next run over HTTP Range, see w2k2_download.py) or a decode/

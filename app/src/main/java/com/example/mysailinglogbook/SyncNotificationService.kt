@@ -117,7 +117,11 @@ class SyncNotificationService : Service() {
      *  - Currently uploading (SyncState.uploading, see its own doc comment): left running,
      *    same as ever -- not itself safely resumable mid-request the same way, and comparatively
      *    fast anyway. Finishes and stops itself via runSync()'s/runPublish()'s own finally block,
-     *    same as a run that was never interrupted at all. */
+     *    same as a run that was never interrupted at all. The ongoing notification's text is
+     *    overwritten here to say so explicitly (asked for explicitly, found in practice: closing
+     *    the app right during an upload otherwise looked like the close had no effect at all --
+     *    the notification just kept showing whatever upload-progress text it already had, with
+     *    nothing acknowledging the close actually happened). */
     override fun onTaskRemoved(rootIntent: Intent?) {
         super.onTaskRemoved(rootIntent)
         if (!SyncState.inProgress) {
@@ -133,6 +137,18 @@ class SyncNotificationService : Service() {
             // has to come after, not before.
             stopSelf()
             postInterruptedNotification(this)
+        } else {
+            // Still foreground/ongoing -- not a replacement notification the way the other two
+            // branches post one, just this same service's own notification updated in place, the
+            // same way a live upload-progress update from MainActivity.uploadIfConfigured() would
+            // (see onStartCommand()) -- calling that directly here reuses its exact notification-
+            // building logic instead of duplicating it.
+            onStartCommand(
+                Intent(this, SyncNotificationService::class.java)
+                    .putExtra(EXTRA_STATUS_TEXT, "App wordt afgesloten nadat upload voltooid is."),
+                0,
+                0,
+            )
         }
     }
 
