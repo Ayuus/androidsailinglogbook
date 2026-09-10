@@ -242,6 +242,40 @@ class SyncNotificationService : Service() {
             NotificationManagerCompat.from(context).notify(NOTIFICATION_ID, notification)
         }
 
+        /** Posted in place of the ongoing sync notification when the *automatic*, on-launch sync
+         * attempt (see MainActivity.autoStartSyncWithSettingsRetry()) couldn't reach the W2K-2 --
+         * asked for explicitly: this is the routine, expected outcome of opening the app away
+         * from the boat, not something worth a modal popup (see runSync()'s own isAutoStart
+         * handling) or even a loud in-app status banner -- a plain log line covers the in-app
+         * side, and this notification covers being told about it without having to be looking at
+         * the app right when it happens. A manual ↺ tap still gets the normal dialog instead, no
+         * notification of its own needed there since the owner is already looking at the app. */
+        fun postNotFoundNotification(context: Context, message: String) {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU &&
+                ActivityCompat.checkSelfPermission(context, Manifest.permission.POST_NOTIFICATIONS) !=
+                    PackageManager.PERMISSION_GRANTED
+            ) {
+                return
+            }
+            val reopenIntent = Intent(context, MainActivity::class.java).apply {
+                flags = Intent.FLAG_ACTIVITY_NEW_TASK
+            }
+            val pendingIntentFlags = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+                PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+            } else {
+                PendingIntent.FLAG_UPDATE_CURRENT
+            }
+            val contentIntent = PendingIntent.getActivity(context, 0, reopenIntent, pendingIntentFlags)
+            val notification = NotificationCompat.Builder(context, CHANNEL_ID)
+                .setContentTitle("Logboek synchroniseren")
+                .setContentText(message)
+                .setSmallIcon(android.R.drawable.stat_notify_sync)
+                .setAutoCancel(true)
+                .setContentIntent(contentIntent)
+                .build()
+            NotificationManagerCompat.from(context).notify(NOTIFICATION_ID, notification)
+        }
+
         /** Replaces the ongoing sync notification with a final, dismissible one once a run
          * finishes successfully -- found in practice, asked for explicitly: stopService() alone
          * (MainActivity.runSync()'s own finally) just makes the notification disappear the

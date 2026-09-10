@@ -332,6 +332,15 @@ class MainActivity : AppCompatActivity() {
                 statusView.text = "W2K-2 niet gevonden -- bestaande gegevens getoond. Tik ↺ om " +
                     "opnieuw te proberen."
                 SyncState.lastStatusText = statusView.text.toString()
+                handleLogLine("[info] Hotspot niet aan (cheap pre-check) -- automatische sync overgeslagen.")
+                // A real Android notification too, not just the in-app log/status (asked for
+                // explicitly) -- this can fire well before the owner ever looks at the app again
+                // (e.g. the very first check after a fresh launch), so it's the only way to learn
+                // about it without watching the screen right at this moment.
+                SyncNotificationService.postNotFoundNotification(
+                    this,
+                    "W2K-2 niet gevonden. Tik om het logboek met bestaande gegevens te bekijken.",
+                )
             }
         } else if (attemptsLeft > 0) {
             android.os.Handler(mainLooper).postDelayed(
@@ -404,9 +413,14 @@ class MainActivity : AppCompatActivity() {
                     // No popup for the auto-started attempt specifically (asked for explicitly) --
                     // "W2K-2 not reachable yet" is the expected, common case right after opening
                     // the app away from the boat, not something worth a modal interruption; the
-                    // plain status text plus the log line above is enough. A manual ↺ tap still
-                    // gets the dialog, since that's a deliberate attempt being actively waited on.
-                    if (!isAutoStart) {
+                    // plain status text plus the log line above is enough, plus a real Android
+                    // notification (asked for explicitly, so it's still visible when not watching
+                    // the app right at this moment) in place of the ongoing sync one this replaces.
+                    // A manual ↺ tap still gets the dialog instead, no separate notification of
+                    // its own needed there since the owner is already looking at the app.
+                    if (isAutoStart) {
+                        SyncNotificationService.postNotFoundNotification(this, message)
+                    } else {
                         showOfflineOrCloseDialog(message)
                     }
                     SyncState.inProgress = false
@@ -853,6 +867,30 @@ class MainActivity : AppCompatActivity() {
             statusView.text = "Synchronisatie gestopt. Volgende keer wordt verdergegaan waar het gebleven was."
             SyncState.lastStatusText = statusView.text.toString()
         } else {
+            // Same "no popup for the auto-started attempt" carve-out as the earlier "hotspot
+            // staat uit" case (see runSync()) -- "W2K-2 not found on this subnet" is the other
+            // half of that same expected, common not-at-the-boat outcome, so it gets the same
+            // calm treatment (plain status line, existing logbook shown if there is one, a log
+            // line, a real notification in place of a popup) instead of the loud "Fout: ..."
+            // banner + dialog; any other, genuinely unexpected error (a decode crash, HTTP 401,
+            // ...) still gets the normal treatment below even when auto-started, since that's
+            // worth surfacing loudly regardless of how the run was started.
+            val isNotFoundError = result.error?.startsWith("No W2K-2 found") == true
+            if (isAutoStart && isNotFoundError) {
+                statusView.text = "W2K-2 niet gevonden -- bestaande gegevens getoond. Tik ↺ om " +
+                    "opnieuw te proberen."
+                SyncState.lastStatusText = statusView.text.toString()
+                val existing = File(filesDir, "logbook.html")
+                if (existing.exists()) {
+                    loadLogbookIntoWebView(existing.absolutePath)
+                }
+                handleLogLine("[info] ${result.error}")
+                SyncNotificationService.postNotFoundNotification(
+                    this,
+                    "W2K-2 niet gevonden. Tik om het logboek met bestaande gegevens te bekijken.",
+                )
+                return
+            }
             // Covers every non-cancelled failure, including the download never reaching a usable
             // state at all (e.g. the W2K-2/host becoming unreachable partway through) -- Python's
             // own android_entry.py never calls run_pipeline() in that case (see
@@ -861,15 +899,7 @@ class MainActivity : AppCompatActivity() {
             // explicitly).
             statusView.text = "Fout: ${result.error ?: "onbekende fout"}"
             SyncState.lastStatusText = statusView.text.toString()
-            // Same "no popup for the auto-started attempt" carve-out as the earlier "hotspot
-            // staat uit" case (see runSync()) -- "W2K-2 not found on this subnet" is the other
-            // half of that same expected, common not-at-the-boat outcome, so it gets the same
-            // treatment; any other, genuinely unexpected error (a decode crash, HTTP 401, ...)
-            // still gets the dialog even when auto-started, since that's worth surfacing.
-            val isNotFoundError = result.error?.startsWith("No W2K-2 found") == true
-            if (!(isAutoStart && isNotFoundError)) {
-                showOfflineOrCloseDialog("Fout: ${result.error ?: "onbekende fout"}")
-            }
+            showOfflineOrCloseDialog("Fout: ${result.error ?: "onbekende fout"}")
         }
     }
 
