@@ -719,14 +719,6 @@ class MainActivity : AppCompatActivity() {
         target.runOnUiThread { target.block() }
     }
 
-    /** Appends [suffix] to the running status text (see uploadIfConfigured()'s own multi-step
-     * "Uploaden... gelukt."-style progress) -- keeps SyncState.lastStatusText and whichever
-     * Activity is currently active in sync the same way the other status-setting call sites do. */
-    private fun appendStatus(suffix: String) {
-        SyncState.lastStatusText = (SyncState.lastStatusText ?: "") + suffix
-        withActiveActivity { statusView.append(suffix) }
-    }
-
     /** Shared between syncFromW2k2()'s and buildFromLocalFiles()'s own SyncController.onLogLine()
      * -- found in practice: the offline-build path (see runOfflineBuild()) had no log-line
      * handling of its own at all, so a real (not cache-hit) decode there left the screen stuck on
@@ -1187,7 +1179,12 @@ class MainActivity : AppCompatActivity() {
             return false
         }
         val statusText = if (useRest) "Uploaden naar ayuus.com (via plugin)..." else "Uploaden naar ayuus.com (via SFTP)..."
-        appendStatus("\n$statusText")
+        // Log + the OS notification below cover this now, not the in-app statusView banner --
+        // asked for explicitly: statusView already shows this run's own "Klaar: ..." result by
+        // the time this runs (see showSyncResult(), called just before this in runSync()'s own
+        // Thread), and overwriting that with "Uploaden..." (then " gelukt."/" mislukt: ...") read
+        // as its own separate banner rather than something that belonged in the log.
+        handleLogLine("[info] $statusText")
         // Also pushed to the OS notification itself, not just the in-app statusView -- asked for
         // explicitly: SyncState.uploading below (see its own doc comment) means closing the app
         // mid-upload no longer interrupts it, so the notification is now the only place this
@@ -1218,13 +1215,10 @@ class MainActivity : AppCompatActivity() {
                         settingsStore.sftpRemotePath,
                 )
             }
-            appendStatus(" gelukt.")
         } catch (e: RestUploadError) {
-            appendStatus(" mislukt: ${e.message}")
             handleLogLine("[error] upload via plugin failed: ${e.message}")
             return false
         } catch (e: SftpUploadError) {
-            appendStatus(" mislukt: ${e.message}")
             handleLogLine("[error] upload via SFTP failed: ${e.message}")
             return false
         } finally {
