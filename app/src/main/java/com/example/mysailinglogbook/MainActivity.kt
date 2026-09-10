@@ -5,6 +5,7 @@ import android.app.ForegroundServiceStartNotAllowedException
 import android.app.NotificationManager
 import android.content.Intent
 import android.content.pm.PackageManager
+import android.content.res.ColorStateList
 import android.graphics.Typeface
 import android.os.Build
 import android.os.Bundle
@@ -115,16 +116,25 @@ class MainActivity : AppCompatActivity() {
         // selector, requesting *text* presentation instead) render as plain glyphs with no badge.
         // Tapping this while a sync (or offline build) is already running cancels it instead of
         // starting a new one -- see cancelSyncStayInApp()'s own doc comment for why.
-        syncButton = iconButton("↺", "Synchroniseren") {
+        syncButton = iconButton("Synchroniseren", emoji = "↺", emojiSize = 30f, emojiBold = true) {
             if (SyncState.inProgress) cancelSyncStayInApp() else runSync()
         } // ↺
-        publishButton = iconButton("☁️", "Publiceren naar ayuus.com") { runPublish() } // ☁️
+        // Material's own "upload" icon (ic_upload_24), not the ☁️ emoji it replaced -- asked for
+        // explicitly, found in practice: a plain cloud alone didn't read as obviously "publish"
+        // as a real, recognized icon does.
+        publishButton = iconButton("Publiceren naar ayuus.com", iconRes = R.drawable.ic_upload_24) {
+            runPublish()
+        }
         // Loads whatever logbook.html is already on the phone into the WebView, without syncing
         // or publishing anything -- asked for explicitly, for when the owner just wants to check
         // the already-built logbook (e.g. after switching "Automatisch publiceren na bouwen" off
-        // in Instellingen) without that also sending it to ayuus.com.
-        val viewLocalButton = iconButton("📖", "Logboek lokaal bekijken (niet publiceren)") { viewLocalLogbook() } // 📖
-        val settingsButton = iconButton("⚙", "Instellingen") {
+        // in Instellingen) without that also sending it to ayuus.com. Material's "article" icon
+        // (ic_article_24), not the 📖 emoji it replaced -- asked for explicitly, found in
+        // practice: an open book read as too old-fashioned.
+        val viewLocalButton = iconButton("Logboek lokaal bekijken (niet publiceren)", iconRes = R.drawable.ic_article_24) {
+            viewLocalLogbook()
+        }
+        val settingsButton = iconButton("Instellingen", emoji = "⚙") {
             startActivity(Intent(this@MainActivity, SettingsActivity::class.java))
         } // ⚙
         // No standalone toolbar close button (removed -- asked for explicitly, found in
@@ -1353,25 +1363,47 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
-    /** A Button whose label is a single emoji, styled to read as a toolbar icon (larger glyph,
-     * tight padding, no background) rather than a normal text button -- see the buttonRow comment
-     * in onCreate() for why this is emoji rather than a drawable/vector asset. tooltip shows on a
-     * long-press (standard Android behavior for View.setTooltipText(), asked for explicitly:
-     * found in practice, a plain emoji alone -- ☁️ especially -- doesn't read as obviously as
-     * "publish" the way a real, recognized Material icon would). */
-    private fun iconButton(emoji: String, tooltip: String, onClick: () -> Unit): Button {
+    /** A Button that's just a toolbar icon (tight padding, no background) -- either a single
+     * emoji glyph (still used for ↺/⚙, which never had a legibility complaint), or a real
+     * Material vector icon (iconRes) shown as a compound "drawable" with no text, tinted to
+     * match the button's own default text color so it follows the app's DayNight theme the same
+     * way the emoji glyphs already did (found in practice: ☁️ alone for "publish" and 📖 for
+     * "view the logbook" both read as unclear/too old-fashioned respectively -- asked for
+     * explicitly to replace with recognizable Material icons instead: ic_upload_24, ic_article_24).
+     * tooltip shows on a long-press (standard Android behavior for View.setTooltipText(), asked
+     * for explicitly, covers both styles the same way). */
+    private fun iconButton(
+        tooltip: String,
+        emoji: String? = null,
+        iconRes: Int? = null,
+        emojiSize: Float = 26f,
+        emojiBold: Boolean = false,
+        onClick: () -> Unit,
+    ): Button {
         val size = (16 * resources.displayMetrics.density).toInt()
         // Borderless + no minimum size: a plain Button here still carries the default Material
         // button chrome (background box, shadow/elevation, a fairly large minimum touch target)
-        // even with just an emoji as its label, which reads as a boxed button rather than a
+        // even with just an icon as its content, which reads as a boxed button rather than a
         // standalone icon (found in practice, asked for explicitly). A borderless circular ripple
         // background (the same one Android's own icon buttons use) plus dropping the minimum
-        // width/height gets the plain-icon look without needing a drawable/vector asset of its own.
+        // width/height gets the plain-icon look without needing a drawable/vector asset for the
+        // emoji case, and without the default Button chrome for the vector-icon case either.
         val backgroundValue = TypedValue()
         theme.resolveAttribute(android.R.attr.selectableItemBackgroundBorderless, backgroundValue, true)
         return Button(this).apply {
-            text = emoji
-            textSize = 20f
+            if (iconRes != null) {
+                setCompoundDrawablesWithIntrinsicBounds(iconRes, 0, 0, 0)
+                compoundDrawableTintList = ColorStateList.valueOf(currentTextColor)
+            } else {
+                text = emoji
+                // Bumped up from 20f (asked for explicitly, found in practice: next to the real
+                // 24dp Material icons above, the plain-text emoji glyphs read noticeably smaller
+                // even at the same nominal size) -- brings ↺/⚙ closer to the same visual weight.
+                // syncButton overrides emojiSize/emojiBold further still (asked for explicitly:
+                // ↺ alone still read too small/thin after this general bump).
+                textSize = emojiSize
+                if (emojiBold) setTypeface(typeface, android.graphics.Typeface.BOLD)
+            }
             setPadding(size, size / 2, size, size / 2)
             setBackgroundResource(backgroundValue.resourceId)
             minWidth = 0
