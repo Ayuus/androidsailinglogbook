@@ -68,13 +68,12 @@ object SyncState {
     /** The sync notification's own last content text -- kept separately from lastStatusText
      * above, since they aren't always the same string: the notification gets its own dedicated
      * "X/Y" progress text during decode/build (see MainActivity.handleLogLine()), while
-     * statusView itself stays on whatever static phase message it started that phase with. Found
-     * in practice, a real bug: restoring the notification from lastStatusText (or worse, from a
-     * freshly (re)created instance's own possibly-stale statusView.text) pushed the wrong text
-     * into it -- e.g. "Logboek opbouwen met bestaande gegevens..." (correct at the very start of
-     * an offline build, but never updated again) showing up well into the decode/build phase,
-     * where the notification itself had already moved on to real "X/Y" progress that this
-     * variable didn't know about. */
+     * lastStatusText itself stays on whatever static phase message it started that phase with.
+     * Found in practice, a real bug: restoring the notification from lastStatusText pushed the
+     * wrong text into it -- e.g. "Logboek opbouwen met bestaande gegevens..." (correct at the
+     * very start of an offline build, but never updated again) showing up well into the decode/
+     * build phase, where the notification itself had already moved on to real "X/Y" progress that
+     * this variable didn't know about. */
     @Volatile
     var lastNotificationText: String? = null
 
