@@ -308,9 +308,12 @@ class MainActivity : AppCompatActivity() {
             // for explicitly: always trying (and usually failing, away from the boat) on every
             // single app launch used to mean a visible "Hotspot controleren..."/dialog cycle each
             // time, for no benefit when there was never any real chance of finding it. A real full
-            // sync (see runSync()) still does its own, more thorough discover_w2k2() scan and
-            // shows the normal "niet gevonden" dialog when the ↺ button is tapped explicitly --
-            // this only skips the automatic, on-launch attempt, not manual ones.
+            // sync (see runSync()) still does its own, more thorough discover_w2k2() scan, which
+            // can still come back "not found" (the hotspot's on, but the W2K-2 itself never
+            // actually joined it) -- isAutoStart=true means that specific outcome (and this cheap
+            // check's own, right below) stays a quiet status line instead of a popup for the
+            // automatic, on-launch attempt (asked for explicitly); a manual ↺ tap still gets the
+            // normal dialog either way, since that's a deliberate attempt being actively waited on.
             if (HotspotDetector.detectSubnetPrefix() != null) {
                 // No longer minimized automatically after starting (tried this -- see git history
                 // for both a fixed-delay and an event-based version) -- asked for explicitly: the
@@ -320,7 +323,7 @@ class MainActivity : AppCompatActivity() {
                 // on-screen appearance by several seconds, especially right after a fresh
                 // install), that can't be guaranteed -- so per the fallback instruction, it just
                 // stays open instead of guessing at a delay again.
-                runSync()
+                runSync(isAutoStart = true)
             } else {
                 val existing = File(filesDir, "logbook.html")
                 if (existing.exists()) {
@@ -339,7 +342,7 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
-    private fun runSync() {
+    private fun runSync(isAutoStart: Boolean = false) {
         if (SyncState.inProgress) return
         if (!settingsStore.isW2k2ConfigComplete) {
             statusView.text = "Vul eerst de W2K-2 gebruikersnaam en het wachtwoord in via Instellingen."
@@ -387,11 +390,25 @@ class MainActivity : AppCompatActivity() {
                 val message = "Hotspot staat uit (of de W2K-2 is er niet mee verbonden). Zet 'm aan om te " +
                     "synchroniseren."
                 SyncState.lastStatusText = message
+                // This specific check is pure Kotlin (HotspotDetector, no Python/Chaquopy call
+                // involved at all), unlike the "No W2K-2 found on <subnet>" case a few lines
+                // further down in this same Thread -- that one already gets a log line for free,
+                // from discover_w2k2()'s own log() calls in Python. This one didn't have an
+                // equivalent until now, so it's added explicitly here to match.
+                handleLogLine("[info] $message")
                 withActiveActivity {
+                    statusView.text = message
                     stopService(Intent(this, SyncNotificationService::class.java))
                     SyncState.notificationForegrounded = false
                     SyncState.notificationStartFailed = false
-                    showOfflineOrCloseDialog(message)
+                    // No popup for the auto-started attempt specifically (asked for explicitly) --
+                    // "W2K-2 not reachable yet" is the expected, common case right after opening
+                    // the app away from the boat, not something worth a modal interruption; the
+                    // plain status text plus the log line above is enough. A manual ↺ tap still
+                    // gets the dialog, since that's a deliberate attempt being actively waited on.
+                    if (!isAutoStart) {
+                        showOfflineOrCloseDialog(message)
+                    }
                     SyncState.inProgress = false
                     syncButton.isEnabled = true
                     publishButton.isEnabled = true
@@ -438,7 +455,7 @@ class MainActivity : AppCompatActivity() {
                     }
                 }
                 syncSucceeded = result.ok
-                withActiveActivity { showSyncResult(result) }
+                withActiveActivity { showSyncResult(result, isAutoStart) }
                 // After showing the logbook, not before -- an upload problem (misconfigured
                 // credentials, server unreachable) shouldn't hide the fact that the download and
                 // decode themselves already succeeded. Still on this same background Thread, not
@@ -810,7 +827,7 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
-    private fun showSyncResult(result: SyncResult) {
+    private fun showSyncResult(result: SyncResult, isAutoStart: Boolean = false) {
         if (result.ok && result.htmlPath != null) {
             // tripCount is null specifically for runSync()'s own "result.ok came back false with
             // no error text, but logbook.html's mtime proves it actually succeeded" recovery --
@@ -844,7 +861,15 @@ class MainActivity : AppCompatActivity() {
             // explicitly).
             statusView.text = "Fout: ${result.error ?: "onbekende fout"}"
             SyncState.lastStatusText = statusView.text.toString()
-            showOfflineOrCloseDialog("Fout: ${result.error ?: "onbekende fout"}")
+            // Same "no popup for the auto-started attempt" carve-out as the earlier "hotspot
+            // staat uit" case (see runSync()) -- "W2K-2 not found on this subnet" is the other
+            // half of that same expected, common not-at-the-boat outcome, so it gets the same
+            // treatment; any other, genuinely unexpected error (a decode crash, HTTP 401, ...)
+            // still gets the dialog even when auto-started, since that's worth surfacing.
+            val isNotFoundError = result.error?.startsWith("No W2K-2 found") == true
+            if (!(isAutoStart && isNotFoundError)) {
+                showOfflineOrCloseDialog("Fout: ${result.error ?: "onbekende fout"}")
+            }
         }
     }
 
@@ -1131,7 +1156,24 @@ class MainActivity : AppCompatActivity() {
             handleLogLine("[skip] Upload not configured")
             return false
         }
-        appendStatus(if (useRest) "\nUploaden naar ayuus.com (via plugin)..." else "\nUploaden naar ayuus.com (via SFTP)...")
+        val statusText = if (useRest) "Uploaden naar ayuus.com (via plugin)..." else "Uploaden naar ayuus.com (via SFTP)..."
+        appendStatus("\n$statusText")
+        // Also pushed to the OS notification itself, not just the in-app statusView -- asked for
+        // explicitly: SyncState.uploading below (see its own doc comment) means closing the app
+        // mid-upload no longer interrupts it, so the notification is now the only place this
+        // phase is visible at all for as long as the owner's actually looking at it instead of
+        // the app. Without this it kept showing whatever the last download/decode-phase text
+        // happened to be, well past the point that was still true.
+        startSyncNotification(
+            Intent(this, SyncNotificationService::class.java).putExtra(SyncNotificationService.EXTRA_STATUS_TEXT, statusText),
+        )
+        // Sets SyncState.uploading for SyncNotificationService.onTaskRemoved() -- unlike a
+        // download (resumes cleanly next run over HTTP Range, see w2k2_download.py) or a decode/
+        // build (re-runs from wherever it was, backed by the sample cache), a publish isn't
+        // itself safely resumable mid-request, and it's comparatively fast anyway (asked for
+        // explicitly: closing the app should be free to interrupt everything else, just not
+        // this). Always reset in finally, including on the early-return failure paths below.
+        SyncState.uploading = true
         try {
             if (useRest) {
                 RestUploader.uploadLogbook(
@@ -1155,6 +1197,8 @@ class MainActivity : AppCompatActivity() {
             appendStatus(" mislukt: ${e.message}")
             handleLogLine("[error] upload via SFTP failed: ${e.message}")
             return false
+        } finally {
+            SyncState.uploading = false
         }
         return true
     }

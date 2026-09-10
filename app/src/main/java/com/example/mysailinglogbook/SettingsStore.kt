@@ -65,11 +65,12 @@ class SettingsStore(context: Context) {
     // /logbook route, and upload.py's own upload_via_rest() on the desktop side, which this calls
     // into over Chaquopy rather than reimplementing HTTP + Basic Auth here), so publishing needs
     // no SSH key/password on this device at all -- just a WordPress Application Password for an
-    // account in the logboek_editor role. URL defaults to the real production value (not secret,
-    // same reasoning as DEFAULT_SFTP_HOST/DEFAULT_SFTP_REMOTE_PATH below); user/password are
-    // never defaulted.
+    // account in the logboek_editor role. Never defaulted, unlike DEFAULT_SFTP_HOST/
+    // DEFAULT_SFTP_REMOTE_PATH below -- found in practice: a brand new app install (a fresh
+    // applicationId, see build.gradle.kts) still showed ayuus.com here despite nothing ever being
+    // entered on that install, surprising enough to ask for it to stay blank until typed in.
     var restUploadUrl: String
-        get() = prefs.getString(KEY_REST_UPLOAD_URL, DEFAULT_REST_UPLOAD_URL) ?: DEFAULT_REST_UPLOAD_URL
+        get() = prefs.getString(KEY_REST_UPLOAD_URL, "") ?: ""
         set(value) = prefs.edit().putString(KEY_REST_UPLOAD_URL, value).apply()
 
     var restUploadUser: String
@@ -119,7 +120,6 @@ class SettingsStore(context: Context) {
         const val DEFAULT_SFTP_HOST = "ayuusc.ssh.transip.me"
         const val DEFAULT_SFTP_PORT = 22
         const val DEFAULT_SFTP_REMOTE_PATH = "private/little_endian/logbook.html"
-        const val DEFAULT_REST_UPLOAD_URL = "https://ayuus.com/wp-json/nmea2log/v1/logbook"
         // Same default as build_arg_parser()'s own --min-stop-minutes (see cli.py).
         const val DEFAULT_MIN_STOP_MINUTES = 10.0f
         private const val KEY_W2K2_USER = "w2k2_user"

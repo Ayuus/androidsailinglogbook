@@ -14,6 +14,15 @@ object SyncState {
     @Volatile
     var cancelled = false
 
+    /** True only while MainActivity.uploadIfConfigured() is actually running (the REST/SFTP
+     * publish step). Lets SyncNotificationService.onTaskRemoved() tell "safe to interrupt" --
+     * discovery, download (resumes cleanly next run over HTTP Range, see w2k2_download.py), or
+     * decode/build (re-runs from wherever it was, backed by the sample cache) -- apart from "let
+     * it finish": a publish already underway isn't itself safely resumable mid-request the same
+     * way, and it's comparatively fast anyway (asked for explicitly). */
+    @Volatile
+    var uploading = false
+
     /** Whichever MainActivity instance is currently resumed and visible, or null when none is
      * (backgrounded, or briefly between an old instance pausing and a new one resuming). Set in
      * onResume(), cleared in onPause() -- see both there.

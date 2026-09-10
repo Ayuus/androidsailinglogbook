@@ -104,19 +104,35 @@ class SyncNotificationService : Service() {
     }
 
     /** Fires specifically when the app's task is swept away from Recents (a swipe, or the system
-     * reclaiming it) -- unlike closeAppAndCancelSync() (the ✕ button in MainActivity), nothing
-     * calls this deliberately, so it can't cancel a sync in progress the same way that does (its
-     * whole point is to keep a real sync running across exactly this, per
-     * android:stopWithTask="false" -- see the class doc above). Only relevant when nothing is
-     * actually running: mirrors the ✕ button's own "tap to reopen" notification (asked for
-     * explicitly, for consistency between the two ways of leaving the app) so swiping away isn't a
-     * dead end either. A sync still in progress already has its own ongoing notification serving
-     * that same purpose -- left untouched here. */
+     * reclaiming it). Three cases (asked for explicitly to distinguish the second and third,
+     * previously both just left running to completion regardless):
+     *  - Nothing running at all: mirrors the ✕ button's own "tap to reopen" notification, so
+     *    swiping away isn't a dead end either.
+     *  - Something running, but not currently uploading (discovery, download, decode/build):
+     *    safe to interrupt right here -- a download resumes cleanly next run over HTTP Range
+     *    (see w2k2_download.py), and decode/build just re-runs from wherever it was, backed by
+     *    the sample cache -- so there's nothing to gain by continuing in the background once the
+     *    owner has already left. postInterruptedNotification() below stands in for the
+     *    "Voltooid" completion notification a run that got to finish would otherwise end with.
+     *  - Currently uploading (SyncState.uploading, see its own doc comment): left running,
+     *    same as ever -- not itself safely resumable mid-request the same way, and comparatively
+     *    fast anyway. Finishes and stops itself via runSync()'s/runPublish()'s own finally block,
+     *    same as a run that was never interrupted at all. */
     override fun onTaskRemoved(rootIntent: Intent?) {
         super.onTaskRemoved(rootIntent)
         if (!SyncState.inProgress) {
             postReopenNotification(this)
             stopSelf()
+        } else if (!SyncState.uploading) {
+            SyncState.cancelled = true
+            SyncState.notificationForegrounded = false
+            SyncState.notificationStartFailed = false
+            // stopSelf() first, same ordering as postCompletionNotification()'s own call sites --
+            // it tears down the foreground notification under NOTIFICATION_ID, so the follow-up
+            // notification below (posted under that same id, to replace rather than add to it)
+            // has to come after, not before.
+            stopSelf()
+            postInterruptedNotification(this)
         }
     }
 
@@ -192,6 +208,38 @@ class SyncNotificationService : Service() {
                 .setContentIntent(contentIntent)
                 .build()
             NotificationManagerCompat.from(context).notify(REOPEN_NOTIFICATION_ID, notification)
+        }
+
+        /** Posted by onTaskRemoved() above in place of the ongoing sync notification, when the
+         * app got closed (swipe-away/"Alles sluiten") while something interruptible -- anything
+         * but an upload, see SyncState.uploading -- was still running (asked for explicitly).
+         * Posted under NOTIFICATION_ID, same "replace in place" reasoning as
+         * postCompletionNotification() below -- this stands in for the completion notification a
+         * run that got to finish on its own would otherwise end with. */
+        fun postInterruptedNotification(context: Context) {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU &&
+                ActivityCompat.checkSelfPermission(context, Manifest.permission.POST_NOTIFICATIONS) !=
+                    PackageManager.PERMISSION_GRANTED
+            ) {
+                return
+            }
+            val reopenIntent = Intent(context, MainActivity::class.java).apply {
+                flags = Intent.FLAG_ACTIVITY_NEW_TASK
+            }
+            val pendingIntentFlags = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+                PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+            } else {
+                PendingIntent.FLAG_UPDATE_CURRENT
+            }
+            val contentIntent = PendingIntent.getActivity(context, 0, reopenIntent, pendingIntentFlags)
+            val notification = NotificationCompat.Builder(context, CHANNEL_ID)
+                .setContentTitle("Logboek synchroniseren")
+                .setContentText("Onderbroken door sluiten -- wordt hervat bij de volgende keer.")
+                .setSmallIcon(android.R.drawable.stat_notify_sync)
+                .setAutoCancel(true)
+                .setContentIntent(contentIntent)
+                .build()
+            NotificationManagerCompat.from(context).notify(NOTIFICATION_ID, notification)
         }
 
         /** Replaces the ongoing sync notification with a final, dismissible one once a run

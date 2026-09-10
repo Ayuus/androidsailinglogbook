@@ -2,7 +2,6 @@ package com.example.mysailinglogbook
 
 import android.os.Bundle
 import android.text.InputType
-import android.widget.Button
 import android.widget.EditText
 import android.widget.LinearLayout
 import android.widget.ScrollView
@@ -12,6 +11,7 @@ import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.view.ViewCompat
 import androidx.core.view.WindowInsetsCompat
+import com.google.android.material.button.MaterialButton
 import java.io.File
 
 /**
@@ -118,9 +118,17 @@ class SettingsActivity : AppCompatActivity() {
         // there's nothing further to do.
         fun clearCacheButton(label: String, confirmMessage: String, files: () -> List<File>) {
             layout.addView(
-                Button(this).apply {
+                // Outlined, not the default filled style -- these are secondary/occasional
+                // actions (asked for explicitly to look nicer, and outlined reads as lower-
+                // emphasis than the filled Opslaan button below without needing a whole separate
+                // color). Full width + a real top margin (not just internal padding, which the
+                // plain Button(this) this replaces was using) matches the full-width fields above
+                // instead of a small, left-aligned, edge-touching button.
+                MaterialButton(this, null, com.google.android.material.R.attr.materialButtonOutlinedStyle).apply {
                     text = label
-                    setPadding(0, padding, 0, 0)
+                    layoutParams = LinearLayout.LayoutParams(
+                        LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT,
+                    ).apply { topMargin = padding }
                     setOnClickListener {
                         AlertDialog.Builder(this@SettingsActivity)
                             .setMessage(confirmMessage)
@@ -155,9 +163,14 @@ class SettingsActivity : AppCompatActivity() {
             )
         }
 
-        val saveButton = Button(this).apply {
+        // Default filled MaterialButton style (unlike the outlined cache buttons above) -- the
+        // one clearly primary action on this screen, full width and with real margins on every
+        // side so it reads as a deliberate bar rather than a small button touching the screen edge.
+        val saveButton = MaterialButton(this).apply {
             text = "Opslaan"
-            setPadding(0, padding, 0, 0)
+            layoutParams = LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT,
+            ).apply { setMargins(padding, padding, padding, padding) }
             setOnClickListener {
                 if (userField.text.isBlank() || passwordField.text.isBlank()) {
                     Toast.makeText(
