@@ -126,6 +126,12 @@ class SettingsActivity : AppCompatActivity() {
                 // instead of a small, left-aligned, edge-touching button.
                 MaterialButton(this, null, com.google.android.material.R.attr.materialButtonOutlinedStyle).apply {
                     text = label
+                    // MaterialButton's own default style forces all-caps regardless of the
+                    // theme's android:textAllCaps=false (see themes.xml's own comment on why
+                    // that's set app-wide) -- a style-level attribute wins over a theme-level one
+                    // of the same name, found in practice: these still rendered as "CACHE: DATA"
+                    // despite that theme override, until set explicitly here too.
+                    isAllCaps = false
                     layoutParams = LinearLayout.LayoutParams(
                         LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT,
                     ).apply { topMargin = padding }
@@ -168,6 +174,7 @@ class SettingsActivity : AppCompatActivity() {
         // side so it reads as a deliberate bar rather than a small button touching the screen edge.
         val saveButton = MaterialButton(this).apply {
             text = "Opslaan"
+            isAllCaps = false // see clearCacheButton()'s own comment on this
             layoutParams = LinearLayout.LayoutParams(
                 LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT,
             ).apply { setMargins(padding, padding, padding, padding) }
