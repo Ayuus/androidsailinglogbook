@@ -377,6 +377,7 @@ class MainActivity : AppCompatActivity() {
         SyncState.lastProgressPhase = null
         SyncState.lastProgressCurrent = 0
         SyncState.lastProgressTotal = 0
+        showingLocalLogbook = false
         setLogExpanded(true)
         // Shown immediately, before hotspot detection even starts -- not only once the first
         // "Downloaden: 1/X" progress update arrives (asked for explicitly: hotspot detection and
@@ -521,14 +522,33 @@ class MainActivity : AppCompatActivity() {
      * sync is running (just shows the *previous* build until that one finishes and replaces it
      * via showSyncResult()'s own success branch). */
     private fun viewLocalLogbook() {
+        if (showingLocalLogbook) {
+            // Toggle back to the log (asked for explicitly) -- the logbook itself is already
+            // loaded in the WebView from the tap that showed it, nothing to reload.
+            showingLocalLogbook = false
+            setLogExpanded(true)
+            return
+        }
         val htmlFile = File(filesDir, "logbook.html")
         if (!htmlFile.exists()) {
             handleLogLine("[info] Nog geen logboek om te bekijken -- synchroniseer eerst.")
             return
         }
-        setLogExpanded(false)
+        showingLocalLogbook = true
+        // Fully hides the log rather than leaving setLogExpanded(false)'s own small collapsed
+        // strip (still used as-is after a normal sync/publish completes) -- asked for explicitly,
+        // this view is meant to cover the whole screen, not share it with a log peek.
+        logScroll.layoutParams = LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, 0)
+        webView.layoutParams = LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, 0, 1f)
         loadLogbookIntoWebView(htmlFile.absolutePath)
     }
+
+    // Tracks whether 📖 is currently showing the fully-covering local view above, so a second tap
+    // knows to toggle back to the log instead of just reloading the same file again. Reset to
+    // false wherever a sync/offline-build starts (see runSync()/runOfflineBuild()) -- those
+    // already re-expand the log themselves via setLogExpanded(true), so this only needs to stay
+    // in sync with that, not drive it.
+    private var showingLocalLogbook = false
 
     /** Manual re-publish (the ☁️ icon): re-uploads the *already-built* local logbook.html
      * without running a new sync first -- for when a sync already succeeded but the upload step
@@ -1068,6 +1088,7 @@ class MainActivity : AppCompatActivity() {
         SyncState.lastProgressPhase = null
         SyncState.lastProgressCurrent = 0
         SyncState.lastProgressTotal = 0
+        showingLocalLogbook = false
         setLogExpanded(true)
 
         Thread {
