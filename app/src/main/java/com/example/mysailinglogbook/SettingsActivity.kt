@@ -3,7 +3,6 @@ package com.example.mysailinglogbook
 import android.os.Bundle
 import android.text.InputType
 import android.widget.Button
-import android.widget.CheckBox
 import android.widget.EditText
 import android.widget.LinearLayout
 import android.widget.ScrollView
@@ -50,16 +49,6 @@ class SettingsActivity : AppCompatActivity() {
             return editText
         }
 
-        fun checkbox(label: String, initialValue: Boolean): CheckBox {
-            val box = CheckBox(this).apply {
-                text = label
-                isChecked = initialValue
-                setPadding(0, padding, 0, 0)
-            }
-            layout.addView(box)
-            return box
-        }
-
         fun sectionHeader(text: String) {
             layout.addView(
                 TextView(this).apply {
@@ -84,11 +73,6 @@ class SettingsActivity : AppCompatActivity() {
         ).apply { inputType = InputType.TYPE_CLASS_NUMBER or InputType.TYPE_NUMBER_FLAG_DECIMAL }
 
         sectionHeader("Publiceren naar ayuus.com")
-        val allowMobileDataUploadBox = checkbox(
-            "Upload toestaan via mobiele data (anders alleen via wifi -- gebruik dan de " +
-                "Publiceren-knop zodra je weer wifi hebt)",
-            store.allowMobileDataUpload,
-        )
         // REST is preferred over SFTP below whenever both happen to be filled in (see
         // MainActivity.uploadIfConfigured()) -- needs no SSH key/password on this device at all,
         // just a WordPress Application Password (Users > Profile > Application Passwords on the
@@ -190,7 +174,6 @@ class SettingsActivity : AppCompatActivity() {
                 store.callSign = callSignField.text.toString().trim()
                 store.minStopMinutes = minStopMinutesField.text.toString().toDoubleOrNull()
                     ?: SettingsStore.DEFAULT_MIN_STOP_MINUTES.toDouble()
-                store.allowMobileDataUpload = allowMobileDataUploadBox.isChecked
                 store.restUploadUrl = restUploadUrlField.text.toString().trim()
                 store.restUploadUser = restUploadUserField.text.toString().trim()
                 store.restUploadPassword = restUploadPasswordField.text.toString()

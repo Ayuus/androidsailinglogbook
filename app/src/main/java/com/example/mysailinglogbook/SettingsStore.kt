@@ -60,15 +60,6 @@ class SettingsStore(context: Context) {
         get() = prefs.getFloat(KEY_MIN_STOP_MINUTES, DEFAULT_MIN_STOP_MINUTES).toDouble()
         set(value) = prefs.edit().putFloat(KEY_MIN_STOP_MINUTES, value.toFloat()).apply()
 
-    // Off by default -- asked for explicitly: the real workflow is to download while connected to
-    // the W2K-2's own hotspot, then switch to a real internet wifi to publish (see the existing
-    // "Publiceren" re-upload button, for exactly the case an automatic upload right after download
-    // can't reach the internet yet). Turning this on lets a sync's own auto-publish step go ahead
-    // over mobile data too instead of silently skipping it until the next wifi connection.
-    var allowMobileDataUpload: Boolean
-        get() = prefs.getBoolean(KEY_ALLOW_MOBILE_DATA_UPLOAD, false)
-        set(value) = prefs.edit().putBoolean(KEY_ALLOW_MOBILE_DATA_UPLOAD, value).apply()
-
     // Preferred over SFTP below when configured (see MainActivity.uploadIfConfigured()) -- posts
     // straight to the WordPress REST endpoint (see wordpress-plugin/nmea2log-remarks.php's
     // /logbook route, and upload.py's own upload_via_rest() on the desktop side, which this calls
@@ -137,7 +128,6 @@ class SettingsStore(context: Context) {
         private const val KEY_MMSI = "mmsi"
         private const val KEY_CALL_SIGN = "call_sign"
         private const val KEY_MIN_STOP_MINUTES = "min_stop_minutes"
-        private const val KEY_ALLOW_MOBILE_DATA_UPLOAD = "allow_mobile_data_upload"
         private const val KEY_REST_UPLOAD_URL = "rest_upload_url"
         private const val KEY_REST_UPLOAD_USER = "rest_upload_user"
         private const val KEY_REST_UPLOAD_PASSWORD = "rest_upload_password"
