@@ -329,18 +329,19 @@ class MainActivity : AppCompatActivity() {
                 if (existing.exists()) {
                     loadLogbookIntoWebView(existing.absolutePath)
                 }
-                statusView.text = "W2K-2 niet gevonden -- bestaande gegevens getoond. Tik ↺ om " +
-                    "opnieuw te proberen."
-                SyncState.lastStatusText = statusView.text.toString()
+                // No separate statusView banner for this (asked for explicitly, found in
+                // practice: it ended up saying much the same thing as the log line right below
+                // it, just as its own second notice) -- the log line and the Android notification
+                // below cover it.
                 handleLogLine("[info] Hotspot niet aan (cheap pre-check) -- automatische sync overgeslagen.")
-                // A real Android notification too, not just the in-app log/status (asked for
-                // explicitly) -- this can fire well before the owner ever looks at the app again
-                // (e.g. the very first check after a fresh launch), so it's the only way to learn
-                // about it without watching the screen right at this moment.
-                SyncNotificationService.postNotFoundNotification(
-                    this,
-                    "W2K-2 niet gevonden. Tik om het logboek met bestaande gegevens te bekijken.",
-                )
+                // A real Android notification too, not just the in-app log (asked for explicitly)
+                // -- this can fire well before the owner ever looks at the app again (e.g. the
+                // very first check after a fresh launch), so it's the only way to learn about it
+                // without watching the screen right at this moment. Plain statement, not "tik
+                // om..." -- tapping it does exactly what tapping any notification does (opens the
+                // app), nothing beyond that specific to this one (found in practice: worded like
+                // there was a dedicated action behind the tap, there wasn't).
+                SyncNotificationService.postNotFoundNotification(this, "W2K-2 niet gevonden.")
             }
         } else if (attemptsLeft > 0) {
             android.os.Handler(mainLooper).postDelayed(
@@ -406,21 +407,21 @@ class MainActivity : AppCompatActivity() {
                 // equivalent until now, so it's added explicitly here to match.
                 handleLogLine("[info] $message")
                 withActiveActivity {
-                    statusView.text = message
                     stopService(Intent(this, SyncNotificationService::class.java))
                     SyncState.notificationForegrounded = false
                     SyncState.notificationStartFailed = false
-                    // No popup for the auto-started attempt specifically (asked for explicitly) --
-                    // "W2K-2 not reachable yet" is the expected, common case right after opening
-                    // the app away from the boat, not something worth a modal interruption; the
-                    // plain status text plus the log line above is enough, plus a real Android
-                    // notification (asked for explicitly, so it's still visible when not watching
-                    // the app right at this moment) in place of the ongoing sync one this replaces.
-                    // A manual ↺ tap still gets the dialog instead, no separate notification of
-                    // its own needed there since the owner is already looking at the app.
+                    // No popup, and no separate statusView banner either, for the auto-started
+                    // attempt specifically (both asked for explicitly) -- "W2K-2 not reachable
+                    // yet" is the expected, common case right after opening the app away from the
+                    // boat, not something worth a modal interruption or its own on-screen notice;
+                    // the log line above plus a real Android notification (so it's still visible
+                    // when not watching the app right at this moment) in place of the ongoing
+                    // sync one this replaces are enough. A manual ↺ tap still gets both the
+                    // banner and the dialog, since that's a deliberate attempt being watched live.
                     if (isAutoStart) {
                         SyncNotificationService.postNotFoundNotification(this, message)
                     } else {
+                        statusView.text = message
                         showOfflineOrCloseDialog(message)
                     }
                     SyncState.inProgress = false
@@ -859,28 +860,26 @@ class MainActivity : AppCompatActivity() {
             statusView.text = "Synchronisatie gestopt. Volgende keer wordt verdergegaan waar het gebleven was."
             SyncState.lastStatusText = statusView.text.toString()
         } else {
-            // Same "no popup for the auto-started attempt" carve-out as the earlier "hotspot
-            // staat uit" case (see runSync()) -- "W2K-2 not found on this subnet" is the other
-            // half of that same expected, common not-at-the-boat outcome, so it gets the same
-            // calm treatment (plain status line, existing logbook shown if there is one, a log
-            // line, a real notification in place of a popup) instead of the loud "Fout: ..."
-            // banner + dialog; any other, genuinely unexpected error (a decode crash, HTTP 401,
-            // ...) still gets the normal treatment below even when auto-started, since that's
-            // worth surfacing loudly regardless of how the run was started.
+            // Same "no popup, no separate statusView banner, for the auto-started attempt"
+            // carve-out as the earlier "hotspot staat uit" case (see runSync()) -- "W2K-2 not
+            // found on this subnet" is the other half of that same expected, common not-at-the-
+            // boat outcome, so it gets the same calm treatment (existing logbook shown if there
+            // is one, a log line, a real notification in place of a popup) instead of the loud
+            // "Fout: ..." banner + dialog; any other, genuinely unexpected error (a decode crash,
+            // HTTP 401, ...) still gets the normal treatment below even when auto-started, since
+            // that's worth surfacing loudly regardless of how the run was started.
             val isNotFoundError = result.error?.startsWith("No W2K-2 found") == true
             if (isAutoStart && isNotFoundError) {
-                statusView.text = "W2K-2 niet gevonden -- bestaande gegevens getoond. Tik ↺ om " +
-                    "opnieuw te proberen."
-                SyncState.lastStatusText = statusView.text.toString()
                 val existing = File(filesDir, "logbook.html")
                 if (existing.exists()) {
                     loadLogbookIntoWebView(existing.absolutePath)
                 }
                 handleLogLine("[info] ${result.error}")
-                SyncNotificationService.postNotFoundNotification(
-                    this,
-                    "W2K-2 niet gevonden. Tik om het logboek met bestaande gegevens te bekijken.",
-                )
+                // Plain statement, not "tik om..." -- tapping this notification does exactly
+                // what tapping any notification does (opens the app), nothing beyond that
+                // specific to this one (found in practice: worded like there was a dedicated
+                // action behind the tap, there wasn't).
+                SyncNotificationService.postNotFoundNotification(this, "W2K-2 niet gevonden.")
                 return
             }
             // Covers every non-cancelled failure, including the download never reaching a usable
