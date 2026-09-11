@@ -107,7 +107,11 @@ class SyncNotificationService : Service() {
      * reclaiming it). Three cases (asked for explicitly to distinguish the second and third,
      * previously both just left running to completion regardless):
      *  - Nothing running at all: mirrors the ✕ button's own "tap to reopen" notification, so
-     *    swiping away isn't a dead end either.
+     *    swiping away isn't a dead end either. Also cancels NOTIFICATION_ID (asked for explicitly,
+     *    found in practice: a leftover "W2K-2 niet gevonden"/completion notification from before
+     *    the app was closed otherwise just sat there indefinitely, alongside the new "tik om
+     *    opnieuw te openen" one under REOPEN_NOTIFICATION_ID -- closeAppAndCancelSync() already
+     *    does the same cancel for the explicit ✕/back path, this covers swiping away instead).
      *  - Something running, but not currently uploading (discovery, download, decode/build):
      *    safe to interrupt right here -- a download resumes cleanly next run over HTTP Range
      *    (see w2k2_download.py), and decode/build just re-runs from wherever it was, backed by
@@ -125,6 +129,7 @@ class SyncNotificationService : Service() {
     override fun onTaskRemoved(rootIntent: Intent?) {
         super.onTaskRemoved(rootIntent)
         if (!SyncState.inProgress) {
+            NotificationManagerCompat.from(this).cancel(NOTIFICATION_ID)
             postReopenNotification(this)
             stopSelf()
         } else if (!SyncState.uploading) {
@@ -273,8 +278,17 @@ class SyncNotificationService : Service() {
             ) {
                 return
             }
+            // Same action + flags as onStartCommand()'s own openAppIntent above, not a plain
+            // FLAG_ACTIVITY_NEW_TASK launch -- found in practice, asked for explicitly: a plain
+            // launch Intent stacks a brand new MainActivity instance on top even when one is
+            // already alive, which re-runs onCreate() and its own autoStartSyncWithSettingsRetry()
+            // call -- so tapping "W2K-2 niet gevonden" started a fresh sync attempt that had no
+            // better chance of finding the W2K-2 than the one that had just failed. SINGLE_TOP/
+            // CLEAR_TOP instead bring an already-alive instance to the front via onNewIntent()
+            // (a no-op beyond that, see its own doc comment), which just shows the app window.
             val reopenIntent = Intent(context, MainActivity::class.java).apply {
-                flags = Intent.FLAG_ACTIVITY_NEW_TASK
+                action = MainActivity.ACTION_TOGGLE_FROM_NOTIFICATION
+                flags = Intent.FLAG_ACTIVITY_SINGLE_TOP or Intent.FLAG_ACTIVITY_CLEAR_TOP
             }
             val pendingIntentFlags = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
                 PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
