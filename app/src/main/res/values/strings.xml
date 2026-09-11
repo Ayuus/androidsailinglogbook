@@ -74,7 +74,6 @@
     <string name="notif_channel_name">Sync</string>
     <string name="notif_channel_description">Shows when the app is fetching and processing the logbook.</string>
     <string name="notif_app_closing_after_upload">App will close once the upload has finished.</string>
-    <string name="notif_app_closed_reopen">App closed. Tap to reopen.</string>
     <string name="notif_sync_interrupted_by_close">Interrupted by closing -- will resume next time.</string>
     <string name="notif_action_view_live_site">View live site</string>
     <string name="status_sync_already_running_fallback">Sync already running...</string>

@@ -66,7 +66,6 @@
     <string name="notif_channel_name">Synchronisierung</string>
     <string name="notif_channel_description">Wird angezeigt, wenn die App das Bordbuch abruft und verarbeitet.</string>
     <string name="notif_app_closing_after_upload">Die App wird geschlossen, sobald der Upload abgeschlossen ist.</string>
-    <string name="notif_app_closed_reopen">App geschlossen. Tippen, um erneut zu öffnen.</string>
     <string name="notif_sync_interrupted_by_close">Durch Schließen unterbrochen -- wird beim nächsten Mal fortgesetzt.</string>
     <string name="notif_action_view_live_site">Live-Website ansehen</string>
     <string name="status_sync_already_running_fallback">Synchronisierung läuft bereits...</string>

@@ -70,7 +70,6 @@
     <string name="notif_channel_name">Synchronisatie</string>
     <string name="notif_channel_description">Toont wanneer de app bezig is met het ophalen en verwerken van het logboek.</string>
     <string name="notif_app_closing_after_upload">App wordt afgesloten nadat upload voltooid is.</string>
-    <string name="notif_app_closed_reopen">App gesloten. Tik om opnieuw te openen.</string>
     <string name="notif_sync_interrupted_by_close">Onderbroken door sluiten -- wordt hervat bij de volgende keer.</string>
     <string name="notif_action_view_live_site">Bekijk live site</string>
     <string name="status_sync_already_running_fallback">Synchronisatie loopt al...</string>

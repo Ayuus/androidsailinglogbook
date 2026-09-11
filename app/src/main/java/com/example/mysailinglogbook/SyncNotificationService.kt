@@ -106,12 +106,12 @@ class SyncNotificationService : Service() {
     /** Fires specifically when the app's task is swept away from Recents (a swipe, or the system
      * reclaiming it). Three cases (asked for explicitly to distinguish the second and third,
      * previously both just left running to completion regardless):
-     *  - Nothing running at all: mirrors the ✕ button's own "tap to reopen" notification, so
-     *    swiping away isn't a dead end either. Also cancels NOTIFICATION_ID (asked for explicitly,
-     *    found in practice: a leftover "W2K-2 niet gevonden"/completion notification from before
-     *    the app was closed otherwise just sat there indefinitely, alongside the new "tik om
-     *    opnieuw te openen" one under REOPEN_NOTIFICATION_ID -- closeAppAndCancelSync() already
-     *    does the same cancel for the explicit ✕/back path, this covers swiping away instead).
+     *  - Nothing running at all: cancels both notification ids and stops, same as the ✕ button's
+     *    own closeAppAndCancelSync() -- no "tap to reopen" notification either (dropped, asked for
+     *    explicitly: found in practice, a leftover notification after swiping the app away read as
+     *    "still not actually closed", the exact same complaint that already got the ✕ button its
+     *    own no-notification treatment; a leftover "W2K-2 niet gevonden"/completion notification
+     *    from before the app was closed is cleared here too, not just a stale reopen one).
      *  - Something running, but not currently uploading (discovery, download, decode/build):
      *    safe to interrupt right here -- a download resumes cleanly next run over HTTP Range
      *    (see w2k2_download.py), and decode/build just re-runs from wherever it was, backed by
@@ -130,7 +130,7 @@ class SyncNotificationService : Service() {
         super.onTaskRemoved(rootIntent)
         if (!SyncState.inProgress) {
             NotificationManagerCompat.from(this).cancel(NOTIFICATION_ID)
-            postReopenNotification(this)
+            NotificationManagerCompat.from(this).cancel(REOPEN_NOTIFICATION_ID)
             stopSelf()
         } else if (!SyncState.uploading) {
             SyncState.cancelled = true
@@ -201,35 +201,6 @@ class SyncNotificationService : Service() {
         const val EXTRA_STATUS_TEXT = "status_text"
         const val EXTRA_PROGRESS_CURRENT = "progress_current"
         const val EXTRA_PROGRESS_MAX = "progress_max"
-
-        // Shared between the ✕ button (MainActivity.closeAppAndCancelSync()) and swiping the app
-        // away from Recents (onTaskRemoved() above) -- both are "the user left the app", and both
-        // should leave behind the same "tap to reopen" notification rather than a dead end.
-        fun postReopenNotification(context: Context) {
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU &&
-                ActivityCompat.checkSelfPermission(context, Manifest.permission.POST_NOTIFICATIONS) !=
-                    PackageManager.PERMISSION_GRANTED
-            ) {
-                return
-            }
-            val reopenIntent = Intent(context, MainActivity::class.java).apply {
-                flags = Intent.FLAG_ACTIVITY_NEW_TASK
-            }
-            val pendingIntentFlags = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
-                PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
-            } else {
-                PendingIntent.FLAG_UPDATE_CURRENT
-            }
-            val contentIntent = PendingIntent.getActivity(context, 0, reopenIntent, pendingIntentFlags)
-            val notification = NotificationCompat.Builder(context, CHANNEL_ID)
-                .setContentTitle(context.getString(R.string.app_name))
-                .setContentText(context.getString(R.string.notif_app_closed_reopen))
-                .setSmallIcon(android.R.drawable.stat_notify_sync)
-                .setAutoCancel(true)
-                .setContentIntent(contentIntent)
-                .build()
-            NotificationManagerCompat.from(context).notify(REOPEN_NOTIFICATION_ID, notification)
-        }
 
         /** Posted by onTaskRemoved() above in place of the ongoing sync notification, when the
          * app got closed (swipe-away/"Alles sluiten") while something interruptible -- anything
