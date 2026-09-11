@@ -206,7 +206,7 @@ class SyncNotificationService : Service() {
         // OS-level guarantee instead, the same mechanism other apps rely on for exactly this: it
         // survives the app's own process dying in any way at all, since the countdown and the
         // eventual cancel both live in the system server, not in this app's code.
-        private const val STALE_NOTIFICATION_TIMEOUT_MS = 30 * 60 * 1000L
+        private const val STALE_NOTIFICATION_TIMEOUT_MS = 5 * 60 * 1000L
         const val EXTRA_CURRENT = "current"
         const val EXTRA_TOTAL = "total"
         const val EXTRA_FILE_NAME = "file_name"
