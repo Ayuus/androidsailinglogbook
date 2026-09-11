@@ -1,0 +1,107 @@
+<resources>
+    <!-- Toolbar tooltips -->
+    <string name="tooltip_sync">Synchronisieren</string>
+    <string name="tooltip_publish">Auf ayuus.com veröffentlichen</string>
+    <string name="tooltip_view_local">Bordbuch lokal ansehen (nicht veröffentlichen)</string>
+    <string name="tooltip_settings">Einstellungen</string>
+
+    <!-- Startup -->
+    <string name="error_settings_load_failed">Einstellungen konnten nicht geladen werden:\n%1$s\n\nVersuche, die App erneut zu öffnen.</string>
+
+    <!-- Sync flow -->
+    <string name="log_hotspot_precheck_skipped">Hotspot nicht an (schnelle Vorabprüfung) -- automatische Synchronisierung übersprungen.</string>
+    <string name="notif_w2k2_not_found">W2K-2 nicht gefunden.</string>
+    <string name="log_fill_w2k2_credentials">Trage zuerst den W2K-2-Benutzernamen und das Passwort in den Einstellungen ein.</string>
+    <string name="status_checking_hotspot">Hotspot wird geprüft...</string>
+    <string name="status_hotspot_off">Der Hotspot ist aus (oder der W2K-2 ist nicht damit verbunden). Schalte ihn ein, um zu synchronisieren.</string>
+    <string name="status_listing_files">Dateiliste wird abgerufen (Subnetz %1$s0/24)...</string>
+    <string name="log_sync_done_at">Fertig: %1$s</string>
+    <string name="notif_sync_done_at">Fertig %1$s</string>
+    <string name="error_unexpected_sync">Unerwarteter Fehler während der Synchronisierung: %1$s</string>
+    <string name="log_no_logbook_to_view">Noch kein Bordbuch zum Ansehen -- zuerst synchronisieren.</string>
+    <string name="log_fill_publish_settings">Trage zuerst die Veröffentlichungseinstellungen (REST oder SFTP) in den Einstellungen ein.</string>
+    <string name="log_no_logbook_to_publish">Noch kein Bordbuch zum Veröffentlichen -- zuerst synchronisieren.</string>
+    <string name="status_publishing">Wird auf ayuus.com veröffentlicht...</string>
+    <string name="log_ebl_files_location">Die .ebl-Dateien befinden sich in: %1$s</string>
+    <string name="status_downloading">Wird heruntergeladen: %1$d/%2$d (%3$s)</string>
+    <string name="phase_downloading">Herunterladen</string>
+    <string name="error_no_result">Kein Ergebnis erhalten.</string>
+    <string name="notif_connection_lost_retrying">Verbindung verloren, erneuter Versuch...</string>
+    <string name="status_building_logbook">Bordbuch wird erstellt: %1$d/%2$d</string>
+    <string name="phase_decoding">Wird dekodiert</string>
+    <string name="status_building_trips">Fahrten werden erstellt: %1$d/%2$d</string>
+    <string name="phase_building_trips">Fahrten werden erstellt</string>
+    <string name="progress_label_format">%1$s: %2$d/%3$d</string>
+    <string name="status_ready_updated">Fertig (Bordbuch aktualisiert).</string>
+    <string name="status_ready_with_download">Fertig: %1$d Fahrt(en), %2$d Datei(en) heruntergeladen.</string>
+    <string name="status_ready_no_download">Fertig: %1$d Fahrt(en) (vorhandene Daten, nicht erneut heruntergeladen).</string>
+    <string name="status_sync_stopped">Synchronisierung gestoppt. Beim nächsten Mal wird dort fortgesetzt, wo sie aufgehört hat.</string>
+    <string name="error_generic_prefix">Fehler: %1$s</string>
+    <string name="error_unknown">unbekannter Fehler</string>
+    <string name="error_logbook_display_failed">Bordbuch konnte nicht angezeigt werden: %1$s</string>
+    <string name="dialog_build_logbook_button">Bordbuch erstellen...</string>
+    <string name="dialog_close_app_button">App schließen</string>
+    <string name="status_sync_cancelled">Synchronisierung abgebrochen.</string>
+    <string name="status_building_with_existing_data">Bordbuch wird mit vorhandenen Daten erstellt...</string>
+    <string name="error_unexpected">Unerwarteter Fehler: %1$s</string>
+
+    <!-- Publish -->
+    <string name="status_uploading_wordpress">Wird auf ayuus.com hochgeladen (zu WordPress)...</string>
+    <string name="status_uploading_sftp">Wird auf ayuus.com hochgeladen (über SFTP)...</string>
+    <string name="notif_uploading">Wird auf ayuus.com hochgeladen...</string>
+    <string name="log_upload_ok_wordpress">Zu WordPress hochgeladen: %1$s</string>
+    <string name="log_upload_ok_sftp">Über SFTP hochgeladen zu %1$s@%2$s:%3$s</string>
+    <string name="log_upload_failed_wordpress">Hochladen zu WordPress fehlgeschlagen: %1$s</string>
+    <string name="log_upload_failed_sftp">Hochladen über SFTP fehlgeschlagen: %1$s</string>
+    <string name="log_upload_not_configured">Upload nicht konfiguriert</string>
+    <string name="error_sftp_connect_failed">SFTP-Verbindung konnte nicht hergestellt werden: %1$s</string>
+    <string name="error_upload_failed">Hochladen des Bordbuchs fehlgeschlagen: %1$s</string>
+
+    <!-- Notification-start fallback -->
+    <string name="reason_notification_daily_limit">das heutige Benachrichtigungslimit ist erreicht</string>
+    <string name="log_notification_could_not_be_shown">Benachrichtigung konnte nicht angezeigt werden: %1$s</string>
+
+    <!-- Notifications -->
+    <string name="notif_title_sync">Bordbuch synchronisieren</string>
+    <string name="notif_channel_name">Synchronisierung</string>
+    <string name="notif_channel_description">Wird angezeigt, wenn die App das Bordbuch abruft und verarbeitet.</string>
+    <string name="notif_app_closing_after_upload">Die App wird geschlossen, sobald der Upload abgeschlossen ist.</string>
+    <string name="notif_app_closed_reopen">App geschlossen. Tippen, um erneut zu öffnen.</string>
+    <string name="notif_sync_interrupted_by_close">Durch Schließen unterbrochen -- wird beim nächsten Mal fortgesetzt.</string>
+    <string name="notif_action_view_live_site">Live-Website ansehen</string>
+    <string name="status_sync_already_running_fallback">Synchronisierung läuft bereits...</string>
+    <string name="status_downloading_processing_fallback">Wird heruntergeladen und verarbeitet...</string>
+
+    <!-- Settings screen -->
+    <string name="settings_activity_title">Einstellungen</string>
+    <string name="label_w2k2_user">W2K-2-Benutzername</string>
+    <string name="label_w2k2_password">W2K-2-Passwort</string>
+    <string name="label_boat_name">Bootsname</string>
+    <string name="label_mmsi">MMSI</string>
+    <string name="label_call_sign">Rufzeichen</string>
+    <string name="checkbox_auto_sync_on_launch">Beim Start automatisch herunterladen (sonst nur über ↺)</string>
+    <string name="section_trips">Fahrten</string>
+    <string name="label_min_stop_minutes">Mindeststandzeit, um als Hafenbesuch zu zählen (Minuten)</string>
+    <string name="section_publish">Auf ayuus.com veröffentlichen</string>
+    <string name="checkbox_auto_publish_after_build">Nach dem Erstellen automatisch veröffentlichen (sonst nur über ☁️)</string>
+    <string name="label_rest_upload_url">REST-Upload-URL (WordPress-Plugin)</string>
+    <string name="label_rest_upload_user">WordPress-Benutzername</string>
+    <string name="label_rest_upload_password">WordPress-Anwendungspasswort</string>
+    <string name="label_sftp_host">SFTP-Host</string>
+    <string name="label_sftp_port">SFTP-Port</string>
+    <string name="label_sftp_user">SFTP-Benutzername</string>
+    <string name="label_sftp_password">SFTP-Passwort</string>
+    <string name="label_sftp_remote_path">SFTP-Pfad auf dem Server</string>
+    <string name="label_sftp_host_key_fingerprint">SFTP-Hostschlüssel-Fingerabdruck (optional; leer = bei erster Verbindung automatisch vertrauen)</string>
+    <string name="section_cache">Cache</string>
+    <string name="button_clear">Leeren</string>
+    <string name="toast_cache_cleared">Cache geleert</string>
+    <string name="button_cancel">Abbrechen</string>
+    <string name="button_cache_data">Cache: Daten</string>
+    <string name="dialog_clear_data_cache_message">Alle dekodierten und erstellten Fahrtdaten löschen? Die nächste Synchronisierung dekodiert und verarbeitet dann alle .ebl-Dateien erneut von Anfang an (dauert länger, aber es geht nichts verloren -- die .ebl-Dateien selbst bleiben erhalten).</string>
+    <string name="button_cache_places">Cache: Ortsnamen</string>
+    <string name="dialog_clear_places_cache_message">Alle abgerufenen Ortsnamen, Wetter- und Wellendaten löschen? Die nächste Synchronisierung ruft diese dann erneut ab (kostet zusätzliche mobile Daten).</string>
+    <string name="button_save">Speichern</string>
+    <string name="toast_username_password_required">Benutzername und Passwort sind erforderlich</string>
+    <string name="toast_settings_saved">Einstellungen gespeichert</string>
+</resources>

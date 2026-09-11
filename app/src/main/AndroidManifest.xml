@@ -50,7 +50,7 @@
         <activity
             android:name=".SettingsActivity"
             android:exported="false"
-            android:label="Instellingen" />
+            android:label="@string/settings_activity_title" />
 
         <service
             android:name=".SyncNotificationService"

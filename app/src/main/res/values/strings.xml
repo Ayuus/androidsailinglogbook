@@ -1,3 +1,115 @@
-<resources>
-    <string name="app_name">My Sailing Logbook</string>
+<resources xmlns:tools="http://schemas.android.com/tools">
+    <!-- Deliberately not translated (tools:ignore below silences the resulting lint warning):
+         stays "My Sailing Logbook" in every language, unchanged from before this app had any
+         translations at all, since renaming the launcher icon label wasn't asked for. -->
+    <string name="app_name" tools:ignore="MissingTranslation">My Sailing Logbook</string>
+
+    <!-- Toolbar tooltips -->
+    <string name="tooltip_sync">Sync</string>
+    <string name="tooltip_publish">Publish to ayuus.com</string>
+    <string name="tooltip_view_local">View logbook locally (don\'t publish)</string>
+    <string name="tooltip_settings">Settings</string>
+
+    <!-- Startup -->
+    <string name="error_settings_load_failed">Settings could not be loaded:\n%1$s\n\nTry reopening the app.</string>
+
+    <!-- Sync flow. Log-line strings here are bare messages: the "[info]"/"[ok]"/"[error]"/
+         "[skip]" tags are prepended in code, not baked into the resource, so they stay literal
+         English in every language, matching the untranslated tags log.py's own Python-side log
+         lines always use (see translations.py's module docstring on CSV/GPX staying English). -->
+    <string name="log_hotspot_precheck_skipped">Hotspot not on (cheap pre-check) -- automatic sync skipped.</string>
+    <string name="notif_w2k2_not_found">W2K-2 not found.</string>
+    <string name="log_fill_w2k2_credentials">Fill in the W2K-2 username and password via Settings first.</string>
+    <string name="status_checking_hotspot">Checking hotspot...</string>
+    <string name="status_hotspot_off">Hotspot is off (or the W2K-2 isn\'t connected to it). Turn it on to sync.</string>
+    <string name="status_listing_files">Fetching file list (subnet %1$s0/24)...</string>
+    <string name="log_sync_done_at">Done: %1$s</string>
+    <string name="notif_sync_done_at">Done %1$s</string>
+    <string name="error_unexpected_sync">Unexpected error during sync: %1$s</string>
+    <string name="log_no_logbook_to_view">No logbook to view yet -- sync first.</string>
+    <string name="log_fill_publish_settings">Fill in the publish settings (REST or SFTP) via Settings first.</string>
+    <string name="log_no_logbook_to_publish">No logbook to publish yet -- sync first.</string>
+    <string name="status_publishing">Publishing to ayuus.com...</string>
+    <string name="log_ebl_files_location">The .ebl files are stored in: %1$s</string>
+    <string name="status_downloading">Downloading: %1$d/%2$d (%3$s)</string>
+    <string name="phase_downloading">Downloading</string>
+    <string name="error_no_result">No result received.</string>
+    <string name="notif_connection_lost_retrying">Connection lost, retrying...</string>
+    <string name="status_building_logbook">Building logbook: %1$d/%2$d</string>
+    <string name="phase_decoding">Decoding</string>
+    <string name="status_building_trips">Building trips: %1$d/%2$d</string>
+    <string name="phase_building_trips">Building trips</string>
+    <string name="progress_label_format">%1$s: %2$d/%3$d</string>
+    <string name="status_ready_updated">Ready (logbook updated).</string>
+    <string name="status_ready_with_download">Ready: %1$d trip(s), %2$d file(s) downloaded.</string>
+    <string name="status_ready_no_download">Ready: %1$d trip(s) (existing data, not re-downloaded).</string>
+    <string name="status_sync_stopped">Sync stopped. Next time it will resume where it left off.</string>
+    <string name="error_generic_prefix">Error: %1$s</string>
+    <string name="error_unknown">unknown error</string>
+    <string name="error_logbook_display_failed">logbook could not be displayed: %1$s</string>
+    <string name="dialog_build_logbook_button">Build logbook...</string>
+    <string name="dialog_close_app_button">Close app</string>
+    <string name="status_sync_cancelled">Sync cancelled.</string>
+    <string name="status_building_with_existing_data">Building logbook with existing data...</string>
+    <string name="error_unexpected">Unexpected error: %1$s</string>
+
+    <!-- Publish -->
+    <string name="status_uploading_wordpress">Uploading to ayuus.com (to WordPress)...</string>
+    <string name="status_uploading_sftp">Uploading to ayuus.com (via SFTP)...</string>
+    <string name="notif_uploading">Uploading to ayuus.com...</string>
+    <string name="log_upload_ok_wordpress">Uploaded to WordPress: %1$s</string>
+    <string name="log_upload_ok_sftp">Uploaded via SFTP to %1$s@%2$s:%3$s</string>
+    <string name="log_upload_failed_wordpress">upload to WordPress failed: %1$s</string>
+    <string name="log_upload_failed_sftp">upload via SFTP failed: %1$s</string>
+    <string name="log_upload_not_configured">Upload not configured</string>
+    <string name="error_sftp_connect_failed">Could not establish SFTP connection: %1$s</string>
+    <string name="error_upload_failed">Uploading the logbook failed: %1$s</string>
+
+    <!-- Notification-start fallback -->
+    <string name="reason_notification_daily_limit">today\'s notification limit has been reached</string>
+    <string name="log_notification_could_not_be_shown">notification could not be shown: %1$s</string>
+
+    <!-- Notifications -->
+    <string name="notif_title_sync">Sync logbook</string>
+    <string name="notif_channel_name">Sync</string>
+    <string name="notif_channel_description">Shows when the app is fetching and processing the logbook.</string>
+    <string name="notif_app_closing_after_upload">App will close once the upload has finished.</string>
+    <string name="notif_app_closed_reopen">App closed. Tap to reopen.</string>
+    <string name="notif_sync_interrupted_by_close">Interrupted by closing -- will resume next time.</string>
+    <string name="notif_action_view_live_site">View live site</string>
+    <string name="status_sync_already_running_fallback">Sync already running...</string>
+    <string name="status_downloading_processing_fallback">Downloading and processing...</string>
+
+    <!-- Settings screen -->
+    <string name="settings_activity_title">Settings</string>
+    <string name="label_w2k2_user">W2K-2 username</string>
+    <string name="label_w2k2_password">W2K-2 password</string>
+    <string name="label_boat_name">Boat name</string>
+    <string name="label_mmsi">MMSI</string>
+    <string name="label_call_sign">Call sign</string>
+    <string name="checkbox_auto_sync_on_launch">Automatically download on launch (otherwise only via ↺)</string>
+    <string name="section_trips">Trips</string>
+    <string name="label_min_stop_minutes">Minimum stop duration to count as a port visit (minutes)</string>
+    <string name="section_publish">Publish to ayuus.com</string>
+    <string name="checkbox_auto_publish_after_build">Automatically publish after building (otherwise only via ☁️)</string>
+    <string name="label_rest_upload_url">REST upload URL (WordPress plugin)</string>
+    <string name="label_rest_upload_user">WordPress username</string>
+    <string name="label_rest_upload_password">WordPress application password</string>
+    <string name="label_sftp_host">SFTP host</string>
+    <string name="label_sftp_port">SFTP port</string>
+    <string name="label_sftp_user">SFTP username</string>
+    <string name="label_sftp_password">SFTP password</string>
+    <string name="label_sftp_remote_path">SFTP path on the server</string>
+    <string name="label_sftp_host_key_fingerprint">SFTP host key fingerprint (optional; empty = trust automatically on first connection)</string>
+    <string name="section_cache">Cache</string>
+    <string name="button_clear">Clear</string>
+    <string name="toast_cache_cleared">Cache cleared</string>
+    <string name="button_cancel">Cancel</string>
+    <string name="button_cache_data">Cache: Data</string>
+    <string name="dialog_clear_data_cache_message">Clear all decoded and built trip data? The next sync will decode and process every .ebl file again from scratch (takes longer, but nothing is lost -- the .ebl files themselves stay in place).</string>
+    <string name="button_cache_places">Cache: Place names</string>
+    <string name="dialog_clear_places_cache_message">Clear all looked-up place names, weather and wave data? The next sync will look these up again (uses extra mobile data).</string>
+    <string name="button_save">Save</string>
+    <string name="toast_username_password_required">Username and password are required</string>
+    <string name="toast_settings_saved">Settings saved</string>
 </resources>

@@ -35,9 +35,9 @@ class SyncNotificationService : Service() {
         val fileName = intent?.getStringExtra(EXTRA_FILE_NAME)
         val statusText = intent?.getStringExtra(EXTRA_STATUS_TEXT)
         val contentText = when {
-            current >= 0 && total >= 0 && fileName != null -> "Downloaden: $current/$total ($fileName)"
+            current >= 0 && total >= 0 && fileName != null -> getString(R.string.status_downloading, current, total, fileName)
             statusText != null -> statusText
-            else -> "Bezig met downloaden en verwerken..."
+            else -> getString(R.string.status_downloading_processing_fallback)
         }
         // A real Android progress bar in the notification shade, not just text -- same
         // current/max MainActivity's own bottom progress bar shows (see updateProgressBar()),
@@ -71,7 +71,7 @@ class SyncNotificationService : Service() {
         val contentIntent = PendingIntent.getActivity(this, 0, openAppIntent, pendingIntentFlags)
 
         val notification = NotificationCompat.Builder(this, CHANNEL_ID)
-            .setContentTitle("Logboek synchroniseren")
+            .setContentTitle(getString(R.string.notif_title_sync))
             .setContentText(contentText)
             .setSmallIcon(android.R.drawable.stat_notify_sync)
             .setOngoing(true)
@@ -150,7 +150,7 @@ class SyncNotificationService : Service() {
             // building logic instead of duplicating it.
             onStartCommand(
                 Intent(this, SyncNotificationService::class.java)
-                    .putExtra(EXTRA_STATUS_TEXT, "App wordt afgesloten nadat upload voltooid is."),
+                    .putExtra(EXTRA_STATUS_TEXT, getString(R.string.notif_app_closing_after_upload)),
                 0,
                 0,
             )
@@ -176,9 +176,9 @@ class SyncNotificationService : Service() {
         // instead, forcing a fresh one at the new importance.
         manager.deleteNotificationChannel(OLD_CHANNEL_ID)
         val channel = NotificationChannel(
-            CHANNEL_ID, "Synchronisatie", NotificationManager.IMPORTANCE_DEFAULT,
+            CHANNEL_ID, getString(R.string.notif_channel_name), NotificationManager.IMPORTANCE_DEFAULT,
         ).apply {
-            description = "Toont wanneer de app bezig is met het ophalen en verwerken van het logboek."
+            description = getString(R.string.notif_channel_description)
         }
         manager.createNotificationChannel(channel)
         channelCreated = true
@@ -222,8 +222,8 @@ class SyncNotificationService : Service() {
             }
             val contentIntent = PendingIntent.getActivity(context, 0, reopenIntent, pendingIntentFlags)
             val notification = NotificationCompat.Builder(context, CHANNEL_ID)
-                .setContentTitle("Sailing Logbook")
-                .setContentText("App gesloten. Tik om opnieuw te openen.")
+                .setContentTitle(context.getString(R.string.app_name))
+                .setContentText(context.getString(R.string.notif_app_closed_reopen))
                 .setSmallIcon(android.R.drawable.stat_notify_sync)
                 .setAutoCancel(true)
                 .setContentIntent(contentIntent)
@@ -254,8 +254,8 @@ class SyncNotificationService : Service() {
             }
             val contentIntent = PendingIntent.getActivity(context, 0, reopenIntent, pendingIntentFlags)
             val notification = NotificationCompat.Builder(context, CHANNEL_ID)
-                .setContentTitle("Logboek synchroniseren")
-                .setContentText("Onderbroken door sluiten -- wordt hervat bij de volgende keer.")
+                .setContentTitle(context.getString(R.string.notif_title_sync))
+                .setContentText(context.getString(R.string.notif_sync_interrupted_by_close))
                 .setSmallIcon(android.R.drawable.stat_notify_sync)
                 .setAutoCancel(true)
                 .setContentIntent(contentIntent)
@@ -297,7 +297,7 @@ class SyncNotificationService : Service() {
             }
             val contentIntent = PendingIntent.getActivity(context, 0, reopenIntent, pendingIntentFlags)
             val notification = NotificationCompat.Builder(context, CHANNEL_ID)
-                .setContentTitle("Logboek synchroniseren")
+                .setContentTitle(context.getString(R.string.notif_title_sync))
                 .setContentText(message)
                 .setSmallIcon(android.R.drawable.stat_notify_sync)
                 .setAutoCancel(true)
@@ -336,7 +336,7 @@ class SyncNotificationService : Service() {
             // "Bekijk live site" below is its own explicit action for when there's somewhere
             // useful to go.
             val builder = NotificationCompat.Builder(context, CHANNEL_ID)
-                .setContentTitle("Logboek synchroniseren")
+                .setContentTitle(context.getString(R.string.notif_title_sync))
                 .setContentText(resultText)
                 .setSmallIcon(android.R.drawable.stat_notify_sync)
                 .setAutoCancel(true)
@@ -347,7 +347,7 @@ class SyncNotificationService : Service() {
                 // through the app first.
                 val viewSiteIntent = Intent(Intent.ACTION_VIEW, Uri.parse(publishedUrl))
                 val viewSitePendingIntent = PendingIntent.getActivity(context, 1, viewSiteIntent, pendingIntentFlags)
-                builder.addAction(0, "Bekijk live site", viewSitePendingIntent)
+                builder.addAction(0, context.getString(R.string.notif_action_view_live_site), viewSitePendingIntent)
             }
             NotificationManagerCompat.from(context).notify(NOTIFICATION_ID, builder.build())
         }

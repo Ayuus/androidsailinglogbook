@@ -71,25 +71,25 @@ class SettingsActivity : AppCompatActivity() {
             return box
         }
 
-        val userField = field("W2K-2 gebruikersnaam", store.w2k2User)
-        val passwordField = field("W2K-2 wachtwoord", store.w2k2Password, isPassword = true)
-        val boatNameField = field("Bootnaam", store.boatName)
-        val mmsiField = field("MMSI", store.mmsi)
-        val callSignField = field("Roepnaam", store.callSign)
+        val userField = field(getString(R.string.label_w2k2_user), store.w2k2User)
+        val passwordField = field(getString(R.string.label_w2k2_password), store.w2k2Password, isPassword = true)
+        val boatNameField = field(getString(R.string.label_boat_name), store.boatName)
+        val mmsiField = field(getString(R.string.label_mmsi), store.mmsi)
+        val callSignField = field(getString(R.string.label_call_sign), store.callSign)
         val autoSyncOnLaunchBox = checkbox(
-            "Automatisch downloaden bij starten (anders alleen via ↺)",
+            getString(R.string.checkbox_auto_sync_on_launch),
             store.autoSyncOnLaunch,
         )
 
-        sectionHeader("Reizen")
+        sectionHeader(getString(R.string.section_trips))
         val minStopMinutesField = field(
-            "Minimale stop-tijd om als havenbezoek te tellen (minuten)",
+            getString(R.string.label_min_stop_minutes),
             store.minStopMinutes.toString(),
         ).apply { inputType = InputType.TYPE_CLASS_NUMBER or InputType.TYPE_NUMBER_FLAG_DECIMAL }
 
-        sectionHeader("Publiceren naar ayuus.com")
+        sectionHeader(getString(R.string.section_publish))
         val autoPublishAfterBuildBox = checkbox(
-            "Automatisch publiceren na bouwen (anders alleen via ☁️)",
+            getString(R.string.checkbox_auto_publish_after_build),
             store.autoPublishAfterBuild,
         )
         // REST is preferred over SFTP below whenever both happen to be filled in (see
@@ -97,16 +97,16 @@ class SettingsActivity : AppCompatActivity() {
         // just a WordPress Application Password (Users > Profile > Application Passwords on the
         // account's own profile page, not the account's real login password) for an account in
         // the logboek_editor role.
-        val restUploadUrlField = field("REST upload-URL (WordPress-plugin)", store.restUploadUrl)
-        val restUploadUserField = field("WordPress gebruikersnaam", store.restUploadUser)
+        val restUploadUrlField = field(getString(R.string.label_rest_upload_url), store.restUploadUrl)
+        val restUploadUserField = field(getString(R.string.label_rest_upload_user), store.restUploadUser)
         val restUploadPasswordField = field(
-            "WordPress application password", store.restUploadPassword, isPassword = true,
+            getString(R.string.label_rest_upload_password), store.restUploadPassword, isPassword = true,
         )
-        val sftpHostField = field("SFTP host", store.sftpHost)
-        val sftpPortField = field("SFTP poort", store.sftpPort.toString())
-        val sftpUserField = field("SFTP gebruikersnaam", store.sftpUser)
-        val sftpPasswordField = field("SFTP wachtwoord", store.sftpPassword, isPassword = true)
-        val sftpRemotePathField = field("SFTP pad op de server", store.sftpRemotePath)
+        val sftpHostField = field(getString(R.string.label_sftp_host), store.sftpHost)
+        val sftpPortField = field(getString(R.string.label_sftp_port), store.sftpPort.toString())
+        val sftpUserField = field(getString(R.string.label_sftp_user), store.sftpUser)
+        val sftpPasswordField = field(getString(R.string.label_sftp_password), store.sftpPassword, isPassword = true)
+        val sftpRemotePathField = field(getString(R.string.label_sftp_remote_path), store.sftpRemotePath)
 
         // The host-key fingerprint (see SftpUploader.kt) isn't a credential -- it's the server's
         // own public key, used to reject a *later, different* key instead of silently trusting it
@@ -115,8 +115,7 @@ class SettingsActivity : AppCompatActivity() {
         // connection is verified against it too, rather than blindly trusted. sshj reports it in
         // the same colon-separated-hex form ssh-keygen -lf/-E md5 shows.
         val sftpHostKeyField = field(
-            "SFTP host-key fingerprint (optioneel; leeg = automatisch vertrouwen bij eerste " +
-                "verbinding)",
+            getString(R.string.label_sftp_host_key_fingerprint),
             store.sftpHostKeyFingerprint,
         )
 
@@ -127,7 +126,7 @@ class SettingsActivity : AppCompatActivity() {
         // scratch; a cleared "plaatsnamen" cache re-does every geocoding/weather/marine lookup),
         // so keeping them separate lets whichever one is actually the problem be cleared without
         // paying for the other (asked for explicitly).
-        sectionHeader("Cache")
+        sectionHeader(getString(R.string.section_cache))
 
         // deleteRecursively() rather than delete() -- sample_cache.pkl is a *directory* (one
         // small file per decoded .ebl file, see sample_cache.py's own module docstring for why),
@@ -157,11 +156,11 @@ class SettingsActivity : AppCompatActivity() {
                     setOnClickListener {
                         AlertDialog.Builder(this@SettingsActivity)
                             .setMessage(confirmMessage)
-                            .setPositiveButton("Legen") { _, _ ->
+                            .setPositiveButton(getString(R.string.button_clear)) { _, _ ->
                                 files().forEach { it.deleteRecursively() }
-                                Toast.makeText(this@SettingsActivity, "Cache geleegd", Toast.LENGTH_SHORT).show()
+                                Toast.makeText(this@SettingsActivity, getString(R.string.toast_cache_cleared), Toast.LENGTH_SHORT).show()
                             }
-                            .setNegativeButton("Annuleren", null)
+                            .setNegativeButton(getString(R.string.button_cancel), null)
                             .show()
                     }
                 },
@@ -169,17 +168,14 @@ class SettingsActivity : AppCompatActivity() {
         }
 
         clearCacheButton(
-            "Cache: Data",
-            "Alle gedecodeerde en opgebouwde reisdata wissen? De eerstvolgende synchronisatie " +
-                "decodeert en verwerkt dan alle .ebl-bestanden opnieuw vanaf het begin (duurt " +
-                "langer, maar er gaat niets verloren -- de .ebl-bestanden zelf blijven staan).",
+            getString(R.string.button_cache_data),
+            getString(R.string.dialog_clear_data_cache_message),
         ) {
             listOf(File(filesDir, "sample_cache.pkl"), File(filesDir, ".trip_cache.pkl"))
         }
         clearCacheButton(
-            "Cache: Plaatsnamen",
-            "Alle opgezochte plaatsnamen, weer- en golfgegevens wissen? De eerstvolgende " +
-                "synchronisatie zoekt deze dan opnieuw op (kost extra mobiele data).",
+            getString(R.string.button_cache_places),
+            getString(R.string.dialog_clear_places_cache_message),
         ) {
             listOf(
                 File(filesDir, ".geocode_cache.json"),
@@ -192,7 +188,7 @@ class SettingsActivity : AppCompatActivity() {
         // one clearly primary action on this screen, full width and with real margins on every
         // side so it reads as a deliberate bar rather than a small button touching the screen edge.
         val saveButton = MaterialButton(this).apply {
-            text = "Opslaan"
+            text = getString(R.string.button_save)
             isAllCaps = false // see clearCacheButton()'s own comment on this
             layoutParams = LinearLayout.LayoutParams(
                 LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT,
@@ -201,7 +197,7 @@ class SettingsActivity : AppCompatActivity() {
                 if (userField.text.isBlank() || passwordField.text.isBlank()) {
                     Toast.makeText(
                         this@SettingsActivity,
-                        "Gebruikersnaam en wachtwoord zijn verplicht",
+                        getString(R.string.toast_username_password_required),
                         Toast.LENGTH_LONG,
                     ).show()
                     return@setOnClickListener
@@ -224,7 +220,7 @@ class SettingsActivity : AppCompatActivity() {
                 store.sftpPassword = sftpPasswordField.text.toString()
                 store.sftpRemotePath = sftpRemotePathField.text.toString().trim()
                 store.sftpHostKeyFingerprint = sftpHostKeyField.text.toString().trim()
-                Toast.makeText(this@SettingsActivity, "Instellingen opgeslagen", Toast.LENGTH_SHORT).show()
+                Toast.makeText(this@SettingsActivity, getString(R.string.toast_settings_saved), Toast.LENGTH_SHORT).show()
                 finish()
             }
         }

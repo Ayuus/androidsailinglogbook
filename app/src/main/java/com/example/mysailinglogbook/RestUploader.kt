@@ -1,5 +1,6 @@
 package com.example.mysailinglogbook
 
+import android.content.Context
 import com.chaquo.python.PyException
 import com.chaquo.python.Python
 import java.io.File
@@ -17,12 +18,12 @@ class RestUploadError(message: String, cause: Throwable? = null) : Exception(mes
  * HTTP POST has nothing platform-specific about it worth duplicating.
  */
 object RestUploader {
-    fun uploadLogbook(url: String, user: String, appPassword: String, localFile: File) {
+    fun uploadLogbook(context: Context, url: String, user: String, appPassword: String, localFile: File) {
         val uploadModule = Python.getInstance().getModule("nmea2000processor.upload")
         try {
             uploadModule.callAttr("upload_via_rest", localFile.readBytes(), url, user, appPassword)
         } catch (e: PyException) {
-            throw RestUploadError("Uploaden van logboek mislukt: ${e.message}", e)
+            throw RestUploadError(context.getString(R.string.error_upload_failed, e.message), e)
         }
     }
 }

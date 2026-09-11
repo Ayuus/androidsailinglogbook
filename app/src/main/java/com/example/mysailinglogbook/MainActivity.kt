@@ -95,7 +95,7 @@ class MainActivity : AppCompatActivity() {
             setContentView(
                 TextView(this).apply {
                     val padding = (16 * resources.displayMetrics.density).toInt()
-                    text = "Instellingen konden niet worden geladen:\n$e\n\nProbeer de app opnieuw te openen."
+                    text = getString(R.string.error_settings_load_failed, e.toString())
                     setPadding(padding, padding, padding, padding)
                 }
             )
@@ -118,14 +118,14 @@ class MainActivity : AppCompatActivity() {
         // Tapping this while a sync (or offline build) is already running cancels it instead of
         // starting a new one -- see cancelSyncStayInApp()'s own doc comment for why.
         syncButton = iconButton(
-            "Synchroniseren", emoji = "↺", emojiSize = 30f, emojiBold = true, verticalNudgePx = -12f,
+            getString(R.string.tooltip_sync), emoji = "↺", emojiSize = 30f, emojiBold = true, verticalNudgePx = -12f,
         ) {
             if (SyncState.inProgress) cancelSyncStayInApp() else runSync()
         } // ↺
         // Material's own "upload" icon (ic_upload_24), not the ☁️ emoji it replaced -- asked for
         // explicitly, found in practice: a plain cloud alone didn't read as obviously "publish"
         // as a real, recognized icon does.
-        publishButton = iconButton("Publiceren naar ayuus.com", iconRes = R.drawable.ic_upload_24) {
+        publishButton = iconButton(getString(R.string.tooltip_publish), iconRes = R.drawable.ic_upload_24) {
             runPublish()
         }
         // Loads whatever logbook.html is already on the phone into the WebView, without syncing
@@ -134,10 +134,10 @@ class MainActivity : AppCompatActivity() {
         // in Instellingen) without that also sending it to ayuus.com. Material's "article" icon
         // (ic_article_24), not the 📖 emoji it replaced -- asked for explicitly, found in
         // practice: an open book read as too old-fashioned.
-        val viewLocalButton = iconButton("Logboek lokaal bekijken (niet publiceren)", iconRes = R.drawable.ic_article_24) {
+        val viewLocalButton = iconButton(getString(R.string.tooltip_view_local), iconRes = R.drawable.ic_article_24) {
             viewLocalLogbook()
         }
-        val settingsButton = iconButton("Instellingen", emoji = "⚙") {
+        val settingsButton = iconButton(getString(R.string.tooltip_settings), emoji = "⚙") {
             startActivity(Intent(this@MainActivity, SettingsActivity::class.java))
         } // ⚙
         // No standalone toolbar close button (removed -- asked for explicitly, found in
@@ -290,7 +290,9 @@ class MainActivity : AppCompatActivity() {
             progressLabel.visibility = View.VISIBLE
             progressBar.max = SyncState.lastProgressTotal
             progressBar.progress = SyncState.lastProgressCurrent
-            progressLabel.text = "$phase: ${SyncState.lastProgressCurrent}/${SyncState.lastProgressTotal}"
+            progressLabel.text = getString(
+                R.string.progress_label_format, phase, SyncState.lastProgressCurrent, SyncState.lastProgressTotal,
+            )
         } else {
             progressBar.visibility = View.GONE
             progressLabel.visibility = View.GONE
@@ -354,7 +356,7 @@ class MainActivity : AppCompatActivity() {
                 if (existing.exists()) {
                     loadLogbookIntoWebView(existing.absolutePath)
                 }
-                handleLogLine("[info] Hotspot niet aan (cheap pre-check) -- automatische sync overgeslagen.")
+                handleLogLine("[info] " + getString(R.string.log_hotspot_precheck_skipped))
                 // A real Android notification too, not just the in-app log (asked for explicitly)
                 // -- this can fire well before the owner ever looks at the app again (e.g. the
                 // very first check after a fresh launch), so it's the only way to learn about it
@@ -362,21 +364,21 @@ class MainActivity : AppCompatActivity() {
                 // om..." -- tapping it does exactly what tapping any notification does (opens the
                 // app), nothing beyond that specific to this one (found in practice: worded like
                 // there was a dedicated action behind the tap, there wasn't).
-                SyncNotificationService.postNotFoundNotification(this, "W2K-2 niet gevonden.")
+                SyncNotificationService.postNotFoundNotification(this, getString(R.string.notif_w2k2_not_found))
             }
         } else if (attemptsLeft > 0) {
             android.os.Handler(mainLooper).postDelayed(
                 { autoStartSyncWithSettingsRetry(attemptsLeft - 1) }, 300L
             )
         } else {
-            handleLogLine("[info] Vul eerst de W2K-2 gebruikersnaam en het wachtwoord in via Instellingen.")
+            handleLogLine("[info] " + getString(R.string.log_fill_w2k2_credentials))
         }
     }
 
     private fun runSync() {
         if (SyncState.inProgress) return
         if (!settingsStore.isW2k2ConfigComplete) {
-            handleLogLine("[info] Vul eerst de W2K-2 gebruikersnaam en het wachtwoord in via Instellingen.")
+            handleLogLine("[info] " + getString(R.string.log_fill_w2k2_credentials))
             return
         }
 
@@ -389,7 +391,7 @@ class MainActivity : AppCompatActivity() {
         // app to use ☁️ Publiceren on its own was never actually reachable -- both buttons stayed
         // disabled for as long as that auto-started sync kept running.
         publishButton.isEnabled = false
-        val initialStatusText = "Hotspot controleren..."
+        val initialStatusText = getString(R.string.status_checking_hotspot)
         // Log deliberately NOT cleared here (asked for explicitly) -- it now accumulates across
         // every sync this process runs instead of starting over each time, so a run's own history
         // stays visible/scrollable-back-to after later runs. Only the progress state below still
@@ -418,8 +420,7 @@ class MainActivity : AppCompatActivity() {
         Thread {
             val subnetPrefix = HotspotDetector.detectSubnetPrefix()
             if (subnetPrefix == null) {
-                val message = "Hotspot staat uit (of de W2K-2 is er niet mee verbonden). Zet 'm aan om te " +
-                    "synchroniseren."
+                val message = getString(R.string.status_hotspot_off)
                 SyncState.lastStatusText = message
                 // This specific check is pure Kotlin (HotspotDetector, no Python/Chaquopy call
                 // involved at all), unlike the "No W2K-2 found on <subnet>" case a few lines
@@ -444,7 +445,7 @@ class MainActivity : AppCompatActivity() {
                 return@Thread
             }
 
-            val listingStatusText = "Bestandenlijst ophalen (subnet ${subnetPrefix}0/24)..."
+            val listingStatusText = getString(R.string.status_listing_files, subnetPrefix)
             SyncState.lastStatusText = listingStatusText
             SyncState.lastNotificationText = listingStatusText
             handleLogLine("[info] $listingStatusText")
@@ -501,10 +502,10 @@ class MainActivity : AppCompatActivity() {
                     // including any publish step, is now finished" marker in the log at all.
                     val timeText = java.text.SimpleDateFormat("HH:mm", java.util.Locale.getDefault())
                         .format(java.util.Date())
-                    handleLogLine("Voltooid: $timeText")
+                    handleLogLine(getString(R.string.log_sync_done_at, timeText))
                 }
             } catch (e: Exception) {
-                val message = "Onverwachte fout tijdens synchroniseren: $e"
+                val message = getString(R.string.error_unexpected_sync, e.toString())
                 SyncState.lastStatusText = message
                 handleLogLine("[error] $message")
             } finally {
@@ -520,7 +521,7 @@ class MainActivity : AppCompatActivity() {
                         .format(java.util.Date())
                     SyncNotificationService.postCompletionNotification(
                         this,
-                        "Voltooid $timeText",
+                        getString(R.string.notif_sync_done_at, timeText),
                         if (didPublish) MainActivity.LIVE_SITE_URL else null,
                     )
                 }
@@ -553,7 +554,7 @@ class MainActivity : AppCompatActivity() {
         }
         val htmlFile = File(filesDir, "logbook.html")
         if (!htmlFile.exists()) {
-            handleLogLine("[info] Nog geen logboek om te bekijken -- synchroniseer eerst.")
+            handleLogLine("[info] " + getString(R.string.log_no_logbook_to_view))
             return
         }
         showingLocalLogbook = true
@@ -585,19 +586,19 @@ class MainActivity : AppCompatActivity() {
         // to fill in "de publiceer-instellingen (SFTP)" even though publishing itself would have
         // worked fine via REST. Matches uploadIfConfigured()'s own check exactly.
         if (!settingsStore.isRestUploadConfigComplete && !settingsStore.isSftpConfigComplete) {
-            handleLogLine("[info] Vul eerst de publiceer-instellingen (REST of SFTP) in via Instellingen.")
+            handleLogLine("[info] " + getString(R.string.log_fill_publish_settings))
             return
         }
         val htmlFile = File(filesDir, "logbook.html")
         if (!htmlFile.exists()) {
-            handleLogLine("[info] Nog geen logboek om te publiceren -- synchroniseer eerst.")
+            handleLogLine("[info] " + getString(R.string.log_no_logbook_to_publish))
             return
         }
 
         SyncState.inProgress = true
         syncButton.isEnabled = false
         publishButton.isEnabled = false
-        SyncState.lastStatusText = "Publiceren naar ayuus.com..."
+        SyncState.lastStatusText = getString(R.string.status_publishing)
 
         Thread {
             var didPublish = false
@@ -614,7 +615,9 @@ class MainActivity : AppCompatActivity() {
                 if (didPublish) {
                     val timeText = java.text.SimpleDateFormat("HH:mm", java.util.Locale.getDefault())
                         .format(java.util.Date())
-                    SyncNotificationService.postCompletionNotification(this, "Voltooid $timeText", MainActivity.LIVE_SITE_URL)
+                    SyncNotificationService.postCompletionNotification(
+                        this, getString(R.string.notif_sync_done_at, timeText), MainActivity.LIVE_SITE_URL,
+                    )
                 }
                 SyncState.notificationForegrounded = false
                 SyncState.notificationStartFailed = false
@@ -678,7 +681,7 @@ class MainActivity : AppCompatActivity() {
         val fullPath = result.absolutePath
         val androidIndex = fullPath.indexOf("/Android/")
         val shownPath = if (androidIndex >= 0) fullPath.substring(androidIndex + 1) else fullPath
-        handleLogLine("[info] .ebl-bestanden staan in: $shownPath")
+        handleLogLine("[info] " + getString(R.string.log_ebl_files_location, shownPath))
         return result
     }
 
@@ -709,7 +712,7 @@ class MainActivity : AppCompatActivity() {
         // onDestroy() sets the cancelled flag, instead of continuing after the app is closed.
         val controller = object : SyncController {
             override fun report(current: Int, total: Int, fileName: String) {
-                val text = "Downloaden: $current/$total ($fileName)"
+                val text = getString(R.string.status_downloading, current, total, fileName)
                 SyncState.lastStatusText = text
                 // Matches what SyncNotificationService itself independently computes from the
                 // current/total/fileName extras below -- cached here too so a later restore (see
@@ -727,7 +730,7 @@ class MainActivity : AppCompatActivity() {
                     .putExtra(SyncNotificationService.EXTRA_TOTAL, total)
                     .putExtra(SyncNotificationService.EXTRA_FILE_NAME, fileName)
                 startSyncNotification(progressIntent)
-                updateProgressBar("Downloaden", current, total)
+                updateProgressBar(getString(R.string.phase_downloading), current, total)
             }
 
             override fun isCancelled(): Boolean = SyncState.cancelled
@@ -784,7 +787,7 @@ class MainActivity : AppCompatActivity() {
         // (see android_entry.py's own _report_result()) -- this being null would mean that call
         // never happened at all, which callAttr() above returning normally already rules out.
         return capturedResult ?: SyncResult(
-            ok = false, cancelled = false, error = "Geen resultaat ontvangen.",
+            ok = false, cancelled = false, error = getString(R.string.error_no_result),
             tripCount = null, htmlPath = null, downloadedCount = null,
         )
     }
@@ -832,7 +835,7 @@ class MainActivity : AppCompatActivity() {
         // matched at all, so the notification silently never updated during a real
         // connection-loss test).
         if (line.contains("[warning]")) {
-            val text = "Verbinding verloren, opnieuw proberen..."
+            val text = getString(R.string.notif_connection_lost_retrying)
             SyncState.lastNotificationText = text
             val warningIntent = Intent(this, SyncNotificationService::class.java)
                 .putExtra(SyncNotificationService.EXTRA_STATUS_TEXT, text)
@@ -847,25 +850,25 @@ class MainActivity : AppCompatActivity() {
             val match = decodeProgressRegex.find(line)!!
             val current = match.groupValues[1].toInt()
             val total = match.groupValues[2].toInt()
-            val text = "Logboek opbouwen: $current/$total"
+            val text = getString(R.string.status_building_logbook, current, total)
             SyncState.lastNotificationText = text
             val progressIntent = Intent(this, SyncNotificationService::class.java)
                 .putExtra(SyncNotificationService.EXTRA_STATUS_TEXT, text)
             startSyncNotification(progressIntent)
-            updateProgressBar("Decoderen", current, total)
+            updateProgressBar(getString(R.string.phase_decoding), current, total)
         } else {
             val step = buildPhaseMarkers.indexOfFirst { it.containsMatchIn(line) }
             if (step >= 0) {
                 val current = step + 1
                 val total = buildPhaseMarkers.size
-                val text = "Reizen opbouwen: $current/$total"
+                val text = getString(R.string.status_building_trips, current, total)
                 SyncState.lastNotificationText = text
                 val progressIntent = Intent(this, SyncNotificationService::class.java)
                     .putExtra(SyncNotificationService.EXTRA_STATUS_TEXT, text)
                     .putExtra(SyncNotificationService.EXTRA_PROGRESS_CURRENT, current)
                     .putExtra(SyncNotificationService.EXTRA_PROGRESS_MAX, total)
                 startSyncNotification(progressIntent)
-                updateProgressBar("Reizen opbouwen", current, total)
+                updateProgressBar(getString(R.string.phase_building_trips), current, total)
             }
         }
     }
@@ -889,7 +892,7 @@ class MainActivity : AppCompatActivity() {
             progressLabel.visibility = View.VISIBLE
             progressBar.max = total
             progressBar.progress = current
-            progressLabel.text = "$phase: $current/$total"
+            progressLabel.text = getString(R.string.progress_label_format, phase, current, total)
         }
     }
 
@@ -926,11 +929,11 @@ class MainActivity : AppCompatActivity() {
             // downloadedCount is null for runOfflineBuild()'s own result (no download happened
             // that run at all) -- omit that clause entirely rather than showing a literal "null".
             val resultText = if (result.tripCount == null) {
-                "Klaar (logboek bijgewerkt)."
+                getString(R.string.status_ready_updated)
             } else if (result.downloadedCount != null) {
-                "Klaar: ${result.tripCount} reis(en), ${result.downloadedCount} bestand(en) gedownload."
+                getString(R.string.status_ready_with_download, result.tripCount, result.downloadedCount)
             } else {
-                "Klaar: ${result.tripCount} reis(en) (bestaande gegevens, niet opnieuw gedownload)."
+                getString(R.string.status_ready_no_download, result.tripCount)
             }
             SyncState.lastStatusText = resultText
             handleLogLine("[info] $resultText")
@@ -941,7 +944,7 @@ class MainActivity : AppCompatActivity() {
             // is normally already gone, so this mostly matters when cancellation raced a rotation
             // (config change) instead. The next "Nu synchroniseren" simply resumes where it left
             // off, no special handling needed (see _needs_download() in w2k2_download.py).
-            val resultText = "Synchronisatie gestopt. Volgende keer wordt verdergegaan waar het gebleven was."
+            val resultText = getString(R.string.status_sync_stopped)
             SyncState.lastStatusText = resultText
             handleLogLine("[info] $resultText")
         } else {
@@ -964,7 +967,7 @@ class MainActivity : AppCompatActivity() {
                 // what tapping any notification does (opens the app), nothing beyond that
                 // specific to this one (found in practice: worded like there was a dedicated
                 // action behind the tap, there wasn't).
-                SyncNotificationService.postNotFoundNotification(this, "W2K-2 niet gevonden.")
+                SyncNotificationService.postNotFoundNotification(this, getString(R.string.notif_w2k2_not_found))
                 return
             }
             // Covers every non-cancelled failure, including the download never reaching a usable
@@ -973,7 +976,7 @@ class MainActivity : AppCompatActivity() {
             // sync_from_w2k2()'s except clauses), so there's no stale/partial logbook.html to
             // accidentally show; this dialog is the only thing the user sees (asked for
             // explicitly).
-            val errorText = "Fout: ${result.error ?: "onbekende fout"}"
+            val errorText = getString(R.string.error_generic_prefix, result.error ?: getString(R.string.error_unknown))
             SyncState.lastStatusText = errorText
             handleLogLine("[error] $errorText")
             showOfflineOrCloseDialog(errorText)
@@ -994,7 +997,7 @@ class MainActivity : AppCompatActivity() {
         val html = try {
             File(htmlPath).readText()
         } catch (e: Exception) {
-            handleLogLine("[error] logboek kon niet worden getoond: $e")
+            handleLogLine("[error] " + getString(R.string.error_logbook_display_failed, e.toString()))
             return
         }
         webView.loadDataWithBaseURL("file://${File(htmlPath).parent}/", html, "text/html", "utf-8", null)
@@ -1037,8 +1040,8 @@ class MainActivity : AppCompatActivity() {
         AlertDialog.Builder(this)
             .setMessage(message)
             .setCancelable(false)
-            .setPositiveButton("Logboek bouwen...") { _, _ -> runOfflineBuild() }
-            .setNegativeButton("App sluiten") { _, _ -> closeAppAndCancelSync() }
+            .setPositiveButton(getString(R.string.dialog_build_logbook_button)) { _, _ -> runOfflineBuild() }
+            .setNegativeButton(getString(R.string.dialog_close_app_button)) { _, _ -> closeAppAndCancelSync() }
             .show()
     }
 
@@ -1088,8 +1091,8 @@ class MainActivity : AppCompatActivity() {
      * sync) re-enables both buttons itself in its finally block -- nothing else to do here. */
     private fun cancelSyncStayInApp() {
         cancelSync()
-        SyncState.lastStatusText = "Synchronisatie geannuleerd."
-        handleLogLine("[info] Synchronisatie geannuleerd.")
+        SyncState.lastStatusText = getString(R.string.status_sync_cancelled)
+        handleLogLine("[info] " + getString(R.string.status_sync_cancelled))
         hideProgressBar()
     }
 
@@ -1108,7 +1111,7 @@ class MainActivity : AppCompatActivity() {
         publishButton.isEnabled = false
         // Log deliberately NOT cleared here (asked for explicitly, see runSync()'s own matching
         // comment) -- it accumulates across every run this process makes instead.
-        SyncState.lastStatusText = "Logboek opbouwen met bestaande gegevens..."
+        SyncState.lastStatusText = getString(R.string.status_building_with_existing_data)
         handleLogLine("[info] ${SyncState.lastStatusText}")
         // No initial notification text of its own here (unlike runSync()) -- this path doesn't
         // start the notification until handleLogLine()'s first progress line arrives, so there's
@@ -1134,10 +1137,10 @@ class MainActivity : AppCompatActivity() {
                 if (syncSucceeded) {
                     val timeText = java.text.SimpleDateFormat("HH:mm", java.util.Locale.getDefault())
                         .format(java.util.Date())
-                    handleLogLine("Voltooid: $timeText")
+                    handleLogLine(getString(R.string.log_sync_done_at, timeText))
                 }
             } catch (e: Exception) {
-                val message = "Onverwachte fout: $e"
+                val message = getString(R.string.error_unexpected, e.toString())
                 SyncState.lastStatusText = message
                 handleLogLine("[error] $message")
             } finally {
@@ -1153,7 +1156,7 @@ class MainActivity : AppCompatActivity() {
                         .format(java.util.Date())
                     SyncNotificationService.postCompletionNotification(
                         this,
-                        "Voltooid $timeText",
+                        getString(R.string.notif_sync_done_at, timeText),
                         if (didPublish) MainActivity.LIVE_SITE_URL else null,
                     )
                 }
@@ -1239,7 +1242,7 @@ class MainActivity : AppCompatActivity() {
         )
 
         return capturedResult ?: SyncResult(
-            ok = false, cancelled = false, error = "Geen resultaat ontvangen.",
+            ok = false, cancelled = false, error = getString(R.string.error_no_result),
             tripCount = null, htmlPath = null, downloadedCount = null,
         )
     }
@@ -1261,10 +1264,10 @@ class MainActivity : AppCompatActivity() {
         // lean on at all.
         val useRest = settingsStore.isRestUploadConfigComplete
         if (!useRest && !settingsStore.isSftpConfigComplete) {
-            handleLogLine("[skip] Upload not configured")
+            handleLogLine("[skip] " + getString(R.string.log_upload_not_configured))
             return false
         }
-        val statusText = if (useRest) "Uploaden naar ayuus.com (naar WordPress)..." else "Uploaden naar ayuus.com (via SFTP)..."
+        val statusText = if (useRest) getString(R.string.status_uploading_wordpress) else getString(R.string.status_uploading_sftp)
         handleLogLine("[info] $statusText")
         // Also pushed to the OS notification itself, not just the log -- asked for explicitly:
         // SyncState.uploading below (see its own doc comment) means closing the app
@@ -1276,7 +1279,7 @@ class MainActivity : AppCompatActivity() {
         // in the log (which is right there to check), not repeated in the notification too.
         startSyncNotification(
             Intent(this, SyncNotificationService::class.java)
-                .putExtra(SyncNotificationService.EXTRA_STATUS_TEXT, "Uploaden naar ayuus.com..."),
+                .putExtra(SyncNotificationService.EXTRA_STATUS_TEXT, getString(R.string.notif_uploading)),
         )
         // Sets SyncState.uploading for SyncNotificationService.onTaskRemoved() -- unlike a
         // download (resumes cleanly next run over HTTP Range, see w2k2_download.py) or a decode/
@@ -1288,22 +1291,24 @@ class MainActivity : AppCompatActivity() {
         try {
             if (useRest) {
                 RestUploader.uploadLogbook(
-                    settingsStore.restUploadUrl, settingsStore.restUploadUser,
+                    this, settingsStore.restUploadUrl, settingsStore.restUploadUser,
                     settingsStore.restUploadPassword, File(htmlPath),
                 )
-                handleLogLine("[ok] Uploaded to WordPress: ${settingsStore.restUploadUrl}")
+                handleLogLine("[ok] " + getString(R.string.log_upload_ok_wordpress, settingsStore.restUploadUrl))
             } else {
-                SftpUploader.uploadLogbookAtomic(settingsStore, File(htmlPath))
+                SftpUploader.uploadLogbookAtomic(this, settingsStore, File(htmlPath))
                 handleLogLine(
-                    "[ok] Uploaded via SFTP to ${settingsStore.sftpUser}@${settingsStore.sftpHost}:" +
-                        settingsStore.sftpRemotePath,
+                    "[ok] " + getString(
+                        R.string.log_upload_ok_sftp,
+                        settingsStore.sftpUser, settingsStore.sftpHost, settingsStore.sftpRemotePath,
+                    ),
                 )
             }
         } catch (e: RestUploadError) {
-            handleLogLine("[error] upload to WordPress failed: ${e.message}")
+            handleLogLine("[error] " + getString(R.string.log_upload_failed_wordpress, e.message))
             return false
         } catch (e: SftpUploadError) {
-            handleLogLine("[error] upload via SFTP failed: ${e.message}")
+            handleLogLine("[error] " + getString(R.string.log_upload_failed_sftp, e.message))
             return false
         } finally {
             SyncState.uploading = false
@@ -1367,11 +1372,11 @@ class MainActivity : AppCompatActivity() {
             // one, see that doc comment) gets its own specific wording; anything else still shows
             // the real exception, since that would be genuinely unexpected here.
             val reason = if (e is ForegroundServiceStartNotAllowedException) {
-                "meldingslimiet van vandaag is bereikt"
+                getString(R.string.reason_notification_daily_limit)
             } else {
                 e.toString()
             }
-            handleLogLine("[info] melding kon niet worden getoond: $reason")
+            handleLogLine("[info] " + getString(R.string.log_notification_could_not_be_shown, reason))
         }
     }
 
@@ -1543,7 +1548,7 @@ class MainActivity : AppCompatActivity() {
             // matters for a sync so early nothing has set either field yet.
             val restoreIntent = Intent(this, SyncNotificationService::class.java).putExtra(
                 SyncNotificationService.EXTRA_STATUS_TEXT,
-                SyncState.lastNotificationText ?: SyncState.lastStatusText ?: "Synchronisatie loopt al...",
+                SyncState.lastNotificationText ?: SyncState.lastStatusText ?: getString(R.string.status_sync_already_running_fallback),
             )
             startSyncNotification(restoreIntent)
         }

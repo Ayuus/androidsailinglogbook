@@ -1,5 +1,6 @@
 package com.example.mysailinglogbook
 
+import android.content.Context
 import net.schmizz.sshj.SSHClient
 import net.schmizz.sshj.common.SecurityUtils
 import net.schmizz.sshj.sftp.RenameFlags
@@ -43,7 +44,7 @@ object SftpUploader {
             override fun findExistingAlgorithms(hostname: String, port: Int): List<String> = emptyList()
         }
 
-    private fun connect(settingsStore: SettingsStore): SSHClient {
+    private fun connect(context: Context, settingsStore: SettingsStore): SSHClient {
         val client = SSHClient()
         // Found in practice, a real bug: sshj has no bounded default here -- a flaky/unresponsive
         // server (or network) left the whole sync Thread stuck indefinitely inside connect() or a
@@ -59,7 +60,7 @@ object SftpUploader {
             client.authPassword(settingsStore.sftpUser, settingsStore.sftpPassword)
         } catch (e: Exception) {
             client.close()
-            throw SftpUploadError("Kan geen SFTP-verbinding maken: ${e.message}", e)
+            throw SftpUploadError(context.getString(R.string.error_sftp_connect_failed, e.message), e)
         }
         return client
     }
@@ -85,16 +86,16 @@ object SftpUploader {
      * CLI, which transparently upgrades to the posix-rename@openssh.com extension (overwrite-
      * capable) when the server supports it, same as this app's own target server clearly does --
      * sshj's rename() doesn't do that upgrade on its own, it has to be asked for explicitly. */
-    fun uploadLogbookAtomic(settingsStore: SettingsStore, localFile: File) {
+    fun uploadLogbookAtomic(context: Context, settingsStore: SettingsStore, localFile: File) {
         val remotePath = settingsStore.sftpRemotePath
         val remoteTmpPath = "$remotePath.tmp-upload"
-        connect(settingsStore).use { client ->
+        connect(context, settingsStore).use { client ->
             client.newSFTPClient().use { sftp ->
                 try {
                     sftp.put(localFile.absolutePath, remoteTmpPath)
                     sftp.rename(remoteTmpPath, remotePath, EnumSet.of(RenameFlags.OVERWRITE))
                 } catch (e: Exception) {
-                    throw SftpUploadError("Uploaden van logboek mislukt: ${e.message}", e)
+                    throw SftpUploadError(context.getString(R.string.error_upload_failed, e.message), e)
                 }
             }
         }
