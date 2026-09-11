@@ -195,6 +195,18 @@ class SyncNotificationService : Service() {
         const val CHANNEL_ID = "sync_v2"
         const val NOTIFICATION_ID = 1
         const val REOPEN_NOTIFICATION_ID = 2
+
+        // Handled by the system's own NotificationManagerService, not this app's process -- found
+        // in practice, asked for explicitly: MainActivity's own cleanup (onDestroy(),
+        // autoStartSyncWithSettingsRetry()'s onCreate() guard) can only ever run while the app's
+        // process is still alive, but this device's launcher "Alles sluiten" (close all recent
+        // apps) kills the process directly, skipping every one of those in-process callbacks
+        // entirely -- a stale "W2K-2 niet gevonden"/completion notification then had no way to be
+        // cleared short of the owner tapping it themselves. setTimeoutAfter() below is a genuine
+        // OS-level guarantee instead, the same mechanism other apps rely on for exactly this: it
+        // survives the app's own process dying in any way at all, since the countdown and the
+        // eventual cancel both live in the system server, not in this app's code.
+        private const val STALE_NOTIFICATION_TIMEOUT_MS = 30 * 60 * 1000L
         const val EXTRA_CURRENT = "current"
         const val EXTRA_TOTAL = "total"
         const val EXTRA_FILE_NAME = "file_name"
@@ -229,6 +241,7 @@ class SyncNotificationService : Service() {
                 .setContentText(context.getString(R.string.notif_sync_interrupted_by_close))
                 .setSmallIcon(android.R.drawable.stat_notify_sync)
                 .setAutoCancel(true)
+                .setTimeoutAfter(STALE_NOTIFICATION_TIMEOUT_MS)
                 .setContentIntent(contentIntent)
                 .build()
             NotificationManagerCompat.from(context).notify(NOTIFICATION_ID, notification)
@@ -272,6 +285,7 @@ class SyncNotificationService : Service() {
                 .setContentText(message)
                 .setSmallIcon(android.R.drawable.stat_notify_sync)
                 .setAutoCancel(true)
+                .setTimeoutAfter(STALE_NOTIFICATION_TIMEOUT_MS)
                 .setContentIntent(contentIntent)
                 .build()
             NotificationManagerCompat.from(context).notify(NOTIFICATION_ID, notification)
@@ -311,6 +325,7 @@ class SyncNotificationService : Service() {
                 .setContentText(resultText)
                 .setSmallIcon(android.R.drawable.stat_notify_sync)
                 .setAutoCancel(true)
+                .setTimeoutAfter(STALE_NOTIFICATION_TIMEOUT_MS)
             if (publishedUrl != null) {
                 // A separate action, not the notification's own tap target -- tapping the body
                 // still opens the app itself (consistent with every other notification here),
