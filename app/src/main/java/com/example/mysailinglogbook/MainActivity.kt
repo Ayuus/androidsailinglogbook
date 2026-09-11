@@ -1264,7 +1264,7 @@ class MainActivity : AppCompatActivity() {
             handleLogLine("[skip] Upload not configured")
             return false
         }
-        val statusText = if (useRest) "Uploaden naar ayuus.com (via plugin)..." else "Uploaden naar ayuus.com (via SFTP)..."
+        val statusText = if (useRest) "Uploaden naar ayuus.com (naar WordPress)..." else "Uploaden naar ayuus.com (via SFTP)..."
         handleLogLine("[info] $statusText")
         // Also pushed to the OS notification itself, not just the log -- asked for explicitly:
         // SyncState.uploading below (see its own doc comment) means closing the app
@@ -1272,7 +1272,7 @@ class MainActivity : AppCompatActivity() {
         // phase is visible at all for as long as the owner's actually looking at it instead of
         // the app. Without this it kept showing whatever the last download/decode-phase text
         // happened to be, well past the point that was still true. Shorter than the log line
-        // above, without "(via plugin)"/"(via SFTP)" -- asked for explicitly, that detail belongs
+        // above, without "(naar WordPress)"/"(via SFTP)" -- asked for explicitly, that detail belongs
         // in the log (which is right there to check), not repeated in the notification too.
         startSyncNotification(
             Intent(this, SyncNotificationService::class.java)
@@ -1291,7 +1291,7 @@ class MainActivity : AppCompatActivity() {
                     settingsStore.restUploadUrl, settingsStore.restUploadUser,
                     settingsStore.restUploadPassword, File(htmlPath),
                 )
-                handleLogLine("[ok] Uploaded via plugin to ${settingsStore.restUploadUrl}")
+                handleLogLine("[ok] Uploaded to WordPress: ${settingsStore.restUploadUrl}")
             } else {
                 SftpUploader.uploadLogbookAtomic(settingsStore, File(htmlPath))
                 handleLogLine(
@@ -1300,7 +1300,7 @@ class MainActivity : AppCompatActivity() {
                 )
             }
         } catch (e: RestUploadError) {
-            handleLogLine("[error] upload via plugin failed: ${e.message}")
+            handleLogLine("[error] upload to WordPress failed: ${e.message}")
             return false
         } catch (e: SftpUploadError) {
             handleLogLine("[error] upload via SFTP failed: ${e.message}")
