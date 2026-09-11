@@ -104,6 +104,22 @@ class MainActivity : AppCompatActivity() {
         settingsStore = store
         ensureNotificationPermission()
 
+        // Belt-and-suspenders on top of onDestroy()'s/SyncNotificationService.onTaskRemoved()'s
+        // own cleanup -- found in practice, a real gap: this device's launcher "Alles sluiten"
+        // (close all recent apps) kills the process directly, which skips every in-process
+        // lifecycle callback entirely (no onDestroy(), no onTaskRemoved() -- neither can run once
+        // the process is already gone), so a leftover "W2K-2 niet gevonden"/completion
+        // notification from before survived indefinitely across that specific close path. There's
+        // no way to intercept a hard process kill from inside the app, so this is the next best
+        // guarantee: whatever's stale gets cleared the moment the app is next opened, rather than
+        // sitting there forever. Only when nothing is in progress -- a genuinely still-running
+        // sync's own notification must survive a fresh Activity instance being created on top of
+        // it (e.g. a process restart while a sync is still alive), same guard as the other two.
+        if (!SyncState.inProgress) {
+            NotificationManagerCompat.from(this).cancel(SyncNotificationService.NOTIFICATION_ID)
+            NotificationManagerCompat.from(this).cancel(SyncNotificationService.REOPEN_NOTIFICATION_ID)
+        }
+
         val padding = (16 * resources.displayMetrics.density).toInt()
 
         // Icon buttons (asked for explicitly): sync + publish top-left, settings top-right --
