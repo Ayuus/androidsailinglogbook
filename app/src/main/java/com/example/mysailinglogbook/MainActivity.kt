@@ -272,6 +272,17 @@ class MainActivity : AppCompatActivity() {
             // sync itself takes to actually wind down in the background; the Thread's own
             // stopService() call later is a harmless no-op against an already-stopped service.
             stopService(Intent(this, SyncNotificationService::class.java))
+            if (!SyncState.inProgress) {
+                // Nothing running -- SyncNotificationService.onTaskRemoved()'s own cleanup only
+                // fires for a service that's actually running, but autoStartSyncWithSettingsRetry()'s
+                // cheap pre-check posts "W2K-2 niet gevonden" straight via NotificationManagerCompat
+                // without ever starting the service at all, so that notification had no way to be
+                // cleared by swiping the app away (found in practice, asked for explicitly: it just
+                // sat there indefinitely). onDestroy() fires regardless of whether the service was
+                // ever started, so it covers that gap onTaskRemoved() structurally can't.
+                NotificationManagerCompat.from(this).cancel(SyncNotificationService.NOTIFICATION_ID)
+                NotificationManagerCompat.from(this).cancel(SyncNotificationService.REOPEN_NOTIFICATION_ID)
+            }
         }
     }
 
