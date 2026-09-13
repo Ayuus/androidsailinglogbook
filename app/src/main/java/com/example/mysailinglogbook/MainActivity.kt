@@ -600,12 +600,19 @@ class MainActivity : AppCompatActivity() {
     // in sync with that, not drive it.
     private var showingLocalLogbook = false
 
-    /** Manual re-publish (the ☁️ icon): re-uploads the *already-built* local logbook.html
-     * without running a new sync first -- for when a sync already succeeded but the upload step
-     * itself failed (wrong SFTP password just fixed in
-     * Instellingen, server was briefly unreachable, ...) and re-fetching from the W2K-2 again
-     * would be pointless. Shares SyncState.inProgress with runSync() so this can't run at the same
-     * time as a sync's own automatic upload at the end of it. */
+    /** Manual re-publish (the ☁️ icon): builds the logbook from whatever .ebl files are already
+     * on the phone (same as runOfflineBuild(), see buildFromLocalFilesAndMaybePublish()'s own
+     * doc comment) and then always uploads it, ignoring "Automatisch publiceren na bouwen" --
+     * tapping ☁️ is itself the explicit request to publish. Building first here, not just
+     * re-uploading whatever logbook.html already happened to be on disk, fixes a real gap found
+     * in practice: downloading from the W2K-2 over its own hotspot (no internet there to publish
+     * over anyway), then switching to a different network later specifically to publish -- if
+     * that download's own decode/build step never finished (app closed, network switched first),
+     * there was no fresh logbook.html for ☁️ to send, or an old one sat there unchanged. A
+     * cache-hit rebuild when nothing's actually missing is fast, so this costs little even when
+     * ☁️ alone (an already-fresh logbook.html) would have been enough. Shares SyncState.inProgress
+     * with runSync() so this can't run at the same time as a sync's own automatic upload at the
+     * end of it. */
     private fun runPublish() {
         if (SyncState.inProgress) return
         // Both, not just SFTP -- found in practice, a real bug: an owner with only REST
@@ -616,45 +623,7 @@ class MainActivity : AppCompatActivity() {
             handleLogLine("[info] " + getString(R.string.log_fill_publish_settings))
             return
         }
-        val htmlFile = File(filesDir, "logbook.html")
-        if (!htmlFile.exists()) {
-            handleLogLine("[info] " + getString(R.string.log_no_logbook_to_publish))
-            return
-        }
-
-        SyncState.inProgress = true
-        syncButton.isEnabled = false
-        publishButton.isEnabled = false
-        SyncState.lastStatusText = getString(R.string.status_publishing)
-
-        Thread {
-            var didPublish = false
-            try {
-                didPublish = uploadIfConfigured(htmlFile.absolutePath)
-            } finally {
-                // Same "stopService() + postCompletionNotification()" treatment as runSync()'s
-                // own finally block -- found in practice, a real bug: this one never had either,
-                // so the ongoing "Uploaden..." notification (or, if the app got closed mid-
-                // upload, "App wordt afgesloten...", see SyncNotificationService.onTaskRemoved())
-                // just sat there indefinitely afterward, with no "Voltooid" notification ever
-                // replacing it the way a full sync's own publish step always gets.
-                stopService(Intent(this, SyncNotificationService::class.java))
-                if (didPublish) {
-                    val timeText = java.text.SimpleDateFormat("HH:mm", java.util.Locale.getDefault())
-                        .format(java.util.Date())
-                    SyncNotificationService.postCompletionNotification(
-                        this, getString(R.string.notif_sync_done_at, timeText), MainActivity.LIVE_SITE_URL,
-                    )
-                }
-                SyncState.notificationForegrounded = false
-                SyncState.notificationStartFailed = false
-                SyncState.inProgress = false  // must always happen, see runSync()'s own finally
-                withActiveActivity {
-                    syncButton.isEnabled = true
-                    publishButton.isEnabled = true
-                }
-            }
-        }.start()
+        buildFromLocalFilesAndMaybePublish(forcePublish = true)
     }
 
     private data class SyncResult(
@@ -1130,6 +1099,16 @@ class MainActivity : AppCompatActivity() {
      * data already on the phone worth seeing (asked for explicitly). Publishes it too, same as a
      * normal sync's own auto-publish, if the SFTP settings are filled in. */
     private fun runOfflineBuild() {
+        buildFromLocalFilesAndMaybePublish(forcePublish = false)
+    }
+
+    /** Shared by runOfflineBuild() (the offline/close dialog's "Logboek bouwen..." button) and
+     * runPublish() (the ☁️ icon) -- both build the logbook from whatever .ebl files are already
+     * on the phone, no W2K-2 connection needed. forcePublish=false keeps runOfflineBuild()'s own
+     * existing behavior (gated on "Automatisch publiceren na bouwen"); runPublish() passes true
+     * instead, since tapping ☁️ is itself the explicit request to publish, same as it already was
+     * before this was shared. */
+    private fun buildFromLocalFilesAndMaybePublish(forcePublish: Boolean) {
         if (SyncState.inProgress) return
         SyncState.inProgress = true
         // syncButton stays enabled here too -- same reasoning as runSync()'s own version of this
@@ -1157,8 +1136,9 @@ class MainActivity : AppCompatActivity() {
                 val result = buildFromLocalFiles()
                 syncSucceeded = result.ok
                 withActiveActivity { showSyncResult(result) }
-                // Same "Automatisch publiceren na bouwen" gate as runSync()'s own matching call.
-                if (result.ok && result.htmlPath != null && settingsStore.autoPublishAfterBuild) {
+                // Same "Automatisch publiceren na bouwen" gate as runSync()'s own matching call,
+                // unless forcePublish overrides it (see this function's own doc comment).
+                if (result.ok && result.htmlPath != null && (forcePublish || settingsStore.autoPublishAfterBuild)) {
                     didPublish = uploadIfConfigured(result.htmlPath)
                 }
                 if (syncSucceeded) {

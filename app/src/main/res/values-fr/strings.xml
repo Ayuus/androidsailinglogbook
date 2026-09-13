@@ -20,8 +20,6 @@
     <string name="error_unexpected_sync">Erreur inattendue pendant la synchronisation : %1$s</string>
     <string name="log_no_logbook_to_view">Aucun journal à consulter pour l\'instant -- synchronisez d\'abord.</string>
     <string name="log_fill_publish_settings">Renseignez d\'abord les paramètres de publication (REST ou SFTP) dans les Paramètres.</string>
-    <string name="log_no_logbook_to_publish">Aucun journal à publier pour l\'instant -- synchronisez d\'abord.</string>
-    <string name="status_publishing">Publication sur ayuus.com...</string>
     <string name="log_ebl_files_location">Les fichiers .ebl se trouvent dans : %1$s</string>
     <string name="status_downloading">Téléchargement : %1$d/%2$d (%3$s)</string>
     <string name="phase_downloading">Téléchargement</string>

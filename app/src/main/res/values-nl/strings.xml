@@ -24,8 +24,6 @@
     <string name="error_unexpected_sync">Onverwachte fout tijdens synchroniseren: %1$s</string>
     <string name="log_no_logbook_to_view">Nog geen logboek om te bekijken -- synchroniseer eerst.</string>
     <string name="log_fill_publish_settings">Vul eerst de publiceer-instellingen (REST of SFTP) in via Instellingen.</string>
-    <string name="log_no_logbook_to_publish">Nog geen logboek om te publiceren -- synchroniseer eerst.</string>
-    <string name="status_publishing">Publiceren naar ayuus.com...</string>
     <string name="log_ebl_files_location">.ebl-bestanden staan in: %1$s</string>
     <string name="status_downloading">Downloaden: %1$d/%2$d (%3$s)</string>
     <string name="phase_downloading">Downloaden</string>

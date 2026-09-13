@@ -20,8 +20,6 @@
     <string name="error_unexpected_sync">Unerwarteter Fehler während der Synchronisierung: %1$s</string>
     <string name="log_no_logbook_to_view">Noch kein Bordbuch zum Ansehen -- zuerst synchronisieren.</string>
     <string name="log_fill_publish_settings">Trage zuerst die Veröffentlichungseinstellungen (REST oder SFTP) in den Einstellungen ein.</string>
-    <string name="log_no_logbook_to_publish">Noch kein Bordbuch zum Veröffentlichen -- zuerst synchronisieren.</string>
-    <string name="status_publishing">Wird auf ayuus.com veröffentlicht...</string>
     <string name="log_ebl_files_location">Die .ebl-Dateien befinden sich in: %1$s</string>
     <string name="status_downloading">Wird heruntergeladen: %1$d/%2$d (%3$s)</string>
     <string name="phase_downloading">Herunterladen</string>

@@ -28,8 +28,6 @@
     <string name="error_unexpected_sync">Unexpected error during sync: %1$s</string>
     <string name="log_no_logbook_to_view">No logbook to view yet -- sync first.</string>
     <string name="log_fill_publish_settings">Fill in the publish settings (REST or SFTP) via Settings first.</string>
-    <string name="log_no_logbook_to_publish">No logbook to publish yet -- sync first.</string>
-    <string name="status_publishing">Publishing to ayuus.com...</string>
     <string name="log_ebl_files_location">The .ebl files are stored in: %1$s</string>
     <string name="status_downloading">Downloading: %1$d/%2$d (%3$s)</string>
     <string name="phase_downloading">Downloading</string>
