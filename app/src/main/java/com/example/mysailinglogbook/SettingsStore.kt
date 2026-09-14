@@ -82,10 +82,12 @@ class SettingsStore(context: Context) {
     // /logbook route, and upload.py's own upload_via_rest() on the desktop side, which this calls
     // into over Chaquopy rather than reimplementing HTTP + Basic Auth here), so publishing needs
     // no SSH key/password on this device at all -- just a WordPress Application Password for an
-    // account in the logboek_editor role. Never defaulted, unlike DEFAULT_SFTP_HOST/
-    // DEFAULT_SFTP_REMOTE_PATH below -- found in practice: a brand new app install (a fresh
-    // applicationId, see build.gradle.kts) still showed ayuus.com here despite nothing ever being
-    // entered on that install, surprising enough to ask for it to stay blank until typed in.
+    // account in the logboek_editor role. Never defaulted, same reasoning as sftpHost/
+    // sftpRemotePath below -- a brand new install shouldn't show a real server hostname/path
+    // despite nothing ever being entered on that install (found in practice; also asked for
+    // explicitly for sftpHost/sftpRemotePath, which used to default to a real personal server --
+    // that value shipped inside every APK build, readable by decompiling it or reading the source
+    // in a public repo, not just something typed into this one screen).
     var restUploadUrl: String
         get() = prefs.getString(KEY_REST_UPLOAD_URL, "") ?: ""
         set(value) = prefs.edit().putString(KEY_REST_UPLOAD_URL, value).apply()
@@ -102,7 +104,7 @@ class SettingsStore(context: Context) {
         get() = restUploadUrl.isNotBlank() && restUploadUser.isNotBlank() && restUploadPassword.isNotBlank()
 
     var sftpHost: String
-        get() = prefs.getString(KEY_SFTP_HOST, DEFAULT_SFTP_HOST) ?: DEFAULT_SFTP_HOST
+        get() = prefs.getString(KEY_SFTP_HOST, "") ?: ""
         set(value) = prefs.edit().putString(KEY_SFTP_HOST, value).apply()
 
     var sftpPort: Int
@@ -118,7 +120,7 @@ class SettingsStore(context: Context) {
         set(value) = prefs.edit().putString(KEY_SFTP_PASSWORD, value).apply()
 
     var sftpRemotePath: String
-        get() = prefs.getString(KEY_SFTP_REMOTE_PATH, DEFAULT_SFTP_REMOTE_PATH) ?: DEFAULT_SFTP_REMOTE_PATH
+        get() = prefs.getString(KEY_SFTP_REMOTE_PATH, "") ?: ""
         set(value) = prefs.edit().putString(KEY_SFTP_REMOTE_PATH, value).apply()
 
     val isSftpConfigComplete: Boolean
@@ -134,9 +136,7 @@ class SettingsStore(context: Context) {
         set(value) = prefs.edit().putString(KEY_SFTP_HOST_KEY_FINGERPRINT, value).apply()
 
     companion object {
-        const val DEFAULT_SFTP_HOST = "ayuusc.ssh.transip.me"
         const val DEFAULT_SFTP_PORT = 22
-        const val DEFAULT_SFTP_REMOTE_PATH = "private/little_endian/logbook.html"
         // Same default as build_arg_parser()'s own --min-stop-minutes (see cli.py).
         const val DEFAULT_MIN_STOP_MINUTES = 10.0f
         private const val KEY_W2K2_USER = "w2k2_user"

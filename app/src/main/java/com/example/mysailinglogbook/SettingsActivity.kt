@@ -202,11 +202,9 @@ class SettingsActivity : AppCompatActivity() {
         }
         publishMethodGroup.setOnCheckedChangeListener { _, _ -> updatePublishMethodVisibility() }
         // Preselects whatever is already actually configured (isRestUploadConfigComplete/
-        // isSftpConfigComplete require every field of that route to be filled in, not just one --
-        // sftpHost alone isn't enough, since it (unlike restUploadUrl) has a non-blank default
-        // even on a brand new install, see SettingsStore.DEFAULT_SFTP_HOST), matching
-        // uploadIfConfigured()'s own REST-preferred order. "Don't publish" if neither is complete
-        // yet -- also the correct default on a brand new install, replacing what used to
+        // isSftpConfigComplete require every field of that route to be filled in, not just one),
+        // matching uploadIfConfigured()'s own REST-preferred order. "Don't publish" if neither is
+        // complete yet -- also the correct default on a brand new install, replacing what used to
         // incorrectly default to WordPress even with nothing filled in at all.
         when {
             store.isRestUploadConfigComplete -> wordpressRadio.isChecked = true
