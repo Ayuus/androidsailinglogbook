@@ -84,11 +84,11 @@
     <string name="label_boat_name">Boat name</string>
     <string name="label_mmsi">MMSI</string>
     <string name="label_call_sign">Call sign</string>
-    <string name="checkbox_auto_sync_on_launch">Automatically download on launch (otherwise only via ↺)</string>
+    <string name="checkbox_auto_sync_on_launch">Automatically download on launch</string>
     <string name="section_trips">Trips</string>
     <string name="label_min_stop_minutes">Minimum stop duration to count as a port visit (minutes)</string>
     <string name="section_publish">Publish to ayuus.com</string>
-    <string name="checkbox_auto_publish_after_build">Automatically publish after building (otherwise only via ☁️)</string>
+    <string name="checkbox_auto_publish_after_build">Automatically publish after building</string>
     <string name="label_rest_upload_url">REST upload URL (WordPress plugin)</string>
     <string name="label_rest_upload_user">WordPress username</string>
     <string name="label_rest_upload_password">WordPress application password</string>

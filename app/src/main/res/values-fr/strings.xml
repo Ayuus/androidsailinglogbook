@@ -76,11 +76,11 @@
     <string name="label_boat_name">Nom du bateau</string>
     <string name="label_mmsi">MMSI</string>
     <string name="label_call_sign">Indicatif d\'appel</string>
-    <string name="checkbox_auto_sync_on_launch">Télécharger automatiquement au démarrage (sinon uniquement via ↺)</string>
+    <string name="checkbox_auto_sync_on_launch">Télécharger automatiquement au démarrage</string>
     <string name="section_trips">Trajets</string>
     <string name="label_min_stop_minutes">Durée d\'arrêt minimale pour compter comme escale (minutes)</string>
     <string name="section_publish">Publier sur ayuus.com</string>
-    <string name="checkbox_auto_publish_after_build">Publier automatiquement après la construction (sinon uniquement via ☁️)</string>
+    <string name="checkbox_auto_publish_after_build">Publier automatiquement après la construction</string>
     <string name="label_rest_upload_url">URL d\'envoi REST (extension WordPress)</string>
     <string name="label_rest_upload_user">Nom d\'utilisateur WordPress</string>
     <string name="label_rest_upload_password">Mot de passe d\'application WordPress</string>
