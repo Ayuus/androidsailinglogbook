@@ -2,9 +2,12 @@ package com.example.mysailinglogbook
 
 import android.os.Bundle
 import android.text.InputType
+import android.view.View
 import android.widget.CheckBox
 import android.widget.EditText
 import android.widget.LinearLayout
+import android.widget.RadioButton
+import android.widget.RadioGroup
 import android.widget.ScrollView
 import android.widget.TextView
 import android.widget.Toast
@@ -33,8 +36,13 @@ class SettingsActivity : AppCompatActivity() {
             setPadding(padding, padding, padding, padding)
         }
 
-        fun field(label: String, initialValue: String, isPassword: Boolean = false): EditText {
-            layout.addView(
+        fun field(
+            label: String,
+            initialValue: String,
+            isPassword: Boolean = false,
+            container: LinearLayout = layout,
+        ): EditText {
+            container.addView(
                 TextView(this).apply {
                     text = label
                     setPadding(0, padding, 0, 0)
@@ -46,17 +54,22 @@ class SettingsActivity : AppCompatActivity() {
                     inputType = InputType.TYPE_CLASS_TEXT or InputType.TYPE_TEXT_VARIATION_PASSWORD
                 }
             }
-            layout.addView(editText)
+            container.addView(editText)
             return editText
         }
 
-        fun sectionHeader(text: String) {
+        fun sectionHeader(text: String, disabled: Boolean = false) {
             layout.addView(
                 TextView(this).apply {
                     this.text = text
                     setPadding(0, padding * 2, 0, 0)
                     textSize = 16f
                     setTypeface(typeface, android.graphics.Typeface.BOLD)
+                    // Dimmed, not hidden -- still names the section (asked for explicitly: the
+                    // header used to always claim "ayuus.com" even on a brand new install with
+                    // nothing configured at all yet, see publishHeaderText below), just visually
+                    // reads as "nothing here yet" rather than an active destination.
+                    if (disabled) alpha = 0.5f
                 }
             )
         }
@@ -65,9 +78,20 @@ class SettingsActivity : AppCompatActivity() {
             val box = CheckBox(this).apply {
                 text = label
                 isChecked = initialValue
-                setPadding(0, padding, 0, 0)
             }
-            layout.addView(box)
+            // Found in practice, asked for explicitly, and confirmed with pixel measurements:
+            // CompoundButton positions its check-glyph using the view's raw height, ignoring
+            // padding -- so a top *padding* (as used for every other field's spacing) shifts the
+            // label text down without moving the glyph, breaking their shared vertical center. A
+            // top *margin* doesn't have that bug, since it's handled by the parent layout instead
+            // of CompoundButton's own draw logic.
+            layout.addView(
+                box,
+                LinearLayout.LayoutParams(
+                    LinearLayout.LayoutParams.WRAP_CONTENT,
+                    LinearLayout.LayoutParams.WRAP_CONTENT,
+                ).apply { topMargin = padding },
+            )
             return box
         }
 
@@ -87,26 +111,69 @@ class SettingsActivity : AppCompatActivity() {
             store.minStopMinutes.toString(),
         ).apply { inputType = InputType.TYPE_CLASS_NUMBER or InputType.TYPE_NUMBER_FLAG_DECIMAL }
 
-        sectionHeader(getString(R.string.section_publish))
+        // Derived from whatever's actually configured, not hardcoded -- asked for explicitly,
+        // found in practice: this always read "Publiceren naar ayuus.com" even on a fresh
+        // install with nothing filled in at all, misleadingly claiming a destination that wasn't
+        // really set up yet (the exact same concern that already keeps restUploadUrl/sftpHost
+        // themselves un-defaulted, see SettingsStore's own doc comments). REST preferred over
+        // SFTP here too, matching uploadIfConfigured()'s own choice -- the host shown is whichever
+        // one publishing would actually use right now. java.net.URI, not a manual string split:
+        // handles a URL with or without a path/port/query correctly; a malformed URL (still being
+        // typed, not yet a real URL) just falls through to the "not configured" state instead of
+        // crashing this screen.
+        val publishHost = when {
+            store.restUploadUrl.isNotBlank() ->
+                runCatching { java.net.URI(store.restUploadUrl).host }.getOrNull()
+            store.sftpHost.isNotBlank() -> store.sftpHost
+            else -> null
+        }
+        if (publishHost != null) {
+            sectionHeader(getString(R.string.section_publish_to, publishHost))
+        } else {
+            sectionHeader(getString(R.string.section_publish_not_configured), disabled = true)
+        }
         val autoPublishAfterBuildBox = checkbox(
             getString(R.string.checkbox_auto_publish_after_build),
             store.autoPublishAfterBuild,
         )
-        // REST is preferred over SFTP below whenever both happen to be filled in (see
-        // MainActivity.uploadIfConfigured()) -- needs no SSH key/password on this device at all,
-        // just a WordPress Application Password (Users > Profile > Application Passwords on the
-        // account's own profile page, not the account's real login password) for an account in
-        // the logboek_editor role.
-        val restUploadUrlField = field(getString(R.string.label_rest_upload_url), store.restUploadUrl)
-        val restUploadUserField = field(getString(R.string.label_rest_upload_user), store.restUploadUser)
-        val restUploadPasswordField = field(
-            getString(R.string.label_rest_upload_password), store.restUploadPassword, isPassword = true,
+
+        // WordPress and SFTP are two ways to publish the same logbook, never both at once --
+        // uploadIfConfigured() only ever uses one (REST/WordPress preferred whenever both happen
+        // to be filled in). Both field blocks used to always show together with no hint that only
+        // one is actually used, which read as "fill in everything" -- asked for explicitly: make
+        // the either/or explicit with a choice that expands only the fields it needs.
+        val publishMethodGroup = RadioGroup(this).apply { orientation = LinearLayout.VERTICAL }
+        val wordpressRadio = RadioButton(this).apply { text = getString(R.string.radio_publish_wordpress) }
+        val sftpRadio = RadioButton(this).apply { text = getString(R.string.radio_publish_sftp) }
+        publishMethodGroup.addView(wordpressRadio)
+        publishMethodGroup.addView(sftpRadio)
+        layout.addView(
+            publishMethodGroup,
+            LinearLayout.LayoutParams(LinearLayout.LayoutParams.WRAP_CONTENT, LinearLayout.LayoutParams.WRAP_CONTENT)
+                .apply { topMargin = padding },
         )
-        val sftpHostField = field(getString(R.string.label_sftp_host), store.sftpHost)
-        val sftpPortField = field(getString(R.string.label_sftp_port), store.sftpPort.toString())
-        val sftpUserField = field(getString(R.string.label_sftp_user), store.sftpUser)
-        val sftpPasswordField = field(getString(R.string.label_sftp_password), store.sftpPassword, isPassword = true)
-        val sftpRemotePathField = field(getString(R.string.label_sftp_remote_path), store.sftpRemotePath)
+
+        val wordpressFields = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL }
+        val sftpFields = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL }
+        layout.addView(wordpressFields)
+        layout.addView(sftpFields)
+
+        // Needs no SSH key/password on this device at all, just a WordPress Application Password
+        // (Users > Profile > Application Passwords on the account's own profile page, not the
+        // account's real login password) for an account in the logboek_editor role.
+        val restUploadUrlField = field(getString(R.string.label_rest_upload_url), store.restUploadUrl, container = wordpressFields)
+        val restUploadUserField = field(getString(R.string.label_rest_upload_user), store.restUploadUser, container = wordpressFields)
+        val restUploadPasswordField = field(
+            getString(R.string.label_rest_upload_password), store.restUploadPassword, isPassword = true, container = wordpressFields,
+        )
+
+        val sftpHostField = field(getString(R.string.label_sftp_host), store.sftpHost, container = sftpFields)
+        val sftpPortField = field(getString(R.string.label_sftp_port), store.sftpPort.toString(), container = sftpFields)
+        val sftpUserField = field(getString(R.string.label_sftp_user), store.sftpUser, container = sftpFields)
+        val sftpPasswordField = field(
+            getString(R.string.label_sftp_password), store.sftpPassword, isPassword = true, container = sftpFields,
+        )
+        val sftpRemotePathField = field(getString(R.string.label_sftp_remote_path), store.sftpRemotePath, container = sftpFields)
 
         // The host-key fingerprint (see SftpUploader.kt) isn't a credential -- it's the server's
         // own public key, used to reject a *later, different* key instead of silently trusting it
@@ -117,7 +184,27 @@ class SettingsActivity : AppCompatActivity() {
         val sftpHostKeyField = field(
             getString(R.string.label_sftp_host_key_fingerprint),
             store.sftpHostKeyFingerprint,
+            container = sftpFields,
         )
+
+        // Only the picked method's fields are shown -- GONE, not just visually hidden, so the
+        // collapsed block doesn't leave a blank gap. Both sides are still saved regardless of
+        // which one is shown (see the Opslaan click listener below), so switching back and forth
+        // never loses anything already typed on either side.
+        fun updatePublishMethodVisibility() {
+            wordpressFields.visibility = if (wordpressRadio.isChecked) View.VISIBLE else View.GONE
+            sftpFields.visibility = if (sftpRadio.isChecked) View.VISIBLE else View.GONE
+        }
+        publishMethodGroup.setOnCheckedChangeListener { _, _ -> updatePublishMethodVisibility() }
+        // Preselects whichever one is already configured -- SFTP only if it alone has something
+        // filled in, WordPress otherwise (also the default on a brand new install with nothing
+        // filled in yet), matching uploadIfConfigured()'s own REST-preferred order.
+        if (store.sftpHost.isNotBlank() && store.restUploadUrl.isBlank()) {
+            sftpRadio.isChecked = true
+        } else {
+            wordpressRadio.isChecked = true
+        }
+        updatePublishMethodVisibility()
 
         // Cache-legen: two separate buttons rather than one "clear everything" -- the two caches
         // are cleared for different reasons (a decode/trip-build bug vs. a wrong/stale place
@@ -211,6 +298,11 @@ class SettingsActivity : AppCompatActivity() {
                 store.minStopMinutes = minStopMinutesField.text.toString().toDoubleOrNull()
                     ?: SettingsStore.DEFAULT_MIN_STOP_MINUTES.toDouble()
                 store.autoPublishAfterBuild = autoPublishAfterBuildBox.isChecked
+                // Both routes' fields are still saved regardless of which one is picked above --
+                // the radio choice only decides which block is shown (see
+                // updatePublishMethodVisibility()), not which data is kept, so switching the
+                // choice back and forth never silently discards whatever was already filled in on
+                // the other side.
                 store.restUploadUrl = restUploadUrlField.text.toString().trim()
                 store.restUploadUser = restUploadUserField.text.toString().trim()
                 store.restUploadPassword = restUploadPasswordField.text.toString()

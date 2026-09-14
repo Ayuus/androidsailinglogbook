@@ -87,9 +87,12 @@
     <string name="checkbox_auto_sync_on_launch">Automatically download on launch</string>
     <string name="section_trips">Trips</string>
     <string name="label_min_stop_minutes">Minimum stop duration to count as a port visit (minutes)</string>
-    <string name="section_publish">Publish to ayuus.com</string>
+    <string name="section_publish_to">Publish to %1$s</string>
+    <string name="section_publish_not_configured">Publish</string>
     <string name="checkbox_auto_publish_after_build">Automatically publish after building</string>
-    <string name="label_rest_upload_url">REST upload URL (WordPress plugin)</string>
+    <string name="radio_publish_wordpress">Publish via WordPress</string>
+    <string name="radio_publish_sftp">Publish via SFTP</string>
+    <string name="label_rest_upload_url">REST upload URL (WordPress)</string>
     <string name="label_rest_upload_user">WordPress username</string>
     <string name="label_rest_upload_password">WordPress application password</string>
     <string name="label_sftp_host">SFTP host</string>
