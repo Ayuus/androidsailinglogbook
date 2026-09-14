@@ -1,6 +1,10 @@
 *.iml
 .gradle
 /local.properties
+# Play Store upload-signing keystore -- generated locally (see build.gradle.kts's signingConfigs),
+# never committed: losing it just means generating a new one and re-registering the upload key
+# with Google, but a leaked one lets someone else sign app updates that look legitimate.
+/release.jks
 /.idea/caches
 /.idea/libraries
 /.idea/modules.xml
