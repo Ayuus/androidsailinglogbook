@@ -137,16 +137,19 @@ class SettingsActivity : AppCompatActivity() {
             store.autoPublishAfterBuild,
         )
 
-        // WordPress and SFTP are two ways to publish the same logbook, never both at once --
-        // uploadIfConfigured() only ever uses one (REST/WordPress preferred whenever both happen
-        // to be filled in). Both field blocks used to always show together with no hint that only
-        // one is actually used, which read as "fill in everything" -- asked for explicitly: make
-        // the either/or explicit with a choice that expands only the fields it needs.
+        // WordPress, SFTP, or not publishing at all -- exactly one at a time, never a
+        // combination (uploadIfConfigured() only ever uses one, REST/WordPress preferred
+        // whenever both happen to be filled in). All the relevant field blocks used to always
+        // show together with no hint that only one is actually used, which read as "fill in
+        // everything" -- asked for explicitly: make the choice explicit, expanding only the
+        // fields it needs (none, for "don't publish").
         val publishMethodGroup = RadioGroup(this).apply { orientation = LinearLayout.VERTICAL }
         val wordpressRadio = RadioButton(this).apply { text = getString(R.string.radio_publish_wordpress) }
         val sftpRadio = RadioButton(this).apply { text = getString(R.string.radio_publish_sftp) }
+        val noPublishRadio = RadioButton(this).apply { text = getString(R.string.radio_publish_none) }
         publishMethodGroup.addView(wordpressRadio)
         publishMethodGroup.addView(sftpRadio)
+        publishMethodGroup.addView(noPublishRadio)
         layout.addView(
             publishMethodGroup,
             LinearLayout.LayoutParams(LinearLayout.LayoutParams.WRAP_CONTENT, LinearLayout.LayoutParams.WRAP_CONTENT)
@@ -188,21 +191,27 @@ class SettingsActivity : AppCompatActivity() {
         )
 
         // Only the picked method's fields are shown -- GONE, not just visually hidden, so the
-        // collapsed block doesn't leave a blank gap. Both sides are still saved regardless of
-        // which one is shown (see the Opslaan click listener below), so switching back and forth
-        // never loses anything already typed on either side.
+        // collapsed block doesn't leave a blank gap ("don't publish" shows neither). Whichever
+        // one is picked here also decides what Opslaan actually saves (see its click listener
+        // below) -- the other route(s) are cleared, not just left untouched, so a leftover,
+        // unpicked config from before can never silently win via uploadIfConfigured()'s own
+        // REST-preferred order once "don't publish" (or the other method) has been chosen instead.
         fun updatePublishMethodVisibility() {
             wordpressFields.visibility = if (wordpressRadio.isChecked) View.VISIBLE else View.GONE
             sftpFields.visibility = if (sftpRadio.isChecked) View.VISIBLE else View.GONE
         }
         publishMethodGroup.setOnCheckedChangeListener { _, _ -> updatePublishMethodVisibility() }
-        // Preselects whichever one is already configured -- SFTP only if it alone has something
-        // filled in, WordPress otherwise (also the default on a brand new install with nothing
-        // filled in yet), matching uploadIfConfigured()'s own REST-preferred order.
-        if (store.sftpHost.isNotBlank() && store.restUploadUrl.isBlank()) {
-            sftpRadio.isChecked = true
-        } else {
-            wordpressRadio.isChecked = true
+        // Preselects whatever is already actually configured (isRestUploadConfigComplete/
+        // isSftpConfigComplete require every field of that route to be filled in, not just one --
+        // sftpHost alone isn't enough, since it (unlike restUploadUrl) has a non-blank default
+        // even on a brand new install, see SettingsStore.DEFAULT_SFTP_HOST), matching
+        // uploadIfConfigured()'s own REST-preferred order. "Don't publish" if neither is complete
+        // yet -- also the correct default on a brand new install, replacing what used to
+        // incorrectly default to WordPress even with nothing filled in at all.
+        when {
+            store.isRestUploadConfigComplete -> wordpressRadio.isChecked = true
+            store.isSftpConfigComplete -> sftpRadio.isChecked = true
+            else -> noPublishRadio.isChecked = true
         }
         updatePublishMethodVisibility()
 
@@ -298,20 +307,44 @@ class SettingsActivity : AppCompatActivity() {
                 store.minStopMinutes = minStopMinutesField.text.toString().toDoubleOrNull()
                     ?: SettingsStore.DEFAULT_MIN_STOP_MINUTES.toDouble()
                 store.autoPublishAfterBuild = autoPublishAfterBuildBox.isChecked
-                // Both routes' fields are still saved regardless of which one is picked above --
-                // the radio choice only decides which block is shown (see
-                // updatePublishMethodVisibility()), not which data is kept, so switching the
-                // choice back and forth never silently discards whatever was already filled in on
-                // the other side.
-                store.restUploadUrl = restUploadUrlField.text.toString().trim()
-                store.restUploadUser = restUploadUserField.text.toString().trim()
-                store.restUploadPassword = restUploadPasswordField.text.toString()
-                store.sftpHost = sftpHostField.text.toString().trim()
-                store.sftpPort = sftpPortField.text.toString().toIntOrNull() ?: SettingsStore.DEFAULT_SFTP_PORT
-                store.sftpUser = sftpUserField.text.toString().trim()
-                store.sftpPassword = sftpPasswordField.text.toString()
-                store.sftpRemotePath = sftpRemotePathField.text.toString().trim()
-                store.sftpHostKeyFingerprint = sftpHostKeyField.text.toString().trim()
+                // Only the picked method's fields are actually saved -- the other route(s) are
+                // cleared instead of just left untouched, so the radio choice is a real,
+                // unambiguous either-or-or-neither rather than just a display filter (see
+                // updatePublishMethodVisibility()'s own comment on why). Whatever's still typed
+                // into a currently-collapsed block on screen simply isn't saved -- switching the
+                // choice without saving in between doesn't lose it, it's just not what gets
+                // stored once Opslaan is actually tapped.
+                if (wordpressRadio.isChecked) {
+                    store.restUploadUrl = restUploadUrlField.text.toString().trim()
+                    store.restUploadUser = restUploadUserField.text.toString().trim()
+                    store.restUploadPassword = restUploadPasswordField.text.toString()
+                    store.sftpHost = ""
+                    store.sftpPort = SettingsStore.DEFAULT_SFTP_PORT
+                    store.sftpUser = ""
+                    store.sftpPassword = ""
+                    store.sftpRemotePath = ""
+                    store.sftpHostKeyFingerprint = ""
+                } else if (sftpRadio.isChecked) {
+                    store.restUploadUrl = ""
+                    store.restUploadUser = ""
+                    store.restUploadPassword = ""
+                    store.sftpHost = sftpHostField.text.toString().trim()
+                    store.sftpPort = sftpPortField.text.toString().toIntOrNull() ?: SettingsStore.DEFAULT_SFTP_PORT
+                    store.sftpUser = sftpUserField.text.toString().trim()
+                    store.sftpPassword = sftpPasswordField.text.toString()
+                    store.sftpRemotePath = sftpRemotePathField.text.toString().trim()
+                    store.sftpHostKeyFingerprint = sftpHostKeyField.text.toString().trim()
+                } else {
+                    store.restUploadUrl = ""
+                    store.restUploadUser = ""
+                    store.restUploadPassword = ""
+                    store.sftpHost = ""
+                    store.sftpPort = SettingsStore.DEFAULT_SFTP_PORT
+                    store.sftpUser = ""
+                    store.sftpPassword = ""
+                    store.sftpRemotePath = ""
+                    store.sftpHostKeyFingerprint = ""
+                }
                 Toast.makeText(this@SettingsActivity, getString(R.string.toast_settings_saved), Toast.LENGTH_SHORT).show()
                 finish()
             }

@@ -92,6 +92,7 @@
     <string name="checkbox_auto_publish_after_build">Automatically publish after building</string>
     <string name="radio_publish_wordpress">Publish via WordPress</string>
     <string name="radio_publish_sftp">Publish via SFTP</string>
+    <string name="radio_publish_none">Don\'t publish (local only)</string>
     <string name="label_rest_upload_url">REST upload URL (WordPress)</string>
     <string name="label_rest_upload_user">WordPress username</string>
     <string name="label_rest_upload_password">WordPress application password</string>

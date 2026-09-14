@@ -236,6 +236,7 @@ class MainActivity : AppCompatActivity() {
             insets
         }
         setContentView(layout)
+        updatePublishButtonEnabled()
 
         // Auto-start on a genuinely fresh launch, not on every onCreate() -- asked for explicitly:
         // opening the app should try to reach the W2K-2 right away instead of waiting for a manual
@@ -324,7 +325,18 @@ class MainActivity : AppCompatActivity() {
             progressBar.visibility = View.GONE
             progressLabel.visibility = View.GONE
         }
-        publishButton.isEnabled = !SyncState.inProgress
+        updatePublishButtonEnabled()
+    }
+
+    /** ☁️ only makes sense once WordPress or SFTP is actually filled in (see SettingsStore) --
+     * asked for explicitly: tapping it with neither configured used to just log "vul eerst de
+     * publiceer-instellingen in" (see runPublish()), so the button looked usable when it never
+     * could do anything. Also never enabled while a sync or offline build is already running,
+     * same as before this existed. Called from onResume() too, since the only way settings
+     * change is a round trip through SettingsActivity and back. */
+    private fun updatePublishButtonEnabled() {
+        publishButton.isEnabled = !SyncState.inProgress &&
+            (settingsStore.isRestUploadConfigComplete || settingsStore.isSftpConfigComplete)
     }
 
     /** Found in practice, still not fully understood at the OS level: right after this Activity's
@@ -467,7 +479,7 @@ class MainActivity : AppCompatActivity() {
                     SyncNotificationService.postNotFoundNotification(this, message)
                     SyncState.inProgress = false
                     syncButton.isEnabled = true
-                    publishButton.isEnabled = true
+                    updatePublishButtonEnabled()
                 }
                 return@Thread
             }
@@ -560,7 +572,7 @@ class MainActivity : AppCompatActivity() {
                 // state on its own (see onCreate()/restoreLiveSyncUi()).
                 withActiveActivity {
                     syncButton.isEnabled = true
-                    publishButton.isEnabled = true
+                    updatePublishButtonEnabled()
                     hideProgressBar()
                 }
             }
@@ -1172,7 +1184,7 @@ class MainActivity : AppCompatActivity() {
                 SyncState.inProgress = false  // must always happen, see runSync()'s own finally
                 withActiveActivity {
                     syncButton.isEnabled = true
-                    publishButton.isEnabled = true
+                    updatePublishButtonEnabled()
                     hideProgressBar()
                 }
             }
@@ -1487,6 +1499,10 @@ class MainActivity : AppCompatActivity() {
         // restoreLiveSyncUi() below, whose whole point is to bring THIS instance's own views up
         // to date (see SyncState.active's own doc comment for the bug this fixes).
         SyncState.active = this
+        // Settings can only have changed via a round trip through SettingsActivity and back --
+        // re-checks here so a publish method that was just filled in (or cleared) is reflected
+        // immediately, without waiting for a sync to finish.
+        updatePublishButtonEnabled()
         // Brings logView/the progress bar up to date with whatever a sync -- still in
         // progress, or one that already finished while this Activity wasn't the active one --
         // has produced so far. Not gated on SyncState.inProgress alone: found in practice, a

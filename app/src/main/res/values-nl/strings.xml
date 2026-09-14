@@ -88,6 +88,7 @@
     <string name="checkbox_auto_publish_after_build">Automatisch publiceren na bouwen</string>
     <string name="radio_publish_wordpress">Publiceren via WordPress</string>
     <string name="radio_publish_sftp">Publiceren via SFTP</string>
+    <string name="radio_publish_none">Niet publiceren (alleen lokaal)</string>
     <string name="label_rest_upload_url">REST upload-URL (WordPress)</string>
     <string name="label_rest_upload_user">WordPress gebruikersnaam</string>
     <string name="label_rest_upload_password">WordPress application password</string>
