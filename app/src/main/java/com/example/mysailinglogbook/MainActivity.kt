@@ -302,11 +302,17 @@ class MainActivity : AppCompatActivity() {
         if (savedInstanceState == null) {
             // Asked for explicitly: opt-out via Instellingen ("Automatisch downloaden bij
             // starten") for whoever doesn't want opening the app to try reaching the W2K-2 on its
-            // own -- a manual ↺ tap still works exactly the same either way. Skipping this
-            // entirely (rather than also loading any existing logbook.html here) is enough:
-            // onResume(), called right after this regardless, already does that on its own.
+            // own -- a manual ↺ tap still works exactly the same either way.
             if (settingsStore.autoSyncOnLaunch) {
                 autoStartSyncWithSettingsRetry()
+            } else {
+                // Shows whatever's already on the phone right away (asked for explicitly) --
+                // exactly what tapping 📖 itself does, not a separate code path of its own. Without
+                // this, the log's own placeholder text would sit there doing nothing until the
+                // owner tapped something (📖, or ↺ to sync anyway) -- onResume(), called right
+                // after this either way, only loads the file into the WebView underneath; it
+                // doesn't also switch to 📖's fully-covering layout the way this does.
+                viewLocalLogbook()
             }
         } else if (SyncState.inProgress) {
             // The savedInstanceState != null branch above skips autoStartSyncWithSettingsRetry()
