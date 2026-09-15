@@ -19,7 +19,7 @@ class RestUploadError(message: String, cause: Throwable? = null) : Exception(mes
  */
 object RestUploader {
     fun uploadLogbook(context: Context, url: String, user: String, appPassword: String, localFile: File) {
-        val uploadModule = Python.getInstance().getModule("nmea2000processor.upload")
+        val uploadModule = Python.getInstance().getModule("nmea2log.upload")
         try {
             uploadModule.callAttr("upload_via_rest", localFile.readBytes(), url, user, appPassword)
         } catch (e: PyException) {

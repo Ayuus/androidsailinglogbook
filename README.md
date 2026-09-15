@@ -6,7 +6,7 @@ Android app that syncs voyage data from a boat's [Actisense W2K-2](https://actis
 publishes it to a website over SFTP.
 
 It does **not** reimplement any of the NMEA 2000 decoding, trip-building, or HTML-generation
-logic. It embeds the real `nmea2000processor` Python package from the `nmea2log` repo directly
+logic. It embeds the real `nmea2log` Python package from the `nmea2log` repo directly
 (via [Chaquopy](https://chaquo.com/chaquopy/)) and drives it from Kotlin. A fix or feature added to
 `nmea2log`'s Python code is picked up by this app automatically on the next build -- there is no
 copy to keep in sync.
@@ -15,7 +15,7 @@ copy to keep in sync.
 
 - **The [nmea2log](https://github.com/Ayuus/nmea2log) repo, checked out separately on the same
   machine.** This app's Gradle build points directly at that repo's `src/` directory (specifically
-  the `nmea2000processor` package inside it) as a Chaquopy source set. It is not vendored or
+  the `nmea2log` package inside it) as a Chaquopy source set. It is not vendored or
   copied in here -- these two repos are only meant to be built together, side by side.
 - Android Studio (or a standalone Gradle/JDK toolchain) with Android SDK **compileSdk/targetSdk
   37**, **minSdk 24**.
@@ -62,7 +62,7 @@ app calls into.
 ```
 MainActivity (manual "sync now" + auto-start on launch)
   -> HotspotDetector           finds this phone's own hotspot subnet (NetworkInterface enumeration)
-  -> android_entry.sync_from_w2k2()   [Chaquopy call into the real nmea2000processor package]
+  -> android_entry.sync_from_w2k2()   [Chaquopy call into the real nmea2log package]
        -> w2k2_download.discover_w2k2()   scans that subnet for the W2K-2's HTTP API
        -> w2k2_download.download_file()   downloads new/changed .ebl files
        -> run_pipeline()                  decode -> build_trips -> write_html_logbook()

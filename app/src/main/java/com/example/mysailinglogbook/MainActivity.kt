@@ -755,7 +755,7 @@ class MainActivity : AppCompatActivity() {
             Python.start(AndroidPlatform(this))
         }
         val py = Python.getInstance()
-        val androidEntry = py.getModule("nmea2000processor.android_entry")
+        val androidEntry = py.getModule("nmea2log.android_entry")
 
         val downloadDir = eblDownloadDir()
         val outputHtmlPath = File(filesDir, "logbook.html")
@@ -1249,7 +1249,7 @@ class MainActivity : AppCompatActivity() {
         if (!Python.isStarted()) {
             Python.start(AndroidPlatform(this))
         }
-        val androidEntry = Python.getInstance().getModule("nmea2000processor.android_entry")
+        val androidEntry = Python.getInstance().getModule("nmea2log.android_entry")
 
         val downloadDir = eblDownloadDir()
         val outputHtmlPath = File(filesDir, "logbook.html")
