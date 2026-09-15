@@ -12,12 +12,16 @@ import android.os.Bundle
 import android.util.TypedValue
 import android.view.Gravity
 import android.view.View
+import android.util.Log
+import android.webkit.WebChromeClient
 import android.webkit.WebView
+import android.webkit.ConsoleMessage
 import android.widget.Button
 import android.widget.LinearLayout
 import android.widget.ProgressBar
 import android.widget.ScrollView
 import android.widget.TextView
+import androidx.activity.OnBackPressedCallback
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
@@ -179,6 +183,12 @@ class MainActivity : AppCompatActivity() {
 
         webView = WebView(this).apply {
             settings.javaScriptEnabled = true // the logbook's own trip map (Leaflet) needs this
+            webChromeClient = object : WebChromeClient() {
+                override fun onConsoleMessage(msg: ConsoleMessage): Boolean {
+                    Log.d("LogbookWebView", "${msg.messageLevel()} ${msg.message()} (${msg.sourceId()}:${msg.lineNumber()})")
+                    return true
+                }
+            }
         }
 
         // Bottom progress bar (asked for explicitly): a visual bar reads faster at a glance than
@@ -237,6 +247,42 @@ class MainActivity : AppCompatActivity() {
         }
         setContentView(layout)
         updatePublishButtonEnabled()
+
+        // The logbook page's own popups (Details/Opmerkingen/Overzicht -- all plain HTML
+        // <dialog> elements inside the WebView) are invisible to the system back button by
+        // default -- without this, pressing back while one was open closed the whole app instead
+        // of just the popup (found in practice, asked for explicitly to fix): a single-Activity
+        // app with no fragment back stack falls straight through to finishing the Activity
+        // otherwise. Checks the page itself via JS (not some Kotlin-side "is a dialog open" flag
+        // that would need to be kept in sync with every popup this page ever adds), so this stays
+        // correct regardless of which dialog -- or none -- happens to be open.
+        onBackPressedDispatcher.addCallback(this, object : OnBackPressedCallback(true) {
+            override fun handleOnBackPressed() {
+                // window.__handleBackPress (defined in the logbook's own page script) closes
+                // whichever dialog is open, or -- if none is, but a trip was just opened from the
+                // Overzicht map -- reopens Overzicht instead, and reports back whether it handled
+                // anything. Falls back to the plain "any dialog open" check for an older cached
+                // logbook.html that predates that function (e.g. reopened without a fresh sync).
+                webView.evaluateJavascript(
+                    "typeof window.__handleBackPress === 'function' ? window.__handleBackPress() " +
+                        ": (function(d){ if (d) d.close(); return !!d; })(document.querySelector('dialog[open]'))"
+                ) { handled ->
+                    Log.d("LogbookBack", "handled=$handled")
+                    if (handled == "true") {
+                        // Already handled entirely in JS above.
+                    } else {
+                        // Falls through to whatever back would otherwise have done (finishing the
+                        // Activity, same as before this callback existed) -- disabling this
+                        // callback first, rather than calling finish() directly here, so that
+                        // "otherwise" stays correct even if a later change ever adds another
+                        // callback of its own instead of relying on the plain system default.
+                        isEnabled = false
+                        onBackPressedDispatcher.onBackPressed()
+                        isEnabled = true
+                    }
+                }
+            }
+        })
 
         // Auto-start on a genuinely fresh launch, not on every onCreate() -- asked for explicitly:
         // opening the app should try to reach the W2K-2 right away instead of waiting for a manual
