@@ -1,8 +1,12 @@
 <resources>
     <!-- Toolbar tooltips -->
     <string name="tooltip_sync">Synchroniser</string>
+    <string name="tooltip_hotspot_not_on">Le point d\'accès de cet appareil n\'est pas activé</string>
+    <string name="tooltip_w2k2_not_found">Aucun Actisense W2K-2 trouvé</string>
+    <string name="tooltip_w2k2_checking">Recherche d\'un Actisense W2K-2…</string>
     <string name="tooltip_publish">Publier sur ayuus.com</string>
-    <string name="tooltip_build_local">Construire le journal (aucune destination de publication configurée)</string>
+    <string name="tooltip_publish_not_configured">Aucun hôte configuré</string>
+    <string name="tooltip_build_local">Construire le journal</string>
     <string name="tooltip_view_local">Consulter le journal localement (sans publier)</string>
     <string name="tooltip_settings">Paramètres</string>
 
@@ -11,6 +15,8 @@
 
     <!-- Sync flow -->
     <string name="log_hotspot_precheck_skipped">Point d\'accès désactivé (vérification rapide) -- synchronisation automatique ignorée.</string>
+    <string name="log_sync_hotspot_not_on">Point d\'accès désactivé -- bouton de synchronisation désactivé.</string>
+    <string name="log_sync_w2k2_not_found">Aucun Actisense W2K-2 trouvé -- bouton de synchronisation désactivé.</string>
     <string name="notif_w2k2_not_found">W2K-2 introuvable.</string>
     <string name="log_fill_w2k2_credentials">Renseignez d\'abord le nom d\'utilisateur et le mot de passe W2K-2 dans les Paramètres.</string>
     <string name="status_checking_hotspot">Vérification du point d\'accès...</string>
@@ -20,6 +26,8 @@
     <string name="notif_sync_done_at">Terminé %1$s</string>
     <string name="error_unexpected_sync">Erreur inattendue pendant la synchronisation : %1$s</string>
     <string name="log_no_logbook_to_view">Aucun journal à consulter pour l\'instant -- synchronisez d\'abord.</string>
+    <string name="log_no_ebl_files_to_build">Aucun fichier .ebl sur cet appareil pour l\'instant -- rien à construire.</string>
+    <string name="log_publish_not_configured">Aucune destination de publication configurée -- bouton de publication désactivé.</string>
     <string name="log_fill_publish_settings">Renseignez d\'abord les paramètres de publication (REST ou SFTP) dans les Paramètres.</string>
     <string name="log_ebl_files_location">Les fichiers .ebl se trouvent dans : %1$s</string>
     <string name="status_downloading">Téléchargement : %1$d/%2$d (%3$s)</string>

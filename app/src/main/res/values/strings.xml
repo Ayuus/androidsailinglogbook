@@ -6,8 +6,12 @@
 
     <!-- Toolbar tooltips -->
     <string name="tooltip_sync">Sync</string>
+    <string name="tooltip_hotspot_not_on">This device\'s hotspot isn\'t on</string>
+    <string name="tooltip_w2k2_not_found">No Actisense W2K-2 found</string>
+    <string name="tooltip_w2k2_checking">Looking for an Actisense W2K-2…</string>
     <string name="tooltip_publish">Publish to ayuus.com</string>
-    <string name="tooltip_build_local">Build logbook (no publish destination configured)</string>
+    <string name="tooltip_publish_not_configured">No host configured</string>
+    <string name="tooltip_build_local">Build logbook</string>
     <string name="tooltip_view_local">View logbook locally (don\'t publish)</string>
     <string name="tooltip_settings">Settings</string>
 
@@ -19,6 +23,8 @@
          English in every language, matching the untranslated tags log.py's own Python-side log
          lines always use (see translations.py's module docstring on CSV/GPX staying English). -->
     <string name="log_hotspot_precheck_skipped">Hotspot not on (cheap pre-check) -- automatic sync skipped.</string>
+    <string name="log_sync_hotspot_not_on">Hotspot not on -- sync button disabled.</string>
+    <string name="log_sync_w2k2_not_found">No Actisense W2K-2 found -- sync button disabled.</string>
     <string name="notif_w2k2_not_found">W2K-2 not found.</string>
     <string name="log_fill_w2k2_credentials">Fill in the W2K-2 username and password via Settings first.</string>
     <string name="status_checking_hotspot">Checking hotspot...</string>
@@ -28,6 +34,8 @@
     <string name="notif_sync_done_at">Done %1$s</string>
     <string name="error_unexpected_sync">Unexpected error during sync: %1$s</string>
     <string name="log_no_logbook_to_view">No logbook to view yet -- sync first.</string>
+    <string name="log_no_ebl_files_to_build">No .ebl files on this device yet -- nothing to build.</string>
+    <string name="log_publish_not_configured">No publish destination configured -- publish button disabled.</string>
     <string name="log_fill_publish_settings">Fill in the publish settings (REST or SFTP) via Settings first.</string>
     <string name="log_ebl_files_location">The .ebl files are stored in: %1$s</string>
     <string name="status_downloading">Downloading: %1$d/%2$d (%3$s)</string>

@@ -5,8 +5,12 @@
 
     <!-- Toolbar tooltips -->
     <string name="tooltip_sync">Synchroniseren</string>
+    <string name="tooltip_hotspot_not_on">Hotspot van dit toestel staat niet aan</string>
+    <string name="tooltip_w2k2_not_found">Geen Actisense W2K-2 gevonden</string>
+    <string name="tooltip_w2k2_checking">Actisense W2K-2 zoeken…</string>
     <string name="tooltip_publish">Publiceren naar ayuus.com</string>
-    <string name="tooltip_build_local">Logboek bouwen (geen publicatiebestemming ingesteld)</string>
+    <string name="tooltip_publish_not_configured">Geen host geconfigureerd</string>
+    <string name="tooltip_build_local">Logboek bouwen</string>
     <string name="tooltip_view_local">Logboek lokaal bekijken (niet publiceren)</string>
     <string name="tooltip_settings">Instellingen</string>
 
@@ -15,6 +19,8 @@
 
     <!-- Sync flow -->
     <string name="log_hotspot_precheck_skipped">Hotspot niet aan (cheap pre-check) -- automatische sync overgeslagen.</string>
+    <string name="log_sync_hotspot_not_on">Hotspot niet aan -- sync-knop uitgeschakeld.</string>
+    <string name="log_sync_w2k2_not_found">Geen Actisense W2K-2 gevonden -- sync-knop uitgeschakeld.</string>
     <string name="notif_w2k2_not_found">W2K-2 niet gevonden.</string>
     <string name="log_fill_w2k2_credentials">Vul eerst de W2K-2 gebruikersnaam en het wachtwoord in via Instellingen.</string>
     <string name="status_checking_hotspot">Hotspot controleren...</string>
@@ -24,6 +30,8 @@
     <string name="notif_sync_done_at">Voltooid %1$s</string>
     <string name="error_unexpected_sync">Onverwachte fout tijdens synchroniseren: %1$s</string>
     <string name="log_no_logbook_to_view">Nog geen logboek om te bekijken -- synchroniseer eerst.</string>
+    <string name="log_no_ebl_files_to_build">Nog geen .ebl-bestanden op dit toestel -- niets om te bouwen.</string>
+    <string name="log_publish_not_configured">Geen publicatiebestemming ingesteld -- publiceerknop uitgeschakeld.</string>
     <string name="log_fill_publish_settings">Vul eerst de publiceer-instellingen (REST of SFTP) in via Instellingen.</string>
     <string name="log_ebl_files_location">.ebl-bestanden staan in: %1$s</string>
     <string name="status_downloading">Downloaden: %1$d/%2$d (%3$s)</string>

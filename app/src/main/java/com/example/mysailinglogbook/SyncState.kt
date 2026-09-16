@@ -23,6 +23,14 @@ object SyncState {
     @Volatile
     var uploading = false
 
+    /** True only while MainActivity.updateSyncButtonAvailability()'s own background discovery
+     * scan is running -- process-wide for the same reason inProgress is: guards against
+     * onCreate() then onResume() firing in quick succession (a fresh launch does both) starting
+     * two concurrent discover_w2k2_only() scans instead of the second one just leaving the first
+     * to finish on its own. */
+    @Volatile
+    var discoverScanInProgress = false
+
     /** Whichever MainActivity instance is currently resumed and visible, or null when none is
      * (backgrounded, or briefly between an old instance pausing and a new one resuming). Set in
      * onResume(), cleared in onPause() -- see both there.

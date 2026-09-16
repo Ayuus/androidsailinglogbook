@@ -50,6 +50,7 @@ class MainActivity : AppCompatActivity() {
     private lateinit var logScroll: ScrollView
     private lateinit var webView: WebView
     private lateinit var syncButton: Button
+    private lateinit var buildButton: Button
     private lateinit var publishButton: Button
     private lateinit var settingsStore: SettingsStore
     private lateinit var progressLabel: TextView
@@ -145,19 +146,22 @@ class MainActivity : AppCompatActivity() {
         ) {
             if (SyncState.inProgress) cancelSyncStayInApp() else runSync()
         } // ↺
+        // Dedicated, always-enabled build button (ic_cpu_24, a chip/processor glyph) -- decodes
+        // and builds the logbook from whatever .ebl files are already on the device, no W2K-2 or
+        // publish settings needed. Split out from ☁️ (asked for explicitly, after first trying
+        // ☁️ itself switching modes): sync only ever fetches, so a separate, always-present way
+        // to (re)build from what's already local reads clearer than one button quietly changing
+        // what it does depending on Instellingen.
+        buildButton = iconButton(getString(R.string.tooltip_build_local), iconRes = R.drawable.ic_cpu_24) {
+            runOfflineBuild()
+        }
         // Material's own "upload" icon (ic_upload_24), not the ☁️ emoji it replaced -- asked for
         // explicitly, found in practice: a plain cloud alone didn't read as obviously "publish"
-        // as a real, recognized icon does. Icon/tooltip/behavior below (see
-        // updatePublishButtonEnabled()) switch to a plain local build whenever no publish
-        // destination is configured -- asked for explicitly, found in practice: a disabled
-        // button with no explanation read as broken rather than "not configured", especially
-        // on a freshly set-up device with real .ebl data already on it but no publish settings.
+        // as a real, recognized icon does. Back to plain disabled-until-configured (see
+        // updatePublishButtonEnabled()) now that buildButton above covers the "no publish
+        // settings yet, but still want to build" case on its own.
         publishButton = iconButton(getString(R.string.tooltip_publish), iconRes = R.drawable.ic_upload_24) {
-            if (settingsStore.isRestUploadConfigComplete || settingsStore.isSftpConfigComplete) {
-                runPublish()
-            } else {
-                runOfflineBuild()
-            }
+            runPublish()
         }
         // Loads whatever logbook.html is already on the phone into the WebView, without syncing
         // or publishing anything -- asked for explicitly, for when the owner just wants to check
@@ -232,6 +236,7 @@ class MainActivity : AppCompatActivity() {
             isBaselineAligned = false
             gravity = Gravity.CENTER_VERTICAL
             addView(syncButton)
+            addView(buildButton)
             addView(publishButton)
             addView(viewLocalButton)
             addView(View(this@MainActivity), LinearLayout.LayoutParams(0, 0, 1f))
@@ -258,6 +263,7 @@ class MainActivity : AppCompatActivity() {
         }
         setContentView(layout)
         updatePublishButtonEnabled()
+        updateSyncButtonAvailability()
 
         // The logbook page's own popups (Details/Opmerkingen/Overzicht -- all plain HTML
         // <dialog> elements inside the WebView) are invisible to the system back button by
@@ -391,25 +397,117 @@ class MainActivity : AppCompatActivity() {
         updatePublishButtonEnabled()
     }
 
-    /** ☁️ swaps to a plain "build" wrench icon/tooltip whenever neither WordPress nor SFTP is
-     * configured (see SettingsStore) -- asked for explicitly: a disabled button with no
-     * explanation (the previous behavior; tapping it while disabled obviously did nothing) read
-     * as broken rather than "not configured", especially with real .ebl data already on the
-     * device and nothing to publish it to. See the iconButton() call site above for the matching
-     * click-handler branch (runPublish() vs. runOfflineBuild()). Stays disabled only while a sync
-     * or offline build is already running, same as before this existed. Called from onResume()
-     * too, since the only way settings change is a round trip through SettingsActivity and back. */
+    /** ☁️ only makes sense once WordPress or SFTP is actually filled in (see SettingsStore) --
+     * asked for explicitly: tapping it with neither configured used to just log "vul eerst de
+     * publiceer-instellingen in" (see runPublish()), so the button looked usable when it never
+     * could do anything. buildButton (see the iconButton() call site above) covers "no publish
+     * settings, but still want to build" on its own now, so this one goes back to plain
+     * disabled-until-configured rather than also changing what it does. Both stay disabled while
+     * a sync or offline build is already running, same as before this existed. Called from
+     * onResume() too, since the only way settings change is a round trip through SettingsActivity
+     * and back.
+     *
+     * The tooltip is left set (harmless, still reachable via mouse/stylus hover), but not relied
+     * on -- confirmed on a real device, touch-only (see updateSyncButtonAvailability()'s own,
+     * more detailed doc comment on why): a *disabled* view's onTouchEvent() returns before ever
+     * reaching the long-press/tooltip-trigger logic, so the tooltip text never actually shows on
+     * a touchscreen with no mouse. The log line right below is what's actually visible. Not
+     * logged every single call (this runs from onCreate()/onResume()/after every sync or build,
+     * same as updateSyncButtonAvailability()) -- only when it just *became* unconfigured, so
+     * opening Instellingen once and looking at it doesn't spam the log on every later resume. */
     private fun updatePublishButtonEnabled() {
-        publishButton.isEnabled = !SyncState.inProgress
+        buildButton.isEnabled = !SyncState.inProgress
         val configured = settingsStore.isRestUploadConfigComplete || settingsStore.isSftpConfigComplete
-        publishButton.setCompoundDrawablesWithIntrinsicBounds(
-            if (configured) R.drawable.ic_upload_24 else R.drawable.ic_build_24, 0, 0, 0,
-        )
-        publishButton.compoundDrawableTintList = ColorStateList.valueOf(publishButton.currentTextColor)
+        val wasEnabled = publishButton.isEnabled
+        publishButton.isEnabled = !SyncState.inProgress && configured
+        if (!configured && wasEnabled) {
+            handleLogLine("[info] " + getString(R.string.log_publish_not_configured))
+        }
         ViewCompat.setTooltipText(
             publishButton,
-            getString(if (configured) R.string.tooltip_publish else R.string.tooltip_build_local),
+            getString(if (configured) R.string.tooltip_publish else R.string.tooltip_publish_not_configured),
         )
+    }
+
+    /** ↺ is disabled with an explanatory tooltip until a real scan confirms the W2K-2 is actually
+     * reachable -- asked for explicitly: HotspotDetector's own cheap, local, no-network-I/O check
+     * (still used first, below) only tells whether this device's own hotspot looks on, not
+     * whether the W2K-2 itself ever joined it, so a boat with the hotspot up but the W2K-2
+     * switched off (or just not yet connected) used to show ↺ as enabled right up until tapping
+     * it actually failed. Real confirmation needs android_entry.discover_w2k2_only() -- the same
+     * network scan a real sync does as its own first step (~1s, see w2k2_download.discover_w2k2's
+     * own doc comment), just standing alone and reported via DiscoverController instead of also
+     * downloading/building anything. Run off the main thread; HotspotDetector's cheap check still
+     * gates it first so a scan is only ever attempted when there's a real chance of finding
+     * something (this app's own history already avoided scanning on every single launch for no
+     * benefit, see autoStartSyncWithSettingsRetry()'s own doc comment). Like
+     * updatePublishButtonEnabled(), never overrides syncButton while a sync is already in
+     * progress (it deliberately stays enabled then, to double as the cancel button) -- and a scan
+     * already in flight when this is called again (e.g. onCreate() then onResume() in quick
+     * succession) is left to finish on its own rather than started twice. */
+    private fun updateSyncButtonAvailability() {
+        if (SyncState.inProgress) return
+        val subnetPrefix = HotspotDetector.detectSubnetPrefix()
+        if (subnetPrefix == null) {
+            // Its own tooltip, distinct from tooltip_w2k2_not_found below -- asked for
+            // explicitly: the two look the same at a glance (↺ just disabled either way) but mean
+            // different things -- this one means no scan was even attempted (nothing to scan
+            // *for* without a subnet to scan), while w2k2_not_found means a real scan ran and
+            // came back empty. Conflating them under one message misled into thinking a real
+            // check had already ruled out the W2K-2, when nothing had actually been tried yet.
+            //
+            // Also logged, not just set as a tooltip -- found in practice, live on a real device:
+            // a disabled Button's onTouchEvent() returns before ever reaching the long-press/
+            // tooltip-trigger logic at all, so a tooltip on a *disabled* view never actually shows
+            // on a touch-only screen (no mouse to hover with) -- confirmed by testing, this app's
+            // own earlier assumption that tooltips "work regardless of enabled state" turned out
+            // to only hold for hover, not touch. The tooltip text is left set anyway (harmless,
+            // and still reachable via mouse/stylus hover on a device that has one), but the log
+            // line -- always visible, no interaction needed -- is what most people actually see.
+            syncButton.isEnabled = false
+            ViewCompat.setTooltipText(syncButton, getString(R.string.tooltip_hotspot_not_on))
+            handleLogLine("[info] " + getString(R.string.log_sync_hotspot_not_on))
+            return
+        }
+        if (SyncState.discoverScanInProgress) return
+        SyncState.discoverScanInProgress = true
+        syncButton.isEnabled = false
+        ViewCompat.setTooltipText(syncButton, getString(R.string.tooltip_w2k2_checking))
+        Thread {
+            if (!Python.isStarted()) {
+                Python.start(AndroidPlatform(this))
+            }
+            val controller = object : DiscoverController {
+                override fun onDiscoverResult(found: Boolean) {
+                    SyncState.discoverScanInProgress = false
+                    if (!found) {
+                        // Same reasoning as the hotspot-not-on branch above: the tooltip alone
+                        // isn't actually visible on a touch-only screen, so this is the log
+                        // line most people will actually see. Not logged on success -- found
+                        // is the expected, self-explanatory outcome (↺ just works), nothing to
+                        // explain, and this can run again on every onResume() while the app
+                        // stays open near the boat, so a repeated "found" line would just be
+                        // noise for no benefit.
+                        handleLogLine("[info] " + getString(R.string.log_sync_w2k2_not_found))
+                    }
+                    withActiveActivity {
+                        if (!SyncState.inProgress) {
+                            syncButton.isEnabled = found
+                            ViewCompat.setTooltipText(
+                                syncButton,
+                                getString(if (found) R.string.tooltip_sync else R.string.tooltip_w2k2_not_found),
+                            )
+                        }
+                    }
+                }
+            }
+            try {
+                Python.getInstance().getModule("nmea2log.android_entry")
+                    .callAttr("discover_w2k2_only", subnetPrefix, controller)
+            } catch (e: Exception) {
+                controller.onDiscoverResult(false)
+            }
+        }.start()
     }
 
     /** Found in practice, still not fully understood at the OS level: right after this Activity's
@@ -496,12 +594,14 @@ class MainActivity : AppCompatActivity() {
 
         SyncState.inProgress = true
         SyncState.cancelled = false
-        // syncButton deliberately stays enabled here (unlike publishButton) -- tapping it again
-        // while a sync is running cancels it instead (see the button's own onClick below and
-        // cancelSyncStayInApp()), asked for explicitly: the app's own auto-start-on-launch (see
-        // autoStartSyncWithSettingsRetry()) has no way to be skipped otherwise, so opening the
-        // app to use ☁️ Publiceren on its own was never actually reachable -- both buttons stayed
-        // disabled for as long as that auto-started sync kept running.
+        // syncButton deliberately stays enabled here (unlike buildButton/publishButton) --
+        // tapping it again while a sync is running cancels it instead (see the button's own
+        // onClick below and cancelSyncStayInApp()), asked for explicitly: the app's own
+        // auto-start-on-launch (see autoStartSyncWithSettingsRetry()) has no way to be skipped
+        // otherwise, so opening the app to use ☁️ Publiceren on its own was never actually
+        // reachable -- these two buttons stayed disabled for as long as that auto-started sync
+        // kept running.
+        buildButton.isEnabled = false
         publishButton.isEnabled = false
         val initialStatusText = getString(R.string.status_checking_hotspot)
         // Log deliberately NOT cleared here (asked for explicitly) -- it now accumulates across
@@ -551,7 +651,7 @@ class MainActivity : AppCompatActivity() {
                     // replaces) are enough either way.
                     SyncNotificationService.postNotFoundNotification(this, message)
                     SyncState.inProgress = false
-                    syncButton.isEnabled = true
+                    updateSyncButtonAvailability()
                     updatePublishButtonEnabled()
                 }
                 return@Thread
@@ -644,7 +744,7 @@ class MainActivity : AppCompatActivity() {
                 // next Activity to resume starts from a fresh, already-correct button/progress
                 // state on its own (see onCreate()/restoreLiveSyncUi()).
                 withActiveActivity {
-                    syncButton.isEnabled = true
+                    updateSyncButtonAvailability()
                     updatePublishButtonEnabled()
                     hideProgressBar()
                 }
@@ -1051,6 +1151,19 @@ class MainActivity : AppCompatActivity() {
                 SyncNotificationService.postNotFoundNotification(this, getString(R.string.notif_w2k2_not_found))
                 return
             }
+            // Same calm, dismissible treatment, not the loud dialog below -- asked for
+            // explicitly, found in practice: buildButton (🔧) reaching this with an empty
+            // Actisense folder showed the generic error dialog, whose only two options
+            // ("Logboek bouwen..."/"App sluiten") both make no sense here -- the first just
+            // repeats the exact same failing call, the second is a drastic overreaction to
+            // "there's nothing here yet". run_pipeline()'s own literal error string (see
+            // run_pipeline() in android_entry.py) is matched directly, same approach as
+            // isNotFoundError above -- there's no dedicated error code Chaquopy could carry
+            // across instead.
+            if (result.error == "No .ebl files given.") {
+                handleLogLine("[info] " + getString(R.string.log_no_ebl_files_to_build))
+                return
+            }
             // Covers every non-cancelled failure, including the download never reaching a usable
             // state at all (e.g. the W2K-2/host becoming unreachable partway through) -- Python's
             // own android_entry.py never calls run_pipeline() in that case (see
@@ -1199,6 +1312,7 @@ class MainActivity : AppCompatActivity() {
         // syncButton stays enabled here too -- same reasoning as runSync()'s own version of this
         // comment: a long local decode (see run_pipeline()'s should_cancel) should be cancellable
         // by tapping it again, same as a normal sync.
+        buildButton.isEnabled = false
         publishButton.isEnabled = false
         // Log deliberately NOT cleared here (asked for explicitly, see runSync()'s own matching
         // comment) -- it accumulates across every run this process makes instead.
@@ -1256,7 +1370,7 @@ class MainActivity : AppCompatActivity() {
                 SyncState.notificationStartFailed = false
                 SyncState.inProgress = false  // must always happen, see runSync()'s own finally
                 withActiveActivity {
-                    syncButton.isEnabled = true
+                    updateSyncButtonAvailability()
                     updatePublishButtonEnabled()
                     hideProgressBar()
                 }
@@ -1580,6 +1694,7 @@ class MainActivity : AppCompatActivity() {
         // re-checks here so a publish method that was just filled in (or cleared) is reflected
         // immediately, without waiting for a sync to finish.
         updatePublishButtonEnabled()
+        updateSyncButtonAvailability()
         // Brings logView/the progress bar up to date with whatever a sync -- still in
         // progress, or one that already finished while this Activity wasn't the active one --
         // has produced so far. Not gated on SyncState.inProgress alone: found in practice, a

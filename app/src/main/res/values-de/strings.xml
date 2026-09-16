@@ -1,8 +1,12 @@
 <resources>
     <!-- Toolbar tooltips -->
     <string name="tooltip_sync">Synchronisieren</string>
+    <string name="tooltip_hotspot_not_on">Hotspot dieses Geräts ist nicht aktiv</string>
+    <string name="tooltip_w2k2_not_found">Kein Actisense W2K-2 gefunden</string>
+    <string name="tooltip_w2k2_checking">Suche nach einem Actisense W2K-2…</string>
     <string name="tooltip_publish">Auf ayuus.com veröffentlichen</string>
-    <string name="tooltip_build_local">Bordbuch erstellen (kein Veröffentlichungsziel eingerichtet)</string>
+    <string name="tooltip_publish_not_configured">Kein Host konfiguriert</string>
+    <string name="tooltip_build_local">Bordbuch erstellen</string>
     <string name="tooltip_view_local">Bordbuch lokal ansehen (nicht veröffentlichen)</string>
     <string name="tooltip_settings">Einstellungen</string>
 
@@ -11,6 +15,8 @@
 
     <!-- Sync flow -->
     <string name="log_hotspot_precheck_skipped">Hotspot nicht an (schnelle Vorabprüfung) -- automatische Synchronisierung übersprungen.</string>
+    <string name="log_sync_hotspot_not_on">Hotspot nicht an -- Sync-Schaltfläche deaktiviert.</string>
+    <string name="log_sync_w2k2_not_found">Kein Actisense W2K-2 gefunden -- Sync-Schaltfläche deaktiviert.</string>
     <string name="notif_w2k2_not_found">W2K-2 nicht gefunden.</string>
     <string name="log_fill_w2k2_credentials">Trage zuerst den W2K-2-Benutzernamen und das Passwort in den Einstellungen ein.</string>
     <string name="status_checking_hotspot">Hotspot wird geprüft...</string>
@@ -20,6 +26,8 @@
     <string name="notif_sync_done_at">Fertig %1$s</string>
     <string name="error_unexpected_sync">Unerwarteter Fehler während der Synchronisierung: %1$s</string>
     <string name="log_no_logbook_to_view">Noch kein Bordbuch zum Ansehen -- zuerst synchronisieren.</string>
+    <string name="log_no_ebl_files_to_build">Noch keine .ebl-Dateien auf diesem Gerät -- nichts zu erstellen.</string>
+    <string name="log_publish_not_configured">Kein Veröffentlichungsziel eingerichtet -- Veröffentlichen-Schaltfläche deaktiviert.</string>
     <string name="log_fill_publish_settings">Trage zuerst die Veröffentlichungseinstellungen (REST oder SFTP) in den Einstellungen ein.</string>
     <string name="log_ebl_files_location">Die .ebl-Dateien befinden sich in: %1$s</string>
     <string name="status_downloading">Wird heruntergeladen: %1$d/%2$d (%3$s)</string>
