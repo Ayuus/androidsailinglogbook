@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Privacy Policy — My Sailing Logbook</title>
+<style>
+  body { font-family: -apple-system, Segoe UI, Roboto, Arial, sans-serif; max-width: 700px; margin: 2rem auto; padding: 0 1rem; line-height: 1.55; color: #1a1a1a; }
+  h1 { font-size: 1.6rem; }
+  h2 { font-size: 1.15rem; margin-top: 2rem; }
+  code { background: #f2f2f2; padding: 0.1rem 0.3rem; border-radius: 3px; }
+  footer { margin-top: 3rem; color: #666; font-size: 0.9rem; }
+</style>
+</head>
+<body>
+
+<h1>Privacy Policy — My Sailing Logbook</h1>
+<p><em>Last updated: 16 September 2026</em></p>
+
+<p>My Sailing Logbook ("the app", package name <code>com.ayuus.mysailinglogbook</code>) turns navigation
+data from your own Actisense&nbsp;W2K-2 device into a sailing logbook on your phone. This page explains
+what data the app handles and what happens to it.</p>
+
+<h2>What data the app collects</h2>
+<p>The app reads NMEA&nbsp;2000 navigation data (GPS position, speed, timestamps, and similar boat
+instrument readings) directly from your own Actisense&nbsp;W2K-2 device over its local Wi‑Fi hotspot. This
+data comes from your boat's own instruments — the app does <strong>not</strong> request or use your
+phone's location, camera, contacts, microphone, or any other device sensor or personal data source, and
+it requests no such permissions.</p>
+
+<h2>Where your data is stored</h2>
+<p>All logbook data is processed and stored locally on your phone, in the app's private storage. Nothing
+is uploaded automatically.</p>
+<p>If you choose to configure optional publishing (to your own WordPress site or your own SFTP server),
+the login details you enter (WordPress application password, or SFTP host/username/password) are stored
+on your device using Android's <code>EncryptedSharedPreferences</code> (AES‑256 encryption at rest). They
+are never transmitted anywhere except directly to the server you yourself configured.</p>
+
+<h2>What the app shares, and with whom</h2>
+<p>The app shares data with exactly one destination, and only if you explicitly enable and trigger it:
+the WordPress site or SFTP server <em>you</em> configure in Settings. Your logbook is sent there directly
+from your phone. The app developer does not operate, receive data from, or have access to that server.</p>
+<p>The app contains no analytics, advertising, or third-party tracking libraries. No data is sold or
+shared with any third party.</p>
+
+<h2>Notifications</h2>
+<p>The app shows a local notification while syncing with the W2K-2 in the background, so you can see
+progress and know when it's safe to close the app. This uses Android's local/foreground-service
+notification APIs only — no remote push-notification service is used.</p>
+
+<h2>Deleting your data</h2>
+<p>You can clear the app's cached data at any time from within Settings, or remove all app data by
+uninstalling the app. This deletes everything the app stored on your device, including any saved
+publishing credentials.</p>
+
+<h2>Children</h2>
+<p>The app is a sailing logbook tool and is not directed at children.</p>
+
+<h2>Changes to this policy</h2>
+<p>If this policy changes, the updated version will be published at this same address with a new
+"Last updated" date.</p>
+
+<h2>Contact</h2>
+<p>Questions about this policy or the app can be sent to
+<a href="mailto:ruijs@ayuus.com">ruijs@ayuus.com</a>.</p>
+
+<footer>My Sailing Logbook — <a href="https://github.com/Ayuus/androidsailinglogbook">github.com/Ayuus/androidsailinglogbook</a></footer>
+
+</body>
+</html>
