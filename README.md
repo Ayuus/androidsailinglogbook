@@ -20,9 +20,13 @@ support in particular is on the wishlist but untested so far -- see the same not
 
 ## Installation
 
-Grab the APK from the [latest release](https://github.com/Ayuus/androidsailinglogbook/releases/latest).
-This is signed but not distributed via the Play Store, so Android will warn you before installing
-it -- expected for any app installed outside a store.
+**Play Store** (preferred): *pending review, link coming soon.* No install warnings, and updates
+automatically.
+
+**Or, the APK directly**: grab it from the
+[latest release](https://github.com/Ayuus/androidsailinglogbook/releases/latest) instead. This is
+signed but not distributed via the Play Store, so Android will warn you before installing it --
+expected for any app installed outside a store.
 
 1. Download `app-release.apk` from the release page (under "Assets").
 2. Open the downloaded file. Android will ask for permission to install apps from this source
