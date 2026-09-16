@@ -18,6 +18,22 @@ support in particular is on the wishlist but untested so far -- see the same not
 [nmea2log README](https://github.com/Ayuus/nmea2log#readme) for why. Feedback is very welcome via
 [GitHub issues](https://github.com/Ayuus/androidsailinglogbook/issues).
 
+## Installation
+
+Grab the APK from the [latest release](https://github.com/Ayuus/androidsailinglogbook/releases/latest).
+This is signed but not distributed via the Play Store, so Android will warn you before installing
+it -- expected for any app installed outside a store.
+
+1. Download `app-release.apk` from the release page (under "Assets").
+2. Open the downloaded file. Android will ask for permission to install apps from this source
+   (browser/file manager) the first time -- allow it.
+3. Tap Install.
+
+Requires Android 7.0 (API 24) or newer.
+
+(The sections below are for building this app from source instead -- not needed just to install
+it.)
+
 ## Requirements
 
 - **The [nmea2log](https://github.com/Ayuus/nmea2log) repo, checked out separately on the same
