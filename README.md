@@ -11,6 +11,13 @@ logic. It embeds the real `nmea2log` Python package from the `nmea2log` repo dir
 `nmea2log`'s Python code is picked up by this app automatically on the next build -- there is no
 copy to keep in sync.
 
+**Looking for testers**: so far this has only been run against one boat's NMEA2000 network (a
+**motorboat**, one Actisense W2K-2) and one physical Android device. Other boats/instrument mixes
+and other Android versions/devices will likely surface issues this setup never hits. Sailboat
+support in particular is on the wishlist but untested so far -- see the same note in the
+[nmea2log README](https://github.com/Ayuus/nmea2log#readme) for why. Feedback is very welcome via
+[GitHub issues](https://github.com/Ayuus/androidsailinglogbook/issues).
+
 ## Requirements
 
 - **The [nmea2log](https://github.com/Ayuus/nmea2log) repo, checked out separately on the same
