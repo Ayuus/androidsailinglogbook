@@ -68,6 +68,14 @@ android {
             optimization {
                 enable = false
             }
+            // Bundles native debug symbols (Chaquopy's own libpython/libchaquopy_java.so, the
+            // only native code here) into the AAB -- purely additive metadata for Play Console's
+            // native crash/ANR symbolication, no behavior change. FULL (not the lighter
+            // SYMBOL_TABLE) since these are third-party libraries this project doesn't build
+            // itself, so there's no separate symbol archive to fall back to later.
+            ndk {
+                debugSymbolLevel = "FULL"
+            }
             if (releaseStoreFile != null) {
                 signingConfig = signingConfigs.getByName("release")
             }
