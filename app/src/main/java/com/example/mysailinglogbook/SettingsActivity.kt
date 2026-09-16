@@ -147,9 +147,9 @@ class SettingsActivity : AppCompatActivity() {
         val wordpressRadio = RadioButton(this).apply { text = getString(R.string.radio_publish_wordpress) }
         val sftpRadio = RadioButton(this).apply { text = getString(R.string.radio_publish_sftp) }
         val noPublishRadio = RadioButton(this).apply { text = getString(R.string.radio_publish_none) }
+        publishMethodGroup.addView(noPublishRadio)
         publishMethodGroup.addView(wordpressRadio)
         publishMethodGroup.addView(sftpRadio)
-        publishMethodGroup.addView(noPublishRadio)
         layout.addView(
             publishMethodGroup,
             LinearLayout.LayoutParams(LinearLayout.LayoutParams.WRAP_CONTENT, LinearLayout.LayoutParams.WRAP_CONTENT)
