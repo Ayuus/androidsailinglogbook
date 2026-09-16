@@ -2,6 +2,7 @@
     <!-- Toolbar tooltips -->
     <string name="tooltip_sync">Synchronisieren</string>
     <string name="tooltip_publish">Auf ayuus.com veröffentlichen</string>
+    <string name="tooltip_build_local">Bordbuch erstellen (kein Veröffentlichungsziel eingerichtet)</string>
     <string name="tooltip_view_local">Bordbuch lokal ansehen (nicht veröffentlichen)</string>
     <string name="tooltip_settings">Einstellungen</string>
 

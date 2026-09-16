@@ -2,6 +2,7 @@
     <!-- Toolbar tooltips -->
     <string name="tooltip_sync">Synchroniser</string>
     <string name="tooltip_publish">Publier sur ayuus.com</string>
+    <string name="tooltip_build_local">Construire le journal (aucune destination de publication configurée)</string>
     <string name="tooltip_view_local">Consulter le journal localement (sans publier)</string>
     <string name="tooltip_settings">Paramètres</string>
 

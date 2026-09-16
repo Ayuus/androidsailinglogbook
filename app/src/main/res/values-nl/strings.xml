@@ -6,6 +6,7 @@
     <!-- Toolbar tooltips -->
     <string name="tooltip_sync">Synchroniseren</string>
     <string name="tooltip_publish">Publiceren naar ayuus.com</string>
+    <string name="tooltip_build_local">Logboek bouwen (geen publicatiebestemming ingesteld)</string>
     <string name="tooltip_view_local">Logboek lokaal bekijken (niet publiceren)</string>
     <string name="tooltip_settings">Instellingen</string>
 

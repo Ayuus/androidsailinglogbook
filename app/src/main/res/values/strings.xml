@@ -7,6 +7,7 @@
     <!-- Toolbar tooltips -->
     <string name="tooltip_sync">Sync</string>
     <string name="tooltip_publish">Publish to ayuus.com</string>
+    <string name="tooltip_build_local">Build logbook (no publish destination configured)</string>
     <string name="tooltip_view_local">View logbook locally (don\'t publish)</string>
     <string name="tooltip_settings">Settings</string>
 

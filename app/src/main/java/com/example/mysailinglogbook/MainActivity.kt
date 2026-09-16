@@ -138,15 +138,26 @@ class MainActivity : AppCompatActivity() {
         // Tapping this while a sync (or offline build) is already running cancels it instead of
         // starting a new one -- see cancelSyncStayInApp()'s own doc comment for why.
         syncButton = iconButton(
-            getString(R.string.tooltip_sync), emoji = "↺", emojiSize = 30f, emojiBold = true, verticalNudgePx = -12f,
+            // -12px was the originally measured value on a ~3.0-density phone; -4dp reproduces
+            // that same on-screen shift there (now density-scaled, see iconButton()) while
+            // scaling down correctly on lower-density screens.
+            getString(R.string.tooltip_sync), emoji = "↺", emojiSize = 30f, emojiBold = true, verticalNudgePx = -4f,
         ) {
             if (SyncState.inProgress) cancelSyncStayInApp() else runSync()
         } // ↺
         // Material's own "upload" icon (ic_upload_24), not the ☁️ emoji it replaced -- asked for
         // explicitly, found in practice: a plain cloud alone didn't read as obviously "publish"
-        // as a real, recognized icon does.
+        // as a real, recognized icon does. Icon/tooltip/behavior below (see
+        // updatePublishButtonEnabled()) switch to a plain local build whenever no publish
+        // destination is configured -- asked for explicitly, found in practice: a disabled
+        // button with no explanation read as broken rather than "not configured", especially
+        // on a freshly set-up device with real .ebl data already on it but no publish settings.
         publishButton = iconButton(getString(R.string.tooltip_publish), iconRes = R.drawable.ic_upload_24) {
-            runPublish()
+            if (settingsStore.isRestUploadConfigComplete || settingsStore.isSftpConfigComplete) {
+                runPublish()
+            } else {
+                runOfflineBuild()
+            }
         }
         // Loads whatever logbook.html is already on the phone into the WebView, without syncing
         // or publishing anything -- asked for explicitly, for when the owner just wants to check
@@ -380,15 +391,25 @@ class MainActivity : AppCompatActivity() {
         updatePublishButtonEnabled()
     }
 
-    /** ☁️ only makes sense once WordPress or SFTP is actually filled in (see SettingsStore) --
-     * asked for explicitly: tapping it with neither configured used to just log "vul eerst de
-     * publiceer-instellingen in" (see runPublish()), so the button looked usable when it never
-     * could do anything. Also never enabled while a sync or offline build is already running,
-     * same as before this existed. Called from onResume() too, since the only way settings
-     * change is a round trip through SettingsActivity and back. */
+    /** ☁️ swaps to a plain "build" wrench icon/tooltip whenever neither WordPress nor SFTP is
+     * configured (see SettingsStore) -- asked for explicitly: a disabled button with no
+     * explanation (the previous behavior; tapping it while disabled obviously did nothing) read
+     * as broken rather than "not configured", especially with real .ebl data already on the
+     * device and nothing to publish it to. See the iconButton() call site above for the matching
+     * click-handler branch (runPublish() vs. runOfflineBuild()). Stays disabled only while a sync
+     * or offline build is already running, same as before this existed. Called from onResume()
+     * too, since the only way settings change is a round trip through SettingsActivity and back. */
     private fun updatePublishButtonEnabled() {
-        publishButton.isEnabled = !SyncState.inProgress &&
-            (settingsStore.isRestUploadConfigComplete || settingsStore.isSftpConfigComplete)
+        publishButton.isEnabled = !SyncState.inProgress
+        val configured = settingsStore.isRestUploadConfigComplete || settingsStore.isSftpConfigComplete
+        publishButton.setCompoundDrawablesWithIntrinsicBounds(
+            if (configured) R.drawable.ic_upload_24 else R.drawable.ic_build_24, 0, 0, 0,
+        )
+        publishButton.compoundDrawableTintList = ColorStateList.valueOf(publishButton.currentTextColor)
+        ViewCompat.setTooltipText(
+            publishButton,
+            getString(if (configured) R.string.tooltip_publish else R.string.tooltip_build_local),
+        )
     }
 
     /** Found in practice, still not fully understood at the OS level: right after this Activity's
@@ -1499,7 +1520,11 @@ class MainActivity : AppCompatActivity() {
             // glyph's own font metrics place its ink off-center within that box. Measured directly
             // on-device (found in practice): ↺ at emojiBold/30f sits ~12px lower than the vector
             // icons' visible ink even though their boxes now line up, so it alone gets nudged.
-            if (verticalNudgePx != 0f) translationY = verticalNudgePx
+            // verticalNudgePx is in dp, scaled to this device's actual pixel density here -- found
+            // in practice on a second, lower-density tablet: a raw (un-scaled) px nudge tuned on
+            // one phone's screen translated to a visibly larger shift (the icon sitting noticeably
+            // too high) on a device with fewer pixels per dp.
+            if (verticalNudgePx != 0f) translationY = verticalNudgePx * resources.displayMetrics.density
             setBackgroundResource(backgroundValue.resourceId)
             minWidth = 0
             minimumWidth = 0
