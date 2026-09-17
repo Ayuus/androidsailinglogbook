@@ -75,7 +75,7 @@ class MainActivity : AppCompatActivity() {
     // phase, with nothing of its own updating it since build_trips() can run for a real,
     // non-trivial amount of time on a full season's worth of samples.
     private val buildPhaseMarkers = listOf(
-        Regex("""Reizen opbouwen uit \d+ GPS-posities"""),
+        Regex("""Building trips from \d+ GPS position\(s\)"""),
         Regex("""\d+ navigation samples merged, classifying trips"""),
         Regex("""\d+ run\(s\) classified, computing per-trip statistics"""),
         Regex("""\d+ trip\(s\) found, writing logbook"""),
@@ -445,7 +445,7 @@ class MainActivity : AppCompatActivity() {
      * progress (it deliberately stays enabled then, to double as the cancel button) -- and a scan
      * already in flight when this is called again (e.g. onCreate() then onResume() in quick
      * succession) is left to finish on its own rather than started twice. */
-    private fun updateSyncButtonAvailability() {
+    private fun updateSyncButtonAvailability(logIfNotFound: Boolean = true) {
         if (SyncState.inProgress) return
         val subnetPrefix = HotspotDetector.detectSubnetPrefix()
         if (subnetPrefix == null) {
@@ -480,14 +480,18 @@ class MainActivity : AppCompatActivity() {
             val controller = object : DiscoverController {
                 override fun onDiscoverResult(found: Boolean) {
                     SyncState.discoverScanInProgress = false
-                    if (!found) {
+                    if (!found && logIfNotFound) {
                         // Same reasoning as the hotspot-not-on branch above: the tooltip alone
                         // isn't actually visible on a touch-only screen, so this is the log
                         // line most people will actually see. Not logged on success -- found
                         // is the expected, self-explanatory outcome (↺ just works), nothing to
                         // explain, and this can run again on every onResume() while the app
                         // stays open near the boat, so a repeated "found" line would just be
-                        // noise for no benefit.
+                        // noise for no benefit. logIfNotFound=false right after a sync just
+                        // finished (see its own call site): that check already logged this
+                        // exact same "not found" at the start of the run, so saying it again
+                        // right under a just-completed sync's own success line reads as if
+                        // something had gone wrong, when nothing changed at all.
                         handleLogLine("[info] " + getString(R.string.log_sync_w2k2_not_found))
                     }
                     withActiveActivity {
@@ -1384,7 +1388,12 @@ class MainActivity : AppCompatActivity() {
                 SyncState.notificationStartFailed = false
                 SyncState.inProgress = false  // must always happen, see runSync()'s own finally
                 withActiveActivity {
-                    updateSyncButtonAvailability()
+                    // logIfNotFound=false: the button still needs a fresh scan to know whether
+                    // to re-enable itself, but the sync that just finished already implies the
+                    // W2K-2 was reachable moments ago -- see updateSyncButtonAvailability()'s
+                    // own comment on why repeating that log line here would be confusing, not
+                    // informative.
+                    updateSyncButtonAvailability(logIfNotFound = false)
                     updatePublishButtonEnabled()
                     hideProgressBar()
                 }
