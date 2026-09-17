@@ -993,14 +993,28 @@ class MainActivity : AppCompatActivity() {
      * a single static "Logboek opbouwen..." message with nothing to show it wasn't just hung,
      * instead of the same "...decoded X/Y" progress a normal sync already shows via the block
      * below. */
+    /** Whether the log is currently scrolled all the way to its own bottom -- checked *before*
+     * appending a new line (see handleLogLine()), so a user who scrolled up to read an earlier
+     * line doesn't get yanked back down to the bottom the moment the next line arrives. A few px
+     * of slack rather than exact equality: scroll position/content height can be off by a
+     * rounding pixel or two even while visually "at the bottom". */
+    private fun isLogScrolledToBottom(): Boolean {
+        val content = logScroll.getChildAt(0) ?: return true
+        val slackPx = (4 * resources.displayMetrics.density).toInt()
+        return logScroll.scrollY + logScroll.height >= content.bottom - slackPx
+    }
+
     private fun handleLogLine(line: String) {
         // The accumulator, not logView.text itself -- logView may belong to an orphaned
         // instance, or there may be no active instance at all right now (see withActiveActivity),
         // so the running log has to live somewhere that survives either.
         SyncState.lastLogText = if (SyncState.lastLogText.isEmpty()) line else "${SyncState.lastLogText}\n$line"
         withActiveActivity {
+            val wasAtBottom = isLogScrolledToBottom()
             logView.text = SyncState.lastLogText
-            logScroll.post { logScroll.fullScroll(View.FOCUS_DOWN) }
+            if (wasAtBottom) {
+                logScroll.post { logScroll.fullScroll(View.FOCUS_DOWN) }
+            }
         }
         // A "[warning]" line (a failed attempt being retried, e.g. connection lost) means
         // report()'s own "current/total" notification text is about to sit frozen and
