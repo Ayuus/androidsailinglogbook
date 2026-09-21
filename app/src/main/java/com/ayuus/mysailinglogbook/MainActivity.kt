@@ -41,7 +41,7 @@ import java.security.Security
 
 /**
  * The full sync flow: hotspot detection, download from the W2K-2, decode+build the logbook, show
- * it in-app, then (only if the owner filled in the "Publiceren naar ayuus.com" settings) publish
+ * it in-app, then (only if the owner filled in the "Publish to ayuus.com" settings) publish
  * it via REST or SFTP -- see RestUploader/SftpUploader. Runs automatically once per app
  * launch (see onCreate()'s own savedInstanceState check) and via the manual "Nu synchroniseren" button.
  * WorkManager-based periodic background scheduling (no app open at all) is still a later step.

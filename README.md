@@ -125,7 +125,7 @@ reconnect logic below.
 live site could break while the sync pipeline itself was still being built and tested against the
 real device. SFTP publishing (password-authenticated, not key-based -- see below) was added once
 that milestone was confirmed working, and is opt-in: the app never uploads anything unless the
-"Publiceren naar ayuus.com" settings are filled in.
+"Publish to ayuus.com" settings are filled in.
 
 **Reconnect handling is poll-based, not event-based, and deliberately checks the real device, not
 just the local hotspot state.** When a sync fails, the user is offered "wait for connection" or

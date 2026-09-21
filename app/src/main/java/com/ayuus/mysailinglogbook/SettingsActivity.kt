@@ -114,7 +114,7 @@ class SettingsActivity : AppCompatActivity() {
         ).apply { inputType = InputType.TYPE_CLASS_NUMBER or InputType.TYPE_NUMBER_FLAG_DECIMAL }
 
         // Derived from whatever's actually configured, not hardcoded -- asked for explicitly,
-        // found in practice: this always read "Publiceren naar ayuus.com" even on a fresh
+        // found in practice: this always read "Publish to ayuus.com" even on a fresh
         // install with nothing filled in at all, misleadingly claiming a destination that wasn't
         // really set up yet (the exact same concern that already keeps restUploadUrl/sftpHost
         // themselves un-defaulted, see SettingsStore's own doc comments). REST preferred over
