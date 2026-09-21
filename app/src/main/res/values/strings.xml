@@ -124,4 +124,36 @@
     <string name="button_save">Save</string>
     <string name="toast_username_password_required">Username and password are required</string>
     <string name="toast_settings_saved">Settings saved</string>
+
+    <!-- Boat mode -->
+    <string name="section_boat_mode">Boat mode</string>
+    <string name="label_boat_interval">A round (download + build) every</string>
+    <string name="boat_interval_30">30 minutes</string>
+    <string name="boat_interval_60">1 hour</string>
+    <string name="boat_interval_120">2 hours</string>
+    <string name="boat_interval_180">3 hours</string>
+    <string name="checkbox_boat_publish_every_round">Publish after every round</string>
+    <string name="checkbox_boat_final_harbour">Final round (publish) once the boat is in harbour</string>
+    <string name="label_boat_harbour_stationary_minutes">Harbour: stationary for (minutes)</string>
+    <string name="label_boat_harbour_engine_off_minutes">Harbour: engine off for (minutes)</string>
+    <string name="checkbox_boat_final_left">Final round when I have left the boat</string>
+    <string name="label_boat_left_minutes">Left the boat: W2K-2 unreachable for (minutes)</string>
+    <string name="checkbox_boat_stop_after_final">Switch boat mode off after the final round</string>
+    <string name="checkbox_boat_auto_start">Start automatically when the W2K-2 is found</string>
+    <string name="tooltip_boat_mode">Start boat mode</string>
+    <string name="tooltip_boat_mode_on">Stop boat mode</string>
+    <string name="boat_log_simulation">Boat mode (simulation): time runs 30x faster and nothing is really downloaded or published.</string>
+    <string name="boat_status_searching">Boat mode: looking for the W2K-2...</string>
+    <string name="boat_status_round_started">Boat mode: round started (download and build)...</string>
+    <string name="boat_status_round_done">Boat mode: round done.</string>
+    <string name="boat_status_round_failed">Boat mode: round failed, trying again.</string>
+    <string name="boat_status_w2k2_not_found_retry">Boat mode: W2K-2 not reachable, trying again at %1$s.</string>
+    <string name="boat_status_harbour_final">Boat mode: the boat is in harbour, final round.</string>
+    <string name="boat_status_left_boat">Boat mode: left the boat (W2K-2 gone), final round.</string>
+    <string name="boat_status_left_boat_nothing">Boat mode: left the boat, nothing new to publish.</string>
+    <string name="boat_status_waiting_in_port">Boat mode: waiting in port, next check at %1$s.</string>
+    <string name="boat_status_publish_started">Boat mode: publishing...</string>
+    <string name="boat_status_publish_ok">Boat mode: published.</string>
+    <string name="boat_status_publish_failed">Boat mode: publishing failed, trying again at %1$s.</string>
+    <string name="boat_status_stopped">Boat mode stopped.</string>
 </resources>

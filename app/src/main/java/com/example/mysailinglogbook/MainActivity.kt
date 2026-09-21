@@ -52,6 +52,7 @@ class MainActivity : AppCompatActivity() {
     private lateinit var syncButton: Button
     private lateinit var buildButton: Button
     private lateinit var publishButton: Button
+    private lateinit var bootButton: Button
     private lateinit var settingsStore: SettingsStore
     private lateinit var progressLabel: TextView
     private lateinit var progressBar: ProgressBar
@@ -174,6 +175,11 @@ class MainActivity : AppCompatActivity() {
         val viewLocalButton = iconButton(getString(R.string.tooltip_view_local), iconRes = R.drawable.ic_article_24) {
             viewLocalLogbook()
         }
+        // Boat mode on/off (see BootModeController): rounds while the W2K-2 is reachable, a final
+        // round in the harbour. Runs on a simulation for now (FakeBootModeExecutor).
+        bootButton = iconButton(getString(R.string.tooltip_boat_mode), iconRes = R.drawable.ic_schedule_24) {
+            toggleBootMode()
+        }
         val settingsButton = iconButton(getString(R.string.tooltip_settings), emoji = "⚙") {
             startActivity(Intent(this@MainActivity, SettingsActivity::class.java))
         } // ⚙
@@ -241,6 +247,7 @@ class MainActivity : AppCompatActivity() {
             addView(buildButton)
             addView(publishButton)
             addView(viewLocalButton)
+            addView(bootButton)
             addView(View(this@MainActivity), LinearLayout.LayoutParams(0, 0, 1f))
             addView(settingsButton)
         }
@@ -266,6 +273,7 @@ class MainActivity : AppCompatActivity() {
         setContentView(layout)
         indexExistingEblFilesForPcOnce()
         updatePublishButtonEnabled()
+        updateBootButton()
         updateSyncButtonAvailability()
 
         // The logbook page's own popups (Details/Opmerkingen/Overzicht -- all plain HTML
@@ -398,6 +406,71 @@ class MainActivity : AppCompatActivity() {
             progressLabel.visibility = View.GONE
         }
         updatePublishButtonEnabled()
+    }
+
+    /** Starts or stops the boat mode. The controller is process-wide (BootModeRuntime), not tied to
+     * this Activity instance, and reports back through SyncState.active -- like the sync's own
+     * background work -- so a recreated Activity does not lose it. */
+    private fun toggleBootMode() {
+        val controller = BootModeRuntime.controller ?: createBootController().also { BootModeRuntime.controller = it }
+        if (controller.isActive) {
+            controller.stop()
+        } else {
+            handleLogLine("[info] " + getString(R.string.boat_log_simulation))
+            controller.start()
+        }
+    }
+
+    private fun createBootController(): BootModeController {
+        val store = SettingsStore(applicationContext)
+        return BootModeController(
+            executor = FakeBootModeExecutor(),
+            clock = BootClock(scale = 30.0),
+            configJson = { store.bootModeConfigJson() },
+            userRunBusy = { SyncState.inProgress },
+            onStatus = { kind, nextAt -> SyncState.active?.showBootStatus(kind, nextAt) },
+            onActiveChanged = { SyncState.active?.updateBootButton() },
+        )
+    }
+
+    /** One status of the boat mode (a bootmode.Status name) as a log line, with the time of the next
+     * step where the status has one. */
+    fun showBootStatus(kind: String, nextAt: Long?) {
+        val resId = when (kind) {
+            "SEARCHING" -> R.string.boat_status_searching
+            "ROUND_STARTED" -> R.string.boat_status_round_started
+            "ROUND_DONE" -> R.string.boat_status_round_done
+            "ROUND_FAILED" -> R.string.boat_status_round_failed
+            "W2K_NOT_FOUND_RETRY" -> R.string.boat_status_w2k2_not_found_retry
+            "HARBOUR_FINAL" -> R.string.boat_status_harbour_final
+            "LEFT_BOAT" -> R.string.boat_status_left_boat
+            "LEFT_BOAT_NOTHING_TO_PUBLISH" -> R.string.boat_status_left_boat_nothing
+            "WAITING_IN_PORT" -> R.string.boat_status_waiting_in_port
+            "PUBLISH_STARTED" -> R.string.boat_status_publish_started
+            "PUBLISH_OK" -> R.string.boat_status_publish_ok
+            "PUBLISH_FAILED" -> R.string.boat_status_publish_failed
+            "STOPPED" -> R.string.boat_status_stopped
+            else -> return
+        }
+        val text = if (nextAt != null) {
+            val time = java.text.SimpleDateFormat("HH:mm", java.util.Locale.getDefault()).format(java.util.Date(nextAt))
+            getString(resId, time)
+        } else {
+            getString(resId)
+        }
+        handleLogLine("[info] $text")
+    }
+
+    /** Filled clock while the boat mode runs, outline while it is off. */
+    fun updateBootButton() {
+        val active = BootModeRuntime.controller?.isActive == true
+        bootButton.setCompoundDrawablesWithIntrinsicBounds(
+            if (active) R.drawable.ic_schedule_filled_24 else R.drawable.ic_schedule_24, 0, 0, 0,
+        )
+        ViewCompat.setTooltipText(
+            bootButton,
+            getString(if (active) R.string.tooltip_boat_mode_on else R.string.tooltip_boat_mode),
+        )
     }
 
     /** ☁️ only makes sense once WordPress or SFTP is actually filled in (see SettingsStore) --

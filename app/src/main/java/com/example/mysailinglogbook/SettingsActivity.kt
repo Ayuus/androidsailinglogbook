@@ -3,12 +3,14 @@ package com.example.mysailinglogbook
 import android.os.Bundle
 import android.text.InputType
 import android.view.View
+import android.widget.ArrayAdapter
 import android.widget.CheckBox
 import android.widget.EditText
 import android.widget.LinearLayout
 import android.widget.RadioButton
 import android.widget.RadioGroup
 import android.widget.ScrollView
+import android.widget.Spinner
 import android.widget.TextView
 import android.widget.Toast
 import androidx.appcompat.app.AlertDialog
@@ -213,6 +215,42 @@ class SettingsActivity : AppCompatActivity() {
         }
         updatePublishMethodVisibility()
 
+        // Boat mode: rounds while the W2K-2 is reachable, a final round in the harbour or on
+        // leaving the boat (see BootModeController / nmea2log/bootmode.py). The values only feed
+        // BootModeConfig; the decisions themselves are made in Python.
+        sectionHeader(getString(R.string.section_boat_mode))
+        val bootIntervalOptions = listOf(30, 60, 120, 180)
+        layout.addView(
+            TextView(this).apply {
+                text = getString(R.string.label_boat_interval)
+                setPadding(0, padding, 0, 0)
+            }
+        )
+        val bootIntervalSpinner = Spinner(this).apply {
+            adapter = ArrayAdapter(
+                this@SettingsActivity,
+                android.R.layout.simple_spinner_dropdown_item,
+                listOf(R.string.boat_interval_30, R.string.boat_interval_60, R.string.boat_interval_120, R.string.boat_interval_180)
+                    .map { getString(it) },
+            )
+            setSelection(bootIntervalOptions.indexOf(store.bootRoundIntervalMinutes).let { if (it < 0) 1 else it })
+        }
+        layout.addView(bootIntervalSpinner)
+        val bootPublishEveryRoundBox = checkbox(getString(R.string.checkbox_boat_publish_every_round), store.bootPublishEveryRound)
+        val bootFinalHarbourBox = checkbox(getString(R.string.checkbox_boat_final_harbour), store.bootFinalOnHarbour)
+        val bootStationaryField = field(
+            getString(R.string.label_boat_harbour_stationary_minutes), store.bootHarbourStationaryMinutes.toString(),
+        ).apply { inputType = InputType.TYPE_CLASS_NUMBER }
+        val bootEngineOffField = field(
+            getString(R.string.label_boat_harbour_engine_off_minutes), store.bootHarbourEngineOffMinutes.toString(),
+        ).apply { inputType = InputType.TYPE_CLASS_NUMBER }
+        val bootFinalLeftBox = checkbox(getString(R.string.checkbox_boat_final_left), store.bootFinalOnLeftBoat)
+        val bootLeftMinutesField = field(
+            getString(R.string.label_boat_left_minutes), store.bootLeftBoatMinutes.toString(),
+        ).apply { inputType = InputType.TYPE_CLASS_NUMBER }
+        val bootStopAfterFinalBox = checkbox(getString(R.string.checkbox_boat_stop_after_final), store.bootStopAfterFinal)
+        val bootAutoStartBox = checkbox(getString(R.string.checkbox_boat_auto_start), store.bootAutoStart)
+
         // Cache-legen: two separate buttons rather than one "clear everything" -- the two caches
         // are cleared for different reasons (a decode/trip-build bug vs. a wrong/stale place
         // name or weather value) and clearing the wrong one is real, avoidable extra network/CPU
@@ -305,6 +343,15 @@ class SettingsActivity : AppCompatActivity() {
                 store.minStopMinutes = minStopMinutesField.text.toString().toDoubleOrNull()
                     ?: SettingsStore.DEFAULT_MIN_STOP_MINUTES.toDouble()
                 store.autoPublishAfterBuild = autoPublishAfterBuildBox.isChecked
+                store.bootRoundIntervalMinutes = bootIntervalOptions[bootIntervalSpinner.selectedItemPosition]
+                store.bootPublishEveryRound = bootPublishEveryRoundBox.isChecked
+                store.bootFinalOnHarbour = bootFinalHarbourBox.isChecked
+                store.bootHarbourStationaryMinutes = bootStationaryField.text.toString().toIntOrNull()?.coerceAtLeast(1) ?: 30
+                store.bootHarbourEngineOffMinutes = bootEngineOffField.text.toString().toIntOrNull()?.coerceAtLeast(1) ?: 10
+                store.bootFinalOnLeftBoat = bootFinalLeftBox.isChecked
+                store.bootLeftBoatMinutes = bootLeftMinutesField.text.toString().toIntOrNull()?.coerceAtLeast(1) ?: 20
+                store.bootStopAfterFinal = bootStopAfterFinalBox.isChecked
+                store.bootAutoStart = bootAutoStartBox.isChecked
                 // Only the picked method's fields are actually saved -- the other route(s) are
                 // cleared instead of just left untouched, so the radio choice is a real,
                 // unambiguous either-or-or-neither rather than just a display filter (see

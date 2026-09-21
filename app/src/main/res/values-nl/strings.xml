@@ -120,4 +120,36 @@
     <string name="button_save">Opslaan</string>
     <string name="toast_username_password_required">Gebruikersnaam en wachtwoord zijn verplicht</string>
     <string name="toast_settings_saved">Instellingen opgeslagen</string>
+
+    <!-- Boat mode -->
+    <string name="section_boat_mode">Boot-modus</string>
+    <string name="label_boat_interval">Een ronde (downloaden + bouwen) elke</string>
+    <string name="boat_interval_30">30 minuten</string>
+    <string name="boat_interval_60">1 uur</string>
+    <string name="boat_interval_120">2 uur</string>
+    <string name="boat_interval_180">3 uur</string>
+    <string name="checkbox_boat_publish_every_round">Elke ronde publiceren</string>
+    <string name="checkbox_boat_final_harbour">Laatste ronde (publiceren) zodra de boot in de haven ligt</string>
+    <string name="label_boat_harbour_stationary_minutes">Haven: stil gedurende (minuten)</string>
+    <string name="label_boat_harbour_engine_off_minutes">Haven: motor uit gedurende (minuten)</string>
+    <string name="checkbox_boat_final_left">Laatste ronde als ik van boord ben</string>
+    <string name="label_boat_left_minutes">Van boord: W2K-2 niet bereikbaar gedurende (minuten)</string>
+    <string name="checkbox_boat_stop_after_final">Boot-modus zelf uitzetten na de laatste ronde</string>
+    <string name="checkbox_boat_auto_start">Automatisch beginnen als de W2K-2 wordt gevonden</string>
+    <string name="tooltip_boat_mode">Boot-modus starten</string>
+    <string name="tooltip_boat_mode_on">Boot-modus stoppen</string>
+    <string name="boat_log_simulation">Boot-modus (simulatie): de tijd loopt 30 keer sneller en er wordt niets echt gedownload of gepubliceerd.</string>
+    <string name="boat_status_searching">Boot-modus: zoeken naar de W2K-2...</string>
+    <string name="boat_status_round_started">Boot-modus: ronde gestart (downloaden en bouwen)...</string>
+    <string name="boat_status_round_done">Boot-modus: ronde klaar.</string>
+    <string name="boat_status_round_failed">Boot-modus: ronde mislukt, opnieuw proberen.</string>
+    <string name="boat_status_w2k2_not_found_retry">Boot-modus: W2K-2 niet bereikbaar, opnieuw om %1$s.</string>
+    <string name="boat_status_harbour_final">Boot-modus: de boot ligt in de haven, laatste ronde.</string>
+    <string name="boat_status_left_boat">Boot-modus: van boord (W2K-2 weg), laatste ronde.</string>
+    <string name="boat_status_left_boat_nothing">Boot-modus: van boord, niets nieuws om te publiceren.</string>
+    <string name="boat_status_waiting_in_port">Boot-modus: wacht in de haven, volgende controle om %1$s.</string>
+    <string name="boat_status_publish_started">Boot-modus: publiceren...</string>
+    <string name="boat_status_publish_ok">Boot-modus: gepubliceerd.</string>
+    <string name="boat_status_publish_failed">Boot-modus: publiceren mislukt, opnieuw om %1$s.</string>
+    <string name="boat_status_stopped">Boot-modus gestopt.</string>
 </resources>

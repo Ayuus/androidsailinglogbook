@@ -116,4 +116,36 @@
     <string name="button_save">Enregistrer</string>
     <string name="toast_username_password_required">Le nom d\'utilisateur et le mot de passe sont obligatoires</string>
     <string name="toast_settings_saved">Paramètres enregistrés</string>
+
+    <!-- Boat mode -->
+    <string name="section_boat_mode">Mode bateau</string>
+    <string name="label_boat_interval">Une ronde (télécharger + construire) toutes les</string>
+    <string name="boat_interval_30">30 minutes</string>
+    <string name="boat_interval_60">1 heure</string>
+    <string name="boat_interval_120">2 heures</string>
+    <string name="boat_interval_180">3 heures</string>
+    <string name="checkbox_boat_publish_every_round">Publier après chaque ronde</string>
+    <string name="checkbox_boat_final_harbour">Dernière ronde (publication) dès que le bateau est au port</string>
+    <string name="label_boat_harbour_stationary_minutes">Port : à l\'arrêt depuis (minutes)</string>
+    <string name="label_boat_harbour_engine_off_minutes">Port : moteur coupé depuis (minutes)</string>
+    <string name="checkbox_boat_final_left">Dernière ronde quand j\'ai quitté le bateau</string>
+    <string name="label_boat_left_minutes">Quitté le bateau : W2K-2 injoignable depuis (minutes)</string>
+    <string name="checkbox_boat_stop_after_final">Désactiver le mode bateau après la dernière ronde</string>
+    <string name="checkbox_boat_auto_start">Démarrer automatiquement quand le W2K-2 est trouvé</string>
+    <string name="tooltip_boat_mode">Démarrer le mode bateau</string>
+    <string name="tooltip_boat_mode_on">Arrêter le mode bateau</string>
+    <string name="boat_log_simulation">Mode bateau (simulation) : le temps passe 30 fois plus vite, rien n\'est réellement téléchargé ni publié.</string>
+    <string name="boat_status_searching">Mode bateau : recherche du W2K-2...</string>
+    <string name="boat_status_round_started">Mode bateau : ronde démarrée (téléchargement et construction)...</string>
+    <string name="boat_status_round_done">Mode bateau : ronde terminée.</string>
+    <string name="boat_status_round_failed">Mode bateau : ronde échouée, nouvel essai.</string>
+    <string name="boat_status_w2k2_not_found_retry">Mode bateau : W2K-2 injoignable, nouvel essai à %1$s.</string>
+    <string name="boat_status_harbour_final">Mode bateau : le bateau est au port, dernière ronde.</string>
+    <string name="boat_status_left_boat">Mode bateau : bateau quitté (W2K-2 absent), dernière ronde.</string>
+    <string name="boat_status_left_boat_nothing">Mode bateau : bateau quitté, rien de nouveau à publier.</string>
+    <string name="boat_status_waiting_in_port">Mode bateau : attente au port, prochain contrôle à %1$s.</string>
+    <string name="boat_status_publish_started">Mode bateau : publication...</string>
+    <string name="boat_status_publish_ok">Mode bateau : publié.</string>
+    <string name="boat_status_publish_failed">Mode bateau : échec de la publication, nouvel essai à %1$s.</string>
+    <string name="boat_status_stopped">Mode bateau arrêté.</string>
 </resources>

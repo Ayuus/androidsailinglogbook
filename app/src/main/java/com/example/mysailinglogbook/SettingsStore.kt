@@ -4,6 +4,7 @@ import android.content.Context
 import android.content.SharedPreferences
 import androidx.security.crypto.EncryptedSharedPreferences
 import androidx.security.crypto.MasterKey
+import org.json.JSONObject
 
 /**
  * Wraps EncryptedSharedPreferences for the handful of settings this app needs -- W2K-2 login,
@@ -135,6 +136,57 @@ class SettingsStore(context: Context) {
         get() = prefs.getString(KEY_SFTP_HOST_KEY_FINGERPRINT, "") ?: ""
         set(value) = prefs.edit().putString(KEY_SFTP_HOST_KEY_FINGERPRINT, value).apply()
 
+    // Boat mode (see BootModeController and nmea2log/bootmode.py, whose BootModeConfig has the same
+    // names in snake_case and the same defaults).
+    var bootRoundIntervalMinutes: Int
+        get() = prefs.getInt(KEY_BOOT_ROUND_INTERVAL_MINUTES, 60)
+        set(value) = prefs.edit().putInt(KEY_BOOT_ROUND_INTERVAL_MINUTES, value).apply()
+
+    var bootPublishEveryRound: Boolean
+        get() = prefs.getBoolean(KEY_BOOT_PUBLISH_EVERY_ROUND, false)
+        set(value) = prefs.edit().putBoolean(KEY_BOOT_PUBLISH_EVERY_ROUND, value).apply()
+
+    var bootFinalOnHarbour: Boolean
+        get() = prefs.getBoolean(KEY_BOOT_FINAL_ON_HARBOUR, true)
+        set(value) = prefs.edit().putBoolean(KEY_BOOT_FINAL_ON_HARBOUR, value).apply()
+
+    var bootHarbourStationaryMinutes: Int
+        get() = prefs.getInt(KEY_BOOT_HARBOUR_STATIONARY_MINUTES, 30)
+        set(value) = prefs.edit().putInt(KEY_BOOT_HARBOUR_STATIONARY_MINUTES, value).apply()
+
+    var bootHarbourEngineOffMinutes: Int
+        get() = prefs.getInt(KEY_BOOT_HARBOUR_ENGINE_OFF_MINUTES, 10)
+        set(value) = prefs.edit().putInt(KEY_BOOT_HARBOUR_ENGINE_OFF_MINUTES, value).apply()
+
+    var bootFinalOnLeftBoat: Boolean
+        get() = prefs.getBoolean(KEY_BOOT_FINAL_ON_LEFT_BOAT, true)
+        set(value) = prefs.edit().putBoolean(KEY_BOOT_FINAL_ON_LEFT_BOAT, value).apply()
+
+    var bootLeftBoatMinutes: Int
+        get() = prefs.getInt(KEY_BOOT_LEFT_BOAT_MINUTES, 20)
+        set(value) = prefs.edit().putInt(KEY_BOOT_LEFT_BOAT_MINUTES, value).apply()
+
+    var bootStopAfterFinal: Boolean
+        get() = prefs.getBoolean(KEY_BOOT_STOP_AFTER_FINAL, false)
+        set(value) = prefs.edit().putBoolean(KEY_BOOT_STOP_AFTER_FINAL, value).apply()
+
+    var bootAutoStart: Boolean
+        get() = prefs.getBoolean(KEY_BOOT_AUTO_START, false)
+        set(value) = prefs.edit().putBoolean(KEY_BOOT_AUTO_START, value).apply()
+
+    /** The boat-mode settings as the JSON nmea2log.bootmode.BootModeConfig.from_dict() takes. */
+    fun bootModeConfigJson(): String = JSONObject()
+        .put("round_interval_minutes", bootRoundIntervalMinutes)
+        .put("publish_every_round", bootPublishEveryRound)
+        .put("final_on_harbour", bootFinalOnHarbour)
+        .put("harbour_stationary_minutes", bootHarbourStationaryMinutes)
+        .put("harbour_engine_off_minutes", bootHarbourEngineOffMinutes)
+        .put("final_on_left_boat", bootFinalOnLeftBoat)
+        .put("left_boat_minutes", bootLeftBoatMinutes)
+        .put("stop_after_final", bootStopAfterFinal)
+        .put("publish_configured", isRestUploadConfigComplete || isSftpConfigComplete)
+        .toString()
+
     companion object {
         const val DEFAULT_SFTP_PORT = 22
         // Same default as build_arg_parser()'s own --min-stop-minutes (see cli.py).
@@ -156,5 +208,14 @@ class SettingsStore(context: Context) {
         private const val KEY_SFTP_PASSWORD = "sftp_password"
         private const val KEY_SFTP_REMOTE_PATH = "sftp_remote_path"
         private const val KEY_SFTP_HOST_KEY_FINGERPRINT = "sftp_host_key_fingerprint"
+        private const val KEY_BOOT_ROUND_INTERVAL_MINUTES = "boot_round_interval_minutes"
+        private const val KEY_BOOT_PUBLISH_EVERY_ROUND = "boot_publish_every_round"
+        private const val KEY_BOOT_FINAL_ON_HARBOUR = "boot_final_on_harbour"
+        private const val KEY_BOOT_HARBOUR_STATIONARY_MINUTES = "boot_harbour_stationary_minutes"
+        private const val KEY_BOOT_HARBOUR_ENGINE_OFF_MINUTES = "boot_harbour_engine_off_minutes"
+        private const val KEY_BOOT_FINAL_ON_LEFT_BOAT = "boot_final_on_left_boat"
+        private const val KEY_BOOT_LEFT_BOAT_MINUTES = "boot_left_boat_minutes"
+        private const val KEY_BOOT_STOP_AFTER_FINAL = "boot_stop_after_final"
+        private const val KEY_BOOT_AUTO_START = "boot_auto_start"
     }
 }
