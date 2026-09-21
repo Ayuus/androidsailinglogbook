@@ -1083,7 +1083,37 @@ class MainActivity : AppCompatActivity() {
         return logScroll.scrollY + logScroll.height >= content.bottom - slackPx
     }
 
-    private fun handleLogLine(line: String) {
+    /** Every log line starts with "YYYY-MM-DD HH:MM:SS" -- Python's log() (see log.py) already
+     * adds it to its own lines, so this gives the lines made here (button presses, hotspot and
+     * publish messages, ...) the same, one per line of a multi-line message. Lines that already
+     * carry one (the Python ones) are left as they are. */
+    private fun stampLogLine(line: String): String {
+        val now = java.text.SimpleDateFormat("yyyy-MM-dd HH:mm:ss", java.util.Locale.US).format(java.util.Date())
+        return line.split("\n").joinToString("\n") { part ->
+            if (LOG_TIMESTAMP_REGEX.containsMatchIn(part)) part else "$now $part"
+        }
+    }
+
+    /** Appends a line made here (not one Python already wrote itself) to the same persistent log
+     * file Python appends to (nmea2log.log, see android_entry.py) -- without this, what the app
+     * itself reported (a button press, a cancelled run, "no publish destination") only ever
+     * existed on screen and was gone for later troubleshooting. Failures are ignored: a log
+     * line is never worth breaking the app over. */
+    private fun appendToLogFile(stampedLine: String) {
+        try {
+            synchronized(logFileLock) {
+                File(filesDir, "nmea2log.log").appendText(stampedLine + "\n", Charsets.UTF_8)
+            }
+        } catch (e: Exception) {
+            // best effort only
+        }
+    }
+
+    private fun handleLogLine(rawLine: String) {
+        val line = stampLogLine(rawLine)
+        // Only a line that had no timestamp yet was made here; Python's own lines are already in
+        // the file (log.py writes every line there itself).
+        if (line != rawLine) appendToLogFile(line)
         // The accumulator, not logView.text itself -- logView may belong to an orphaned
         // instance, or there may be no active instance at all right now (see withActiveActivity),
         // so the running log has to live somewhere that survives either.
@@ -1903,6 +1933,12 @@ class MainActivity : AppCompatActivity() {
         // sftpRemotePath, which is the *private* SFTP destination (outside the web root, see
         // little_endian-index.php's own doc comment), not a browsable URL at all.
         const val LIVE_SITE_URL = "https://ayuus.com/little_endian/"
+
+        // Serializes appends of app-made log lines to the log file (see appendToLogFile()).
+        private val logFileLock = Any()
+
+        // What Python's log() puts in front of every line, see stampLogLine().
+        private val LOG_TIMESTAMP_REGEX = Regex("^\\d{4}-\\d{2}-\\d{2} \\d{2}:\\d{2}:\\d{2} ")
 
         private const val KEY_EBL_INDEXED_FOR_PC = "ebl_indexed_for_pc_v1"
     }
