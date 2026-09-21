@@ -312,6 +312,11 @@ class MainActivity : AppCompatActivity() {
             // The boat mode is running in its service (the app was closed and is opened again, e.g. from
             // its notification): show what it is doing, and leave the rounds to it -- no sync of our own.
             showBootModeLog()
+            try {
+                BootModeService.send(this, BootModeService.ACTION_RESUME)
+            } catch (e: Exception) {
+                handleLogLine("[error] ${e.message}")
+            }
         } else if (savedInstanceState == null) {
             // Asked for explicitly: opt-out via Instellingen ("Automatisch downloaden bij
             // starten") for whoever doesn't want opening the app to try reaching the W2K-2 on its

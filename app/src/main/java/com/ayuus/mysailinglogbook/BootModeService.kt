@@ -173,6 +173,11 @@ class BootModeService : Service() {
         const val ACTION_TICK = "com.ayuus.mysailinglogbook.BOOT_TICK"
         const val ACTION_NOW = "com.ayuus.mysailinglogbook.BOOT_NOW"
 
+        /** Sent when the app is opened while the mode is on: a service that was force-stopped (which also
+         * cancels its alarms and is not restarted by Android) carries on from its persisted state; a
+         * running one ignores it. */
+        const val ACTION_RESUME = "com.ayuus.mysailinglogbook.BOOT_RESUME"
+
         private const val CHANNEL_ID = "boat_mode"
         private const val NOTIFICATION_ID = 3
         private const val REQUEST_TICK = 10
