@@ -412,6 +412,10 @@ class MainActivity : AppCompatActivity() {
      * this Activity instance, and reports back through SyncState.active -- like the sync's own
      * background work -- so a recreated Activity does not lose it. */
     private fun toggleBootMode() {
+        // The mode reports through the log, so bring it back over the logbook -- like a sync or build
+        // does when it starts (see runSync()); otherwise its lines land in a log nobody can see.
+        showingLocalLogbook = false
+        setLogExpanded(true)
         val controller = BootModeRuntime.controller ?: createBootController().also { BootModeRuntime.controller = it }
         if (controller.isActive) {
             controller.stop()
