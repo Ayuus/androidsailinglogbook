@@ -1682,7 +1682,9 @@ class MainActivity : AppCompatActivity() {
             // this function's own doc comment above). The budget-exhaustion case (the routine
             // one, see that doc comment) gets its own specific wording; anything else still shows
             // the real exception, since that would be genuinely unexpected here.
-            val reason = if (e is ForegroundServiceStartNotAllowedException) {
+            // SDK_INT check first: the exception class only exists from Android 12 (API 31), and this
+            // app supports Android 7+ -- lint (NewApi) flags an unguarded reference.
+            val reason = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S && e is ForegroundServiceStartNotAllowedException) {
                 getString(R.string.reason_notification_daily_limit)
             } else {
                 e.toString()
