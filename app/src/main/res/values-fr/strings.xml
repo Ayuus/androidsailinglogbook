@@ -7,6 +7,7 @@
     <string name="tooltip_publish">Publier sur ayuus.com</string>
     <string name="tooltip_publish_not_configured">Aucun hôte configuré</string>
     <string name="tooltip_build_local">Construire le journal</string>
+    <string name="tooltip_cancel">Annuler</string>
     <string name="tooltip_view_local">Consulter le journal localement (sans publier)</string>
     <string name="tooltip_settings">Paramètres</string>
 
@@ -49,6 +50,7 @@
     <string name="dialog_build_logbook_button">Construire le journal...</string>
     <string name="dialog_close_app_button">Fermer l\'application</string>
     <string name="status_sync_cancelled">Synchronisation annulée.</string>
+    <string name="status_build_cancelled">Construction annulée.</string>
     <string name="status_building_with_existing_data">Construction du journal avec les données existantes...</string>
     <string name="error_unexpected">Erreur inattendue : %1$s</string>
 

@@ -11,6 +11,7 @@
     <string name="tooltip_publish">Publiceren naar ayuus.com</string>
     <string name="tooltip_publish_not_configured">Geen host geconfigureerd</string>
     <string name="tooltip_build_local">Logboek bouwen</string>
+    <string name="tooltip_cancel">Annuleren</string>
     <string name="tooltip_view_local">Logboek lokaal bekijken (niet publiceren)</string>
     <string name="tooltip_settings">Instellingen</string>
 
@@ -53,6 +54,7 @@
     <string name="dialog_build_logbook_button">Logboek bouwen...</string>
     <string name="dialog_close_app_button">App sluiten</string>
     <string name="status_sync_cancelled">Synchronisatie geannuleerd.</string>
+    <string name="status_build_cancelled">Bouwen geannuleerd.</string>
     <string name="status_building_with_existing_data">Logboek opbouwen met bestaande gegevens...</string>
     <string name="error_unexpected">Onverwachte fout: %1$s</string>
 

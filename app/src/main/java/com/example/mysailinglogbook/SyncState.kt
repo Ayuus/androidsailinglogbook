@@ -14,6 +14,11 @@ object SyncState {
     @Volatile
     var cancelled = false
 
+    /** Which button started the run that's in progress -- that same button then doubles as its
+     * cancel button (with a stop icon), while the others stay disabled. Null when nothing runs. */
+    @Volatile
+    var runInitiator: RunInitiator? = null
+
     /** True only while MainActivity.uploadIfConfigured() is actually running (the REST/SFTP
      * publish step). Lets SyncNotificationService.onTaskRemoved() tell "safe to interrupt" --
      * discovery, download (resumes cleanly next run over HTTP Range, see w2k2_download.py), or
@@ -97,3 +102,5 @@ object SyncState {
     @Volatile
     var lastProgressTotal: Int = 0
 }
+
+enum class RunInitiator { SYNC, BUILD, PUBLISH }

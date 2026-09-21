@@ -1,0 +1,13 @@
+<!-- Standard Material Icons "stop" glyph (24dp grid): shown on whichever button started the run
+     that is currently in progress, since that button then cancels it (see MainActivity's
+     updatePublishButtonEnabled()). fillColor is only a placeholder: iconButton() applies the
+     tint at runtime, same as the app's other icons. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="24dp"
+    android:height="24dp"
+    android:viewportWidth="24"
+    android:viewportHeight="24">
+    <path
+        android:fillColor="#FF000000"
+        android:pathData="M6,6h12v12H6z"/>
+</vector>

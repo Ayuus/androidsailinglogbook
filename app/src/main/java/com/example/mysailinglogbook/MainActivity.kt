@@ -152,7 +152,9 @@ class MainActivity : AppCompatActivity() {
         // to (re)build from what's already local reads clearer than one button quietly changing
         // what it does depending on Instellingen.
         buildButton = iconButton(getString(R.string.tooltip_build_local), iconRes = R.drawable.ic_cpu_24) {
-            runOfflineBuild()
+            // While its own run is in progress this is the (only enabled) cancel button, see
+            // updatePublishButtonEnabled().
+            if (SyncState.inProgress) cancelSyncStayInApp() else runOfflineBuild()
         }
         // Material's own "upload" icon (ic_upload_24), not the ☁️ emoji it replaced -- asked for
         // explicitly, found in practice: a plain cloud alone didn't read as obviously "publish"
@@ -160,7 +162,7 @@ class MainActivity : AppCompatActivity() {
         // updatePublishButtonEnabled()) now that buildButton above covers the "no publish
         // settings yet, but still want to build" case on its own.
         publishButton = iconButton(getString(R.string.tooltip_publish), iconRes = R.drawable.ic_upload_24) {
-            runPublish()
+            if (SyncState.inProgress) cancelSyncStayInApp() else runPublish()
         }
         // Loads whatever logbook.html is already on the phone into the WebView, without syncing
         // or publishing anything -- asked for explicitly, for when the owner just wants to check
@@ -415,17 +417,49 @@ class MainActivity : AppCompatActivity() {
      * same as updateSyncButtonAvailability()) -- only when it just *became* unconfigured, so
      * opening Instellingen once and looking at it doesn't spam the log on every later resume. */
     private fun updatePublishButtonEnabled() {
-        buildButton.isEnabled = !SyncState.inProgress
+        // While a run is in progress, the button that started it stays enabled and turns into a
+        // stop button (tapping it cancels, see cancelSyncStayInApp()) -- the same toggle for the
+        // sync button, the build button and the publish button alike -- while the other two stay
+        // disabled.
+        val initiator = if (SyncState.inProgress) SyncState.runInitiator ?: RunInitiator.SYNC else null
+        val running = initiator != null
+        buildButton.isEnabled = !running || initiator == RunInitiator.BUILD
         val configured = settingsStore.isRestUploadConfigComplete || settingsStore.isSftpConfigComplete
         val wasEnabled = publishButton.isEnabled
-        publishButton.isEnabled = !SyncState.inProgress && configured
-        if (!configured && wasEnabled) {
+        publishButton.isEnabled = if (running) initiator == RunInitiator.PUBLISH else configured
+        if (!running && !configured && wasEnabled) {
             handleLogLine("[info] " + getString(R.string.log_publish_not_configured))
         }
+        setCancelAppearance(buildButton, initiator == RunInitiator.BUILD, R.drawable.ic_cpu_24)
+        setCancelAppearance(publishButton, initiator == RunInitiator.PUBLISH, R.drawable.ic_upload_24)
         ViewCompat.setTooltipText(
             publishButton,
-            getString(if (configured) R.string.tooltip_publish else R.string.tooltip_publish_not_configured),
+            getString(
+                when {
+                    initiator == RunInitiator.PUBLISH -> R.string.tooltip_cancel
+                    configured -> R.string.tooltip_publish
+                    else -> R.string.tooltip_publish_not_configured
+                },
+            ),
         )
+        ViewCompat.setTooltipText(
+            buildButton,
+            getString(if (initiator == RunInitiator.BUILD) R.string.tooltip_cancel else R.string.tooltip_build_local),
+        )
+        if (running) {
+            // The sync button only ever cancels a sync it started itself; while a build/publish
+            // runs it is just disabled (updateSyncButtonAvailability() takes over again after).
+            syncButton.isEnabled = initiator == RunInitiator.SYNC
+            syncButton.text = if (initiator == RunInitiator.SYNC) "■" else "↺"
+            if (initiator == RunInitiator.SYNC) ViewCompat.setTooltipText(syncButton, getString(R.string.tooltip_cancel))
+        } else {
+            syncButton.text = "↺"
+        }
+    }
+
+    /** A stop icon in place of the button's own icon while that button is the cancel button. */
+    private fun setCancelAppearance(button: Button, cancelling: Boolean, normalIconRes: Int) {
+        button.setCompoundDrawablesWithIntrinsicBounds(if (cancelling) R.drawable.ic_stop_24 else normalIconRes, 0, 0, 0)
     }
 
     /** ↺ is disabled with an explanatory tooltip until a real scan confirms the W2K-2 is actually
@@ -596,6 +630,7 @@ class MainActivity : AppCompatActivity() {
         }
 
         SyncState.inProgress = true
+        SyncState.runInitiator = RunInitiator.SYNC
         SyncState.cancelled = false
         // syncButton deliberately stays enabled here (unlike buildButton/publishButton) --
         // tapping it again while a sync is running cancels it instead (see the button's own
@@ -604,8 +639,7 @@ class MainActivity : AppCompatActivity() {
         // otherwise, so opening the app to use ☁️ Publiceren on its own was never actually
         // reachable -- these two buttons stayed disabled for as long as that auto-started sync
         // kept running.
-        buildButton.isEnabled = false
-        publishButton.isEnabled = false
+        updatePublishButtonEnabled()
         val initialStatusText = getString(R.string.status_checking_hotspot)
         // Log deliberately NOT cleared here (asked for explicitly) -- it now accumulates across
         // every sync this process runs instead of starting over each time, so a run's own history
@@ -654,6 +688,7 @@ class MainActivity : AppCompatActivity() {
                     // replaces) are enough either way.
                     SyncNotificationService.postNotFoundNotification(this, message)
                     SyncState.inProgress = false
+                    SyncState.runInitiator = null
                     updateSyncButtonAvailability()
                     updatePublishButtonEnabled()
                 }
@@ -743,6 +778,7 @@ class MainActivity : AppCompatActivity() {
                 SyncState.notificationForegrounded = false
                 SyncState.notificationStartFailed = false
                 SyncState.inProgress = false
+                SyncState.runInitiator = null
                 // Purely cosmetic UI state, safe to skip when nothing is active right now -- the
                 // next Activity to resume starts from a fresh, already-correct button/progress
                 // state on its own (see onCreate()/restoreLiveSyncUi()).
@@ -1302,8 +1338,11 @@ class MainActivity : AppCompatActivity() {
      * sync) re-enables both buttons itself in its finally block -- nothing else to do here. */
     private fun cancelSyncStayInApp() {
         cancelSync()
-        SyncState.lastStatusText = getString(R.string.status_sync_cancelled)
-        handleLogLine("[info] " + getString(R.string.status_sync_cancelled))
+        val cancelledText = getString(
+            if (SyncState.runInitiator == RunInitiator.SYNC) R.string.status_sync_cancelled else R.string.status_build_cancelled,
+        )
+        SyncState.lastStatusText = cancelledText
+        handleLogLine("[info] $cancelledText")
         hideProgressBar()
     }
 
@@ -1326,11 +1365,14 @@ class MainActivity : AppCompatActivity() {
     private fun buildFromLocalFilesAndMaybePublish(forcePublish: Boolean) {
         if (SyncState.inProgress) return
         SyncState.inProgress = true
-        // syncButton stays enabled here too -- same reasoning as runSync()'s own version of this
-        // comment: a long local decode (see run_pipeline()'s should_cancel) should be cancellable
-        // by tapping it again, same as a normal sync.
-        buildButton.isEnabled = false
-        publishButton.isEnabled = false
+        SyncState.runInitiator = if (forcePublish) RunInitiator.PUBLISH else RunInitiator.BUILD
+        // Reset here too, not only in runSync(): a cancelled earlier run leaves it true, which
+        // would cancel this new build the moment it starts.
+        SyncState.cancelled = false
+        // The button that started this build stays enabled as its cancel button -- a long local
+        // decode (see run_pipeline()'s should_cancel) should be cancellable by tapping it again,
+        // same as a normal sync with the sync button.
+        updatePublishButtonEnabled()
         // Log deliberately NOT cleared here (asked for explicitly, see runSync()'s own matching
         // comment) -- it accumulates across every run this process makes instead.
         SyncState.lastStatusText = getString(R.string.status_building_with_existing_data)
@@ -1386,6 +1428,7 @@ class MainActivity : AppCompatActivity() {
                 SyncState.notificationForegrounded = false
                 SyncState.notificationStartFailed = false
                 SyncState.inProgress = false  // must always happen, see runSync()'s own finally
+                SyncState.runInitiator = null
                 withActiveActivity {
                     // logIfNotFound=false: the button still needs a fresh scan to know whether
                     // to re-enable itself, but the sync that just finished already implies the

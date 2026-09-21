@@ -12,6 +12,7 @@
     <string name="tooltip_publish">Publish to ayuus.com</string>
     <string name="tooltip_publish_not_configured">No host configured</string>
     <string name="tooltip_build_local">Build logbook</string>
+    <string name="tooltip_cancel">Cancel</string>
     <string name="tooltip_view_local">View logbook locally (don\'t publish)</string>
     <string name="tooltip_settings">Settings</string>
 
@@ -57,6 +58,7 @@
     <string name="dialog_build_logbook_button">Build logbook...</string>
     <string name="dialog_close_app_button">Close app</string>
     <string name="status_sync_cancelled">Sync cancelled.</string>
+    <string name="status_build_cancelled">Build cancelled.</string>
     <string name="status_building_with_existing_data">Building logbook with existing data...</string>
     <string name="error_unexpected">Unexpected error: %1$s</string>
 
