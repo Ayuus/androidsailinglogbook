@@ -33,6 +33,18 @@ object HotspotDetector {
         return if (lastDot > 0) ip.substring(0, lastDot + 1) else null
     }
 
+    /**
+     * Whether this phone's own hotspot is on right now -- stricter than [detectSubnetPrefix], which takes any
+     * private IPv4 interface and so also answers for a phone that is simply connected to a wifi network
+     * (found in practice: at home, on wifi, the boat mode started itself on every launch). Only an
+     * interface named like a hotspot/AP counts ("ap_br_swlan0" on the S23, "ap0"/"swlan0" elsewhere); the
+     * wifi client interface (wlan0) does not.
+     */
+    fun isHotspotUp(): Boolean = allInterfaces()
+        .filter { it.isUp && !it.isLoopback && !it.isPointToPoint }
+        .filter { it.name.contains("ap", ignoreCase = true) || it.name.contains("swlan", ignoreCase = true) }
+        .any { iface -> ipv4Addresses(iface).any { isPrivateIpv4(it) } }
+
     private fun allInterfaces(): List<NetworkInterface> {
         // getNetworkInterfaces() is documented to return null (not an empty Enumeration) when
         // none are found, and inetAddresses below did the same for at least one interface on the

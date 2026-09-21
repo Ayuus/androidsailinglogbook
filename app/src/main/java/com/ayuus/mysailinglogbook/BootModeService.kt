@@ -45,8 +45,12 @@ class BootModeService : Service() {
         val fresh = controller == null
         val ctl = controller ?: createController(store).also { controller = it }
         when {
-            action == ACTION_STOP -> ctl.stop()
+            action == ACTION_STOP -> {
+                store.userStopped = true
+                ctl.stop()
+            }
             action == ACTION_START && !(fresh && store.isActive) -> {
+                store.userStopped = false
                 if (!store.isActive && store.simulation) AppLog.post(this, "[info] " + getString(R.string.boat_log_simulation))
                 ctl.start()
             }

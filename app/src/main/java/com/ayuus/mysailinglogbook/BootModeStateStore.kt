@@ -25,6 +25,12 @@ class BootModeStateStore(context: Context) {
     val simulation: Boolean
         get() = prefs.getBoolean(KEY_SIMULATION, false)
 
+    /** The user switched the mode off themselves (button or notification), so opening the app must not
+     * start it again by itself until the hotspot has been off in between (see MainActivity). */
+    var userStopped: Boolean
+        get() = prefs.getBoolean(KEY_USER_STOPPED, false)
+        set(value) = prefs.edit().putBoolean(KEY_USER_STOPPED, value).apply()
+
     /** Whether the persisted state says the mode is on. */
     val isActive: Boolean
         get() = phaseOf(stateJson) != "OFF"
@@ -33,6 +39,7 @@ class BootModeStateStore(context: Context) {
         private const val KEY_STATE = "state"
         private const val KEY_CLOCK_BASE = "clock_base"
         private const val KEY_SIMULATION = "simulation"
+        private const val KEY_USER_STOPPED = "user_stopped"
 
         fun phaseOf(stateJson: String): String =
             if (stateJson.isEmpty()) "OFF" else runCatching { JSONObject(stateJson).getString("phase") }.getOrDefault("OFF")

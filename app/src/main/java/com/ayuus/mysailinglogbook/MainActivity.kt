@@ -426,9 +426,17 @@ class MainActivity : AppCompatActivity() {
     }
 
     /** Whether opening the app should start the boat mode by itself: the setting is on, the W2K-2
-     * credentials are filled in and this device's hotspot (the W2K-2 joins it) is up right now. */
-    private fun shouldAutoStartBootMode(): Boolean =
-        settingsStore.bootAutoStart && settingsStore.isW2k2ConfigComplete && HotspotDetector.detectSubnetPrefix() != null
+     * credentials are filled in, this device's own hotspot (the W2K-2 joins it) is up right now, and the
+     * user has not switched the mode off themselves since the hotspot last came up. With the hotspot off
+     * that last condition is reset, so the next visit to the boat starts it again. */
+    private fun shouldAutoStartBootMode(): Boolean {
+        val store = BootModeStateStore(this)
+        if (!HotspotDetector.isHotspotUp()) {
+            store.userStopped = false
+            return false
+        }
+        return settingsStore.bootAutoStart && settingsStore.isW2k2ConfigComplete && !store.userStopped
+    }
 
     private fun startBootMode() {
         sendBootAction(BootModeService.ACTION_START)
