@@ -52,6 +52,7 @@
     <string name="status_ready_with_download">Ready: %1$d trip(s), %2$d file(s) downloaded.</string>
     <string name="status_ready_no_download">Ready: %1$d trip(s) (existing data, not re-downloaded).</string>
     <string name="status_sync_stopped">Sync stopped. Next time it will resume where it left off.</string>
+    <string name="status_build_stopped">Build stopped. Next time it will resume where it left off.</string>
     <string name="error_generic_prefix">Error: %1$s</string>
     <string name="error_unknown">unknown error</string>
     <string name="error_logbook_display_failed">logbook could not be displayed: %1$s</string>
@@ -79,7 +80,6 @@
     <string name="log_notification_could_not_be_shown">notification could not be shown: %1$s</string>
 
     <!-- Notifications -->
-    <string name="notif_title_sync">Sync logbook</string>
     <string name="notif_channel_name">Sync</string>
     <string name="notif_channel_description">Shows when the app is fetching and processing the logbook.</string>
     <string name="notif_app_closing_after_upload">App will close once the upload has finished.</string>
@@ -159,7 +159,6 @@
     <string name="log_boat_busy">Boat mode is busy with a round or a publish; try again in a moment.</string>
     <string name="boat_notif_channel_name">Boat mode</string>
     <string name="boat_notif_channel_description">Notifications while boat mode is on: the status and a way to stop it</string>
-    <string name="boat_notif_title">Boat mode</string>
     <string name="boat_notif_action_now">Round now</string>
     <string name="boat_notif_action_stop">Stop</string>
     <string name="boat_notif_text_starting">Starting...</string>

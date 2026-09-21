@@ -1239,7 +1239,10 @@ class MainActivity : AppCompatActivity() {
             // is normally already gone, so this mostly matters when cancellation raced a rotation
             // (config change) instead. The next "Nu synchroniseren" simply resumes where it left
             // off, no special handling needed (see _needs_download() in w2k2_download.py).
-            val resultText = getString(R.string.status_sync_stopped)
+            // The build and publish buttons end up here too: say which one was stopped.
+            val resultText = getString(
+                if (SyncState.runInitiator == RunInitiator.SYNC) R.string.status_sync_stopped else R.string.status_build_stopped,
+            )
             SyncState.lastStatusText = resultText
             handleLogLine("[info] $resultText")
         } else {

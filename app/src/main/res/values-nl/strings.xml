@@ -48,6 +48,7 @@
     <string name="status_ready_with_download">Klaar: %1$d reis(en), %2$d bestand(en) gedownload.</string>
     <string name="status_ready_no_download">Klaar: %1$d reis(en) (bestaande gegevens, niet opnieuw gedownload).</string>
     <string name="status_sync_stopped">Synchronisatie gestopt. Volgende keer wordt verdergegaan waar het gebleven was.</string>
+    <string name="status_build_stopped">Bouwen gestopt. Volgende keer wordt verdergegaan waar het gebleven was.</string>
     <string name="error_generic_prefix">Fout: %1$s</string>
     <string name="error_unknown">onbekende fout</string>
     <string name="error_logbook_display_failed">logboek kon niet worden getoond: %1$s</string>
@@ -75,7 +76,6 @@
     <string name="log_notification_could_not_be_shown">melding kon niet worden getoond: %1$s</string>
 
     <!-- Notifications -->
-    <string name="notif_title_sync">Logboek synchroniseren</string>
     <string name="notif_channel_name">Synchronisatie</string>
     <string name="notif_channel_description">Toont wanneer de app bezig is met het ophalen en verwerken van het logboek.</string>
     <string name="notif_app_closing_after_upload">App wordt afgesloten nadat upload voltooid is.</string>
@@ -155,7 +155,6 @@
     <string name="log_boat_busy">De boot-modus is bezig met een ronde of publicatie; probeer het zo opnieuw.</string>
     <string name="boat_notif_channel_name">Boot-modus</string>
     <string name="boat_notif_channel_description">Meldingen zolang de boot-modus aan staat: de status en een manier om te stoppen</string>
-    <string name="boat_notif_title">Boot-modus</string>
     <string name="boat_notif_action_now">Nu</string>
     <string name="boat_notif_action_stop">Stop</string>
     <string name="boat_notif_text_starting">Starten...</string>

@@ -71,7 +71,7 @@ class SyncNotificationService : Service() {
         val contentIntent = PendingIntent.getActivity(this, 0, openAppIntent, pendingIntentFlags)
 
         val notification = NotificationCompat.Builder(this, CHANNEL_ID)
-            .setContentTitle(getString(R.string.notif_title_sync))
+            .setContentTitle(getString(R.string.app_name))
             .setContentText(contentText)
             .setSmallIcon(android.R.drawable.stat_notify_sync)
             .setOngoing(true)
@@ -237,7 +237,7 @@ class SyncNotificationService : Service() {
             }
             val contentIntent = PendingIntent.getActivity(context, 0, reopenIntent, pendingIntentFlags)
             val notification = NotificationCompat.Builder(context, CHANNEL_ID)
-                .setContentTitle(context.getString(R.string.notif_title_sync))
+                .setContentTitle(context.getString(R.string.app_name))
                 .setContentText(context.getString(R.string.notif_sync_interrupted_by_close))
                 .setSmallIcon(android.R.drawable.stat_notify_sync)
                 .setAutoCancel(true)
@@ -281,7 +281,7 @@ class SyncNotificationService : Service() {
             }
             val contentIntent = PendingIntent.getActivity(context, 0, reopenIntent, pendingIntentFlags)
             val notification = NotificationCompat.Builder(context, CHANNEL_ID)
-                .setContentTitle(context.getString(R.string.notif_title_sync))
+                .setContentTitle(context.getString(R.string.app_name))
                 .setContentText(message)
                 .setSmallIcon(android.R.drawable.stat_notify_sync)
                 .setAutoCancel(true)
@@ -321,7 +321,7 @@ class SyncNotificationService : Service() {
             // "Bekijk live site" below is its own explicit action for when there's somewhere
             // useful to go.
             val builder = NotificationCompat.Builder(context, CHANNEL_ID)
-                .setContentTitle(context.getString(R.string.notif_title_sync))
+                .setContentTitle(context.getString(R.string.app_name))
                 .setContentText(resultText)
                 .setSmallIcon(android.R.drawable.stat_notify_sync)
                 .setAutoCancel(true)

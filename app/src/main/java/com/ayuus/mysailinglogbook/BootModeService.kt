@@ -123,7 +123,7 @@ class BootModeService : Service() {
     }
 
     private fun buildNotification() = NotificationCompat.Builder(this, CHANNEL_ID)
-        .setContentTitle(getString(R.string.boat_notif_title))
+        .setContentTitle(getString(R.string.app_name))
         .setContentText(statusText)
         .setStyle(NotificationCompat.BigTextStyle().bigText(statusText))
         .setSmallIcon(R.drawable.ic_schedule_filled_24)

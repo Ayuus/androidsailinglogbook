@@ -44,6 +44,7 @@
     <string name="status_ready_with_download">Terminé : %1$d trajet(s), %2$d fichier(s) téléchargé(s).</string>
     <string name="status_ready_no_download">Terminé : %1$d trajet(s) (données existantes, non retéléchargées).</string>
     <string name="status_sync_stopped">Synchronisation arrêtée. Elle reprendra où elle s\'est arrêtée la prochaine fois.</string>
+    <string name="status_build_stopped">Construction arrêtée. Elle reprendra où elle s\'est arrêtée la prochaine fois.</string>
     <string name="error_generic_prefix">Erreur : %1$s</string>
     <string name="error_unknown">erreur inconnue</string>
     <string name="error_logbook_display_failed">impossible d\'afficher le journal : %1$s</string>
@@ -71,7 +72,6 @@
     <string name="log_notification_could_not_be_shown">la notification n\'a pas pu être affichée : %1$s</string>
 
     <!-- Notifications -->
-    <string name="notif_title_sync">Synchronisation du journal</string>
     <string name="notif_channel_name">Synchronisation</string>
     <string name="notif_channel_description">S\'affiche lorsque l\'application récupère et traite le journal de bord.</string>
     <string name="notif_app_closing_after_upload">L\'application se fermera une fois l\'envoi terminé.</string>
@@ -151,7 +151,6 @@
     <string name="log_boat_busy">Le mode bateau est occupé par une ronde ou une publication ; réessayez dans un instant.</string>
     <string name="boat_notif_channel_name">Mode bateau</string>
     <string name="boat_notif_channel_description">Notifications tant que le mode bateau est actif : l\'état et un moyen de l\'arrêter</string>
-    <string name="boat_notif_title">Mode bateau</string>
     <string name="boat_notif_action_now">Maintenant</string>
     <string name="boat_notif_action_stop">Arrêter</string>
     <string name="boat_notif_text_starting">Démarrage...</string>

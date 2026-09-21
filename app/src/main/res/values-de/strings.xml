@@ -44,6 +44,7 @@
     <string name="status_ready_with_download">Fertig: %1$d Fahrt(en), %2$d Datei(en) heruntergeladen.</string>
     <string name="status_ready_no_download">Fertig: %1$d Fahrt(en) (vorhandene Daten, nicht erneut heruntergeladen).</string>
     <string name="status_sync_stopped">Synchronisierung gestoppt. Beim nächsten Mal wird dort fortgesetzt, wo sie aufgehört hat.</string>
+    <string name="status_build_stopped">Erstellen gestoppt. Beim nächsten Mal wird dort fortgesetzt, wo es aufgehört hat.</string>
     <string name="error_generic_prefix">Fehler: %1$s</string>
     <string name="error_unknown">unbekannter Fehler</string>
     <string name="error_logbook_display_failed">Bordbuch konnte nicht angezeigt werden: %1$s</string>
@@ -71,7 +72,6 @@
     <string name="log_notification_could_not_be_shown">Benachrichtigung konnte nicht angezeigt werden: %1$s</string>
 
     <!-- Notifications -->
-    <string name="notif_title_sync">Bordbuch synchronisieren</string>
     <string name="notif_channel_name">Synchronisierung</string>
     <string name="notif_channel_description">Wird angezeigt, wenn die App das Bordbuch abruft und verarbeitet.</string>
     <string name="notif_app_closing_after_upload">Die App wird geschlossen, sobald der Upload abgeschlossen ist.</string>
@@ -151,7 +151,6 @@
     <string name="log_boat_busy">Der Boot-Modus ist mit einer Runde oder Veröffentlichung beschäftigt; versuchen Sie es gleich noch einmal.</string>
     <string name="boat_notif_channel_name">Boot-Modus</string>
     <string name="boat_notif_channel_description">Benachrichtigungen, solange der Boot-Modus läuft: der Status und eine Möglichkeit zum Beenden</string>
-    <string name="boat_notif_title">Boot-Modus</string>
     <string name="boat_notif_action_now">Jetzt</string>
     <string name="boat_notif_action_stop">Stopp</string>
     <string name="boat_notif_text_starting">Starten...</string>
