@@ -1,4 +1,4 @@
-package com.example.mysailinglogbook
+package com.ayuus.mysailinglogbook
 
 /**
  * Passed into android_entry.sync_from_w2k2() via Chaquopy -- Python calls these methods on this

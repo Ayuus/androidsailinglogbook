@@ -1,4 +1,4 @@
-package com.example.mysailinglogbook
+package com.ayuus.mysailinglogbook
 
 import android.app.Application
 import androidx.appcompat.app.AppCompatDelegate

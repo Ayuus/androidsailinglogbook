@@ -1,4 +1,4 @@
-package com.example.mysailinglogbook
+package com.ayuus.mysailinglogbook
 
 /** Passed into android_entry.discover_w2k2_only() via Chaquopy -- Python calls this method like
  * a normal Python method (see MainActivity.updateSyncButtonAvailability()). A callback, not a

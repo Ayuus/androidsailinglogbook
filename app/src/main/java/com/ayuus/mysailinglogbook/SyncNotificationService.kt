@@ -1,4 +1,4 @@
-package com.example.mysailinglogbook
+package com.ayuus.mysailinglogbook
 
 import android.Manifest
 import android.app.NotificationChannel

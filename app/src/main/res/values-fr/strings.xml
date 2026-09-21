@@ -148,4 +148,10 @@
     <string name="boat_status_publish_ok">Mode bateau : publié.</string>
     <string name="boat_status_publish_failed">Mode bateau : échec de la publication, nouvel essai à %1$s.</string>
     <string name="boat_status_stopped">Mode bateau arrêté.</string>
+    <string name="boat_notif_channel_name">Mode bateau</string>
+    <string name="boat_notif_channel_description">Notifications tant que le mode bateau est actif : l\'état et un moyen de l\'arrêter</string>
+    <string name="boat_notif_title">Mode bateau</string>
+    <string name="boat_notif_action_now">Maintenant</string>
+    <string name="boat_notif_action_stop">Arrêter</string>
+    <string name="boat_notif_text_starting">Démarrage...</string>
 </resources>

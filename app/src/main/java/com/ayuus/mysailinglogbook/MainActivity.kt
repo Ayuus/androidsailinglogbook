@@ -1,4 +1,4 @@
-package com.example.mysailinglogbook
+package com.ayuus.mysailinglogbook
 
 import android.Manifest
 import android.app.ForegroundServiceStartNotAllowedException
@@ -176,7 +176,7 @@ class MainActivity : AppCompatActivity() {
             viewLocalLogbook()
         }
         // Boat mode on/off (see BootModeController): rounds while the W2K-2 is reachable, a final
-        // round in the harbour. Runs on a simulation for now (FakeBootModeExecutor).
+        // round in the harbour. Runs on a simulation for now (FakeBootModeExecutor), in BootModeService.
         bootButton = iconButton(getString(R.string.tooltip_boat_mode), iconRes = R.drawable.ic_schedule_24) {
             toggleBootMode()
         }
@@ -408,66 +408,24 @@ class MainActivity : AppCompatActivity() {
         updatePublishButtonEnabled()
     }
 
-    /** Starts or stops the boat mode. The controller is process-wide (BootModeRuntime), not tied to
-     * this Activity instance, and reports back through SyncState.active -- like the sync's own
-     * background work -- so a recreated Activity does not lose it. */
+    /** Starts or stops the boat mode. It runs in BootModeService, so it goes on with the app in the
+     * background; whether it is on is what the service persisted (BootModeStateStore). */
     private fun toggleBootMode() {
         // The mode reports through the log, so bring it back over the logbook -- like a sync or build
         // does when it starts (see runSync()); otherwise its lines land in a log nobody can see.
         showingLocalLogbook = false
         setLogExpanded(true)
-        val controller = BootModeRuntime.controller ?: createBootController().also { BootModeRuntime.controller = it }
-        if (controller.isActive) {
-            controller.stop()
-        } else {
-            handleLogLine("[info] " + getString(R.string.boat_log_simulation))
-            controller.start()
+        val action = if (BootModeStateStore(this).isActive) BootModeService.ACTION_STOP else BootModeService.ACTION_START
+        try {
+            BootModeService.send(this, action)
+        } catch (e: Exception) {
+            handleLogLine("[error] ${e.message}")
         }
-    }
-
-    private fun createBootController(): BootModeController {
-        val store = SettingsStore(applicationContext)
-        return BootModeController(
-            executor = FakeBootModeExecutor(),
-            clock = BootClock(scale = 30.0),
-            configJson = { store.bootModeConfigJson() },
-            userRunBusy = { SyncState.inProgress },
-            onStatus = { kind, nextAt -> SyncState.active?.showBootStatus(kind, nextAt) },
-            onActiveChanged = { SyncState.active?.updateBootButton() },
-        )
-    }
-
-    /** One status of the boat mode (a bootmode.Status name) as a log line, with the time of the next
-     * step where the status has one. */
-    fun showBootStatus(kind: String, nextAt: Long?) {
-        val resId = when (kind) {
-            "SEARCHING" -> R.string.boat_status_searching
-            "ROUND_STARTED" -> R.string.boat_status_round_started
-            "ROUND_DONE" -> R.string.boat_status_round_done
-            "ROUND_FAILED" -> R.string.boat_status_round_failed
-            "W2K_NOT_FOUND_RETRY" -> R.string.boat_status_w2k2_not_found_retry
-            "HARBOUR_FINAL" -> R.string.boat_status_harbour_final
-            "LEFT_BOAT" -> R.string.boat_status_left_boat
-            "LEFT_BOAT_NOTHING_TO_PUBLISH" -> R.string.boat_status_left_boat_nothing
-            "WAITING_IN_PORT" -> R.string.boat_status_waiting_in_port
-            "PUBLISH_STARTED" -> R.string.boat_status_publish_started
-            "PUBLISH_OK" -> R.string.boat_status_publish_ok
-            "PUBLISH_FAILED" -> R.string.boat_status_publish_failed
-            "STOPPED" -> R.string.boat_status_stopped
-            else -> return
-        }
-        val text = if (nextAt != null) {
-            val time = java.text.SimpleDateFormat("HH:mm", java.util.Locale.getDefault()).format(java.util.Date(nextAt))
-            getString(resId, time)
-        } else {
-            getString(resId)
-        }
-        handleLogLine("[info] $text")
     }
 
     /** Filled clock while the boat mode runs, outline while it is off. */
     fun updateBootButton() {
-        val active = BootModeRuntime.controller?.isActive == true
+        val active = BootModeStateStore(this).isActive
         bootButton.setCompoundDrawablesWithIntrinsicBounds(
             if (active) R.drawable.ic_schedule_filled_24 else R.drawable.ic_schedule_24, 0, 0, 0,
         )
@@ -1160,48 +1118,29 @@ class MainActivity : AppCompatActivity() {
         return logScroll.scrollY + logScroll.height >= content.bottom - slackPx
     }
 
-    /** Every log line starts with "YYYY-MM-DD HH:MM:SS" -- Python's log() (see log.py) already
-     * adds it to its own lines, so this gives the lines made here (button presses, hotspot and
-     * publish messages, ...) the same, one per line of a multi-line message. Lines that already
-     * carry one (the Python ones) are left as they are. */
-    private fun stampLogLine(line: String): String {
-        val now = java.text.SimpleDateFormat("yyyy-MM-dd HH:mm:ss", java.util.Locale.US).format(java.util.Date())
-        return line.split("\n").joinToString("\n") { part ->
-            if (LOG_TIMESTAMP_REGEX.containsMatchIn(part)) part else "$now $part"
-        }
-    }
-
-    /** Appends a line made here (not one Python already wrote itself) to the same persistent log
-     * file Python appends to (nmea2log.log, see android_entry.py) -- without this, what the app
-     * itself reported (a button press, a cancelled run, "no publish destination") only ever
-     * existed on screen and was gone for later troubleshooting. Failures are ignored: a log
-     * line is never worth breaking the app over. */
-    private fun appendToLogFile(stampedLine: String) {
-        try {
-            synchronized(logFileLock) {
-                File(filesDir, "nmea2log.log").appendText(stampedLine + "\n", Charsets.UTF_8)
-            }
-        } catch (e: Exception) {
-            // best effort only
-        }
-    }
-
-    private fun handleLogLine(rawLine: String) {
-        val line = stampLogLine(rawLine)
-        // Only a line that had no timestamp yet was made here; Python's own lines are already in
-        // the file (log.py writes every line there itself).
-        if (line != rawLine) appendToLogFile(line)
-        // The accumulator, not logView.text itself -- logView may belong to an orphaned
-        // instance, or there may be no active instance at all right now (see withActiveActivity),
-        // so the running log has to live somewhere that survives either.
-        SyncState.lastLogText = if (SyncState.lastLogText.isEmpty()) line else "${SyncState.lastLogText}\n$line"
-        withActiveActivity {
+    /** Shows the running log text (SyncState.lastLogText) in the log view, keeping the scroll
+     * position unless it was at the bottom. Public: AppLog calls it for lines made outside this
+     * Activity (the boat-mode service). */
+    fun refreshLogView() {
+        runOnUiThread {
             val wasAtBottom = isLogScrolledToBottom()
             logView.text = SyncState.lastLogText
             if (wasAtBottom) {
                 logScroll.post { logScroll.fullScroll(View.FOCUS_DOWN) }
             }
         }
+    }
+
+    private fun handleLogLine(rawLine: String) {
+        val line = AppLog.stamp(rawLine)
+        // Only a line that had no timestamp yet was made here; Python's own lines are already in
+        // the file (log.py writes every line there itself).
+        if (line != rawLine) AppLog.appendToFile(this, line)
+        // The accumulator, not logView.text itself -- logView may belong to an orphaned
+        // instance, or there may be no active instance at all right now (see withActiveActivity),
+        // so the running log has to live somewhere that survives either.
+        SyncState.lastLogText = if (SyncState.lastLogText.isEmpty()) line else "${SyncState.lastLogText}\n$line"
+        withActiveActivity { refreshLogView() }
         // A "[warning]" line (a failed attempt being retried, e.g. connection lost) means
         // report()'s own "current/total" notification text is about to sit frozen and
         // stale for a while -- found in practice: half an hour out of range looked from
@@ -1784,7 +1723,7 @@ class MainActivity : AppCompatActivity() {
             SyncState.notificationStartFailed = true
             // A short, plain message, not the raw exception -- found in practice: dumping
             // "android.app.ForegroundServiceStartNotAllowedException: startForegroundService()
-            // not allowed due to mAllowStartForeground false: service com.example...." into the
+            // not allowed due to mAllowStartForeground false: service com.ayuus...." into the
             // log reads like a crash even though the sync itself is completely unaffected (see
             // this function's own doc comment above). The budget-exhaustion case (the routine
             // one, see that doc comment) gets its own specific wording; anything else still shows
@@ -1913,6 +1852,7 @@ class MainActivity : AppCompatActivity() {
         // immediately, without waiting for a sync to finish.
         updatePublishButtonEnabled()
         updateSyncButtonAvailability()
+        updateBootButton()
         // Brings logView/the progress bar up to date with whatever a sync -- still in
         // progress, or one that already finished while this Activity wasn't the active one --
         // has produced so far. Not gated on SyncState.inProgress alone: found in practice, a
@@ -2003,19 +1943,13 @@ class MainActivity : AppCompatActivity() {
     }
 
     companion object {
-        const val ACTION_TOGGLE_FROM_NOTIFICATION = "com.example.mysailinglogbook.ACTION_TOGGLE_FROM_NOTIFICATION"
+        const val ACTION_TOGGLE_FROM_NOTIFICATION = "com.ayuus.mysailinglogbook.ACTION_TOGGLE_FROM_NOTIFICATION"
 
         // The public, WordPress-gated view of whatever was just published (see uploadIfConfigured()
         // and the "Bekijk live site" notification action) -- not derived from SettingsStore's own
         // sftpRemotePath, which is the *private* SFTP destination (outside the web root, see
         // little_endian-index.php's own doc comment), not a browsable URL at all.
         const val LIVE_SITE_URL = "https://ayuus.com/little_endian/"
-
-        // Serializes appends of app-made log lines to the log file (see appendToLogFile()).
-        private val logFileLock = Any()
-
-        // What Python's log() puts in front of every line, see stampLogLine().
-        private val LOG_TIMESTAMP_REGEX = Regex("^\\d{4}-\\d{2}-\\d{2} \\d{2}:\\d{2}:\\d{2} ")
 
         private const val KEY_EBL_INDEXED_FOR_PC = "ebl_indexed_for_pc_v1"
     }

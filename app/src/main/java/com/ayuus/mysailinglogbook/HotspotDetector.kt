@@ -1,4 +1,4 @@
-package com.example.mysailinglogbook
+package com.ayuus.mysailinglogbook
 
 import java.net.Inet4Address
 import java.net.NetworkInterface

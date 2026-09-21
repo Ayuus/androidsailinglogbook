@@ -1,4 +1,4 @@
-package com.example.mysailinglogbook
+package com.ayuus.mysailinglogbook
 
 import android.os.Handler
 import android.os.Looper
@@ -8,9 +8,10 @@ import java.util.concurrent.Executors
 
 /**
  * Carries out the actions of the boat mode's state machine. All decisions live in Python
- * (nmea2log/bootmode.py, `step()`): this class only owns the timer, feeds events in as JSON, and does
- * what the returned actions say through a [BootModeExecutor] -- so the same controller works with the
- * simulation used for now ([FakeBootModeExecutor]) and the real download/build/publish later.
+ * (nmea2log/bootmode.py, `step()`): this class only feeds events in as JSON and does what the returned
+ * actions say -- the timer through [scheduleTick], the work through a [BootModeExecutor] -- so the same
+ * controller works with the simulation used for now ([FakeBootModeExecutor]) and the real
+ * download/build/publish later. It is owned by [BootModeService], which persists the state it reports.
  */
 
 /** What a round produced, before it is turned into the JSON event the state machine expects. */
@@ -30,21 +31,14 @@ interface BootModeExecutor {
 
 /**
  * A clock whose minutes can run faster, for the simulation: [now] is the "virtual" epoch time in
- * milliseconds the state machine sees, [realDelayMs] how long to really wait for a virtual time.
- * Scale 1.0 is real time.
+ * milliseconds the state machine sees, [realAt] the real epoch time at which a virtual time is reached.
+ * Scale 1.0 is real time. [base] is where the clock started; it is persisted, so a restarted process
+ * keeps the same virtual time line.
  */
-class BootClock(private val scale: Double = 1.0) {
-    private val base = System.currentTimeMillis()
-
+class BootClock(private val base: Long, private val scale: Double = 1.0) {
     fun now(): Long = base + ((System.currentTimeMillis() - base) * scale).toLong()
 
-    fun realDelayMs(virtualAt: Long): Long = ((virtualAt - now()) / scale).toLong().coerceAtLeast(0L)
-}
-
-/** Process-wide, like SyncState: the controller must outlive any one Activity instance. */
-object BootModeRuntime {
-    @Volatile
-    var controller: BootModeController? = null
+    fun realAt(virtualAt: Long): Long = base + ((virtualAt - base) / scale).toLong()
 }
 
 class BootModeController(
@@ -54,24 +48,36 @@ class BootModeController(
     private val configJson: () -> String,
     /** Whether the user has a run of their own going, so a tick can be postponed. */
     private val userRunBusy: () -> Boolean,
-    /** A status the user should be told: [kind] is a bootmode.Status name, [nextAt] a virtual time or null. */
+    /** Arms the timer for a real epoch time, or cancels it for null. May be called from any thread. */
+    private val scheduleTick: (realAt: Long?) -> Unit,
+    /** A status the user should be told (main thread): [kind] is a bootmode.Status name, [nextAt] a virtual time or null. */
     private val onStatus: (kind: String, nextAt: Long?) -> Unit,
-    /** Called with true once the mode runs and false once it is off again. */
+    /** The state machine's new state as JSON, to be persisted; after every step, on the worker thread. */
+    private val onStateChanged: (stateJson: String) -> Unit,
+    /** Called with true once the mode runs and false once it is off again (main thread). */
     private val onActiveChanged: (Boolean) -> Unit,
+    /** The mode is over: the service can stop (main thread). */
+    private val onStopService: () -> Unit,
+    /** The persisted state of an earlier process; empty for a fresh start. */
+    initialStateJson: String = "",
 ) {
     // One worker for everything that calls into Python: events are handled strictly one after another.
     private val worker = Executors.newSingleThreadExecutor()
     private val handler = Handler(Looper.getMainLooper())
-    private var stateJson: String = ""
-    private var wasActive = false
-
-    private val tickRunnable = Runnable { post(event("tick").put("busy", userRunBusy())) }
+    private var stateJson: String = initialStateJson
+    private var wasActive = BootModeStateStore.phaseOf(initialStateJson) != "OFF"
 
     val isActive: Boolean get() = wasActive
 
     fun start() = post(event("start"))
 
     fun stop() = post(event("stop"))
+
+    /** The timer fired (or the user asked for a round right now). */
+    fun tick() = post(event("tick").put("busy", userRunBusy()))
+
+    /** The process was restarted with persisted state: what was running died with it. */
+    fun resume() = post(event("resume"))
 
     private fun event(type: String): JSONObject = JSONObject().put("type", type).put("at", clock.now())
 
@@ -84,6 +90,7 @@ class BootModeController(
         val result = JSONObject(module.callAttr("step", stateJson, configJson(), event.toString()).toString())
         val state = result.getJSONObject("state")
         stateJson = state.toString()
+        onStateChanged(stateJson)
         val actions = result.getJSONArray("actions")
         for (i in 0 until actions.length()) perform(actions.getJSONObject(i))
         val active = state.getString("phase") != "OFF"
@@ -95,10 +102,7 @@ class BootModeController(
 
     private fun perform(action: JSONObject) {
         when (action.getString("type")) {
-            "schedule_tick" -> {
-                handler.removeCallbacks(tickRunnable)
-                if (!action.isNull("at")) handler.postDelayed(tickRunnable, clock.realDelayMs(action.getLong("at")))
-            }
+            "schedule_tick" -> scheduleTick(if (action.isNull("at")) null else clock.realAt(action.getLong("at")))
             "probe_w2k" -> executor.probeW2k { found, hasNewFiles ->
                 post(event("probe").put("found", found).put("has_new_files", hasNewFiles))
             }
@@ -109,7 +113,7 @@ class BootModeController(
                 val kind = action.getString("kind")
                 handler.post { onStatus(kind, nextAt) }
             }
-            "stop_service" -> handler.removeCallbacks(tickRunnable)
+            "stop_service" -> handler.post { onStopService() }
         }
     }
 

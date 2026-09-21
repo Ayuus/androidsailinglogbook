@@ -20,7 +20,7 @@ val localProperties = Properties().apply {
 }
 
 android {
-    namespace = "com.example.mysailinglogbook"
+    namespace = "com.ayuus.mysailinglogbook"
     compileSdk {
         version = release(37)
     }
@@ -43,11 +43,8 @@ android {
     }
 
     defaultConfig {
-        // Deliberately different from namespace above: applicationId is the real, user-visible
-        // device/Play-Store identity (what shows up under Android/data/<here>/... on a PC over
-        // USB, found in practice to be the actual complaint about "com.example") -- namespace only
-        // controls the internal R-class/Kotlin package, invisible outside the app, so it's left
-        // alone rather than renaming (and moving) every source file for no user-facing benefit.
+        // The real, user-visible device/Play-Store identity (what shows up under Android/data/<here>/...
+        // on a PC over USB); the same as the namespace above.
         applicationId = "com.ayuus.mysailinglogbook"
         minSdk = 24
         targetSdk = 37

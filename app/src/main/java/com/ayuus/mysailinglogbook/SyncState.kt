@@ -1,4 +1,4 @@
-package com.example.mysailinglogbook
+package com.ayuus.mysailinglogbook
 
 /**
  * Process-wide (not tied to any single MainActivity instance) so it survives Activity

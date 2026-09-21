@@ -152,4 +152,10 @@
     <string name="boat_status_publish_ok">Boot-modus: gepubliceerd.</string>
     <string name="boat_status_publish_failed">Boot-modus: publiceren mislukt, opnieuw om %1$s.</string>
     <string name="boat_status_stopped">Boot-modus gestopt.</string>
+    <string name="boat_notif_channel_name">Boot-modus</string>
+    <string name="boat_notif_channel_description">Meldingen zolang de boot-modus aan staat: de status en een manier om te stoppen</string>
+    <string name="boat_notif_title">Boot-modus</string>
+    <string name="boat_notif_action_now">Nu</string>
+    <string name="boat_notif_action_stop">Stop</string>
+    <string name="boat_notif_text_starting">Starten...</string>
 </resources>

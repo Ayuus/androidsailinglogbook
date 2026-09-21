@@ -11,6 +11,12 @@
          SyncNotificationService.kt for why a plain posted notification wasn't good enough. -->
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_DATA_SYNC" />
+    <!-- Boat mode (BootModeService): a foreground service of type connectedDevice (the W2K-2), which
+         Android only allows together with one of a few permissions such as CHANGE_WIFI_STATE; the
+         wake lock keeps the CPU on during a round. -->
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_CONNECTED_DEVICE" />
+    <uses-permission android:name="android.permission.CHANGE_WIFI_STATE" />
+    <uses-permission android:name="android.permission.WAKE_LOCK" />
 
     <application
         android:name=".LogbookApplication"
@@ -58,6 +64,12 @@
             android:exported="false"
             android:stopWithTask="false"
             android:foregroundServiceType="dataSync" />
+
+        <service
+            android:name=".BootModeService"
+            android:exported="false"
+            android:stopWithTask="false"
+            android:foregroundServiceType="connectedDevice" />
 
     </application>
 

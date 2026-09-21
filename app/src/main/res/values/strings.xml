@@ -156,4 +156,10 @@
     <string name="boat_status_publish_ok">Boat mode: published.</string>
     <string name="boat_status_publish_failed">Boat mode: publishing failed, trying again at %1$s.</string>
     <string name="boat_status_stopped">Boat mode stopped.</string>
+    <string name="boat_notif_channel_name">Boat mode</string>
+    <string name="boat_notif_channel_description">Notifications while boat mode is on: the status and a way to stop it</string>
+    <string name="boat_notif_title">Boat mode</string>
+    <string name="boat_notif_action_now">Round now</string>
+    <string name="boat_notif_action_stop">Stop</string>
+    <string name="boat_notif_text_starting">Starting...</string>
 </resources>

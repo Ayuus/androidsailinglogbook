@@ -148,4 +148,10 @@
     <string name="boat_status_publish_ok">Boot-Modus: veröffentlicht.</string>
     <string name="boat_status_publish_failed">Boot-Modus: Veröffentlichen fehlgeschlagen, neuer Versuch um %1$s.</string>
     <string name="boat_status_stopped">Boot-Modus beendet.</string>
+    <string name="boat_notif_channel_name">Boot-Modus</string>
+    <string name="boat_notif_channel_description">Benachrichtigungen, solange der Boot-Modus läuft: der Status und eine Möglichkeit zum Beenden</string>
+    <string name="boat_notif_title">Boot-Modus</string>
+    <string name="boat_notif_action_now">Jetzt</string>
+    <string name="boat_notif_action_stop">Stopp</string>
+    <string name="boat_notif_text_starting">Starten...</string>
 </resources>

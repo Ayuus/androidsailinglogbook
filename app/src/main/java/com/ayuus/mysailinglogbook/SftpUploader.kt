@@ -1,4 +1,4 @@
-package com.example.mysailinglogbook
+package com.ayuus.mysailinglogbook
 
 import android.content.Context
 import net.schmizz.sshj.SSHClient
