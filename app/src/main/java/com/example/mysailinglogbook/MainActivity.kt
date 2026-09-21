@@ -5,7 +5,6 @@ import android.app.ForegroundServiceStartNotAllowedException
 import android.app.NotificationManager
 import android.content.Intent
 import android.content.pm.PackageManager
-import android.content.res.ColorStateList
 import android.graphics.Typeface
 import android.os.Build
 import android.os.Bundle
@@ -1640,7 +1639,11 @@ class MainActivity : AppCompatActivity() {
         return Button(this).apply {
             if (iconRes != null) {
                 setCompoundDrawablesWithIntrinsicBounds(iconRes, 0, 0, 0)
-                compoundDrawableTintList = ColorStateList.valueOf(currentTextColor)
+                // The button's own per-state text colors (not valueOf(currentTextColor), a single
+                // fixed color): that made a disabled icon button look exactly like an enabled one
+                // (found in practice: the ☁️ publish icon looked active while it was disabled,
+                // whereas ↺, being text, dimmed on its own).
+                compoundDrawableTintList = textColors
             } else {
                 text = emoji
                 // Bumped up from 20f (asked for explicitly, found in practice: next to the real
