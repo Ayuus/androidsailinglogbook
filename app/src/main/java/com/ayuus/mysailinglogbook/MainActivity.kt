@@ -327,7 +327,11 @@ class MainActivity : AppCompatActivity() {
         // leave the same process alive underneath a brand new Activity, which left that flag stuck
         // "already done" and silently disabled auto-start until the user noticed and tapped 🔄
         // themselves.
-        if (savedInstanceState == null) {
+        if (savedInstanceState == null && BootModeStateStore(this).isActive) {
+            // The boat mode is running in its service (the app was closed and is opened again, e.g. from
+            // its notification): show what it is doing, and leave the rounds to it -- no sync of our own.
+            showBootModeLog()
+        } else if (savedInstanceState == null) {
             // Asked for explicitly: opt-out via Instellingen ("Automatisch downloaden bij
             // starten") for whoever doesn't want opening the app to try reaching the W2K-2 on its
             // own -- a manual ↺ tap still works exactly the same either way.
@@ -406,6 +410,20 @@ class MainActivity : AppCompatActivity() {
             progressLabel.visibility = View.GONE
         }
         updatePublishButtonEnabled()
+    }
+
+    /** Puts the log over the logbook, with what the boat mode has reported so far: the running log
+     * text while this process has one, else the end of the log file (a restarted process starts empty). */
+    private fun showBootModeLog() {
+        showingLocalLogbook = false
+        setLogExpanded(true)
+        if (SyncState.lastLogText.isEmpty()) {
+            val logFile = File(filesDir, "nmea2log.log")
+            if (logFile.exists()) {
+                SyncState.lastLogText = logFile.readLines(Charsets.UTF_8).takeLast(BOOT_LOG_TAIL_LINES).joinToString("\n")
+            }
+        }
+        refreshLogView()
     }
 
     /** Starts or stops the boat mode. It runs in BootModeService, so it goes on with the app in the
@@ -1950,6 +1968,9 @@ class MainActivity : AppCompatActivity() {
         // sftpRemotePath, which is the *private* SFTP destination (outside the web root, see
         // little_endian-index.php's own doc comment), not a browsable URL at all.
         const val LIVE_SITE_URL = "https://ayuus.com/little_endian/"
+
+        // How much of the log file to show when the boat mode is open in a process that has no log text yet.
+        private const val BOOT_LOG_TAIL_LINES = 60
 
         private const val KEY_EBL_INDEXED_FOR_PC = "ebl_indexed_for_pc_v1"
     }
