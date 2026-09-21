@@ -5,6 +5,7 @@ import android.app.ForegroundServiceStartNotAllowedException
 import android.app.NotificationManager
 import android.content.Intent
 import android.content.pm.PackageManager
+import android.media.MediaScannerConnection
 import android.graphics.Typeface
 import android.os.Build
 import android.os.Bundle
@@ -263,6 +264,7 @@ class MainActivity : AppCompatActivity() {
             insets
         }
         setContentView(layout)
+        indexExistingEblFilesForPcOnce()
         updatePublishButtonEnabled()
         updateSyncButtonAvailability()
 
@@ -859,6 +861,38 @@ class MainActivity : AppCompatActivity() {
         val downloadedCount: Int?,
     )
 
+    /** Makes .ebl files visible when browsing this device from a PC over USB (MTP). Files this
+     * app writes straight into its own external folder are not reported to Android's media index,
+     * and MTP lists that index rather than the folder itself (found in practice on Android 8.1:
+     * the whole Actisense folder was missing in Windows Explorer while adb showed 2326 files).
+     * Only files modified at or after ``modifiedSince`` (epoch ms) are handed over -- a sync passes
+     * its own start time, so a normal run only ever scans what it just downloaded. Asynchronous:
+     * the platform's scanner service does the work, this returns immediately. */
+    private fun indexEblFilesForPc(actisenseDir: File, modifiedSince: Long) {
+        val paths = actisenseDir.walkTopDown()
+            .filter { it.isFile && it.extension == "ebl" && it.lastModified() >= modifiedSince }
+            .map { it.absolutePath }
+            .toList()
+        if (paths.isNotEmpty()) {
+            MediaScannerConnection.scanFile(applicationContext, paths.toTypedArray(), null, null)
+        }
+    }
+
+    /** One-time catch-up for .ebl files downloaded before indexEblFilesForPc() existed (already
+     * sitting in the folder, never reported to the media index). Off the main thread; remembered
+     * in a plain preference so it runs once per install, not on every launch. Uses the folder's
+     * path directly rather than eblDownloadDir(), which also logs and migrates. */
+    private fun indexExistingEblFilesForPcOnce() {
+        val prefs = getSharedPreferences("app_state", MODE_PRIVATE)
+        if (prefs.getBoolean(KEY_EBL_INDEXED_FOR_PC, false)) return
+        Thread {
+            val base = getExternalFilesDir(null) ?: return@Thread
+            val dir = File(base, "Actisense")
+            if (dir.exists()) indexEblFilesForPc(dir, 0L)
+            prefs.edit().putBoolean(KEY_EBL_INDEXED_FOR_PC, true).apply()
+        }.start()
+    }
+
     /** Where downloaded .ebl files live -- app-specific *external* storage (Android/data/
      * <package>/files/Actisense), not filesDir (internal storage, completely inaccessible from
      * outside the app) -- asked for explicitly: the raw .ebl archive gets large over a full
@@ -918,6 +952,7 @@ class MainActivity : AppCompatActivity() {
         val androidEntry = py.getModule("nmea2log.android_entry")
 
         val downloadDir = eblDownloadDir()
+        val syncStartedAt = System.currentTimeMillis()
         val outputHtmlPath = File(filesDir, "logbook.html")
         val sampleCachePath = File(filesDir, "sample_cache.pkl")
 
@@ -967,7 +1002,12 @@ class MainActivity : AppCompatActivity() {
             // running continuously from the start of the sync through decode costs at most a
             // handful of extra seconds of that budget on the (uncommon, on a real archive)
             // all-cache-hit case, for a real reduction in how often this budget gets hit at all.
-            override fun onDownloadComplete() {}
+            //
+            // The only thing done here: make the files just fetched show up over USB, see
+            // indexEblFilesForPc().
+            override fun onDownloadComplete() {
+                indexEblFilesForPc(downloadDir, syncStartedAt)
+            }
 
             override fun onResult(
                 ok: Boolean,
@@ -1861,5 +1901,7 @@ class MainActivity : AppCompatActivity() {
         // sftpRemotePath, which is the *private* SFTP destination (outside the web root, see
         // little_endian-index.php's own doc comment), not a browsable URL at all.
         const val LIVE_SITE_URL = "https://ayuus.com/little_endian/"
+
+        private const val KEY_EBL_INDEXED_FOR_PC = "ebl_indexed_for_pc_v1"
     }
 }
