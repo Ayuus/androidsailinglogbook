@@ -131,7 +131,7 @@
     <string name="checkbox_boat_final_left">Letzte Runde, wenn ich das Boot verlassen habe</string>
     <string name="label_boat_left_minutes">Boot verlassen: W2K-2 nicht erreichbar seit (Minuten)</string>
     <string name="checkbox_boat_stop_after_final">Boot-Modus nach der letzten Runde selbst ausschalten</string>
-    <string name="checkbox_boat_auto_start">Automatisch starten, wenn der W2K-2 gefunden wird</string>
+    <string name="checkbox_boat_auto_start">Automatisch starten, wenn die App am W2K-2 geöffnet wird (Hotspot an)</string>
     <string name="tooltip_boat_mode">Boot-Modus starten</string>
     <string name="tooltip_boat_mode_on">Boot-Modus beenden</string>
     <string name="boat_log_simulation">Boot-Modus (Simulation): Die Zeit läuft 30-mal schneller, es wird nichts wirklich heruntergeladen oder veröffentlicht.</string>
@@ -149,6 +149,10 @@
     <string name="boat_status_publish_failed">Boot-Modus: Veröffentlichen fehlgeschlagen, neuer Versuch um %1$s.</string>
     <string name="boat_status_stopped">Boot-Modus beendet.</string>
     <string name="log_boat_busy">Der Boot-Modus ist mit einer Runde oder Veröffentlichung beschäftigt; versuchen Sie es gleich noch einmal.</string>
+    <string name="dialog_battery_title">Boot-Modus und Akku</string>
+    <string name="dialog_battery_message">Wenn das Telefon im Hafen still liegt, kann Android die Timer und das Netzwerk des Boot-Modus zurückhalten. Stellen Sie diese App in den Akku-Einstellungen auf \"Nicht optimieren\", damit die Runden weiterlaufen.</string>
+    <string name="dialog_battery_open_settings">Einstellungen öffnen</string>
+    <string name="dialog_battery_later">Später</string>
     <string name="boat_notif_channel_name">Boot-Modus</string>
     <string name="boat_notif_channel_description">Benachrichtigungen, solange der Boot-Modus läuft: der Status und eine Möglichkeit zum Beenden</string>
     <string name="boat_notif_action_now">Jetzt</string>

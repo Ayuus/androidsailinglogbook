@@ -139,7 +139,7 @@
     <string name="checkbox_boat_final_left">Final round when I have left the boat</string>
     <string name="label_boat_left_minutes">Left the boat: W2K-2 unreachable for (minutes)</string>
     <string name="checkbox_boat_stop_after_final">Switch boat mode off after the final round</string>
-    <string name="checkbox_boat_auto_start">Start automatically when the W2K-2 is found</string>
+    <string name="checkbox_boat_auto_start">Start automatically when the app is opened at the W2K-2 (hotspot on)</string>
     <string name="tooltip_boat_mode">Start boat mode</string>
     <string name="tooltip_boat_mode_on">Stop boat mode</string>
     <string name="boat_log_simulation">Boat mode (simulation): time runs 30x faster and nothing is really downloaded or published.</string>
@@ -157,6 +157,10 @@
     <string name="boat_status_publish_failed">Boat mode: publishing failed, trying again at %1$s.</string>
     <string name="boat_status_stopped">Boat mode stopped.</string>
     <string name="log_boat_busy">Boat mode is busy with a round or a publish; try again in a moment.</string>
+    <string name="dialog_battery_title">Boat mode and battery</string>
+    <string name="dialog_battery_message">Your phone may hold back the boat mode\'s timers and network when it lies still in port. Set this app to \"Not optimised\" in the battery settings so the rounds keep running.</string>
+    <string name="dialog_battery_open_settings">Open settings</string>
+    <string name="dialog_battery_later">Later</string>
     <string name="boat_notif_channel_name">Boat mode</string>
     <string name="boat_notif_channel_description">Notifications while boat mode is on: the status and a way to stop it</string>
     <string name="boat_notif_action_now">Round now</string>

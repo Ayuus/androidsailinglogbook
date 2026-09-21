@@ -4,6 +4,8 @@ import android.Manifest
 import android.app.ForegroundServiceStartNotAllowedException
 import android.app.NotificationManager
 import android.content.Intent
+import android.os.PowerManager
+import android.provider.Settings
 import android.content.pm.PackageManager
 import android.media.MediaScannerConnection
 import android.graphics.Typeface
@@ -312,11 +314,12 @@ class MainActivity : AppCompatActivity() {
             // The boat mode is running in its service (the app was closed and is opened again, e.g. from
             // its notification): show what it is doing, and leave the rounds to it -- no sync of our own.
             showBootModeLog()
-            try {
-                BootModeService.send(this, BootModeService.ACTION_RESUME)
-            } catch (e: Exception) {
-                handleLogLine("[error] ${e.message}")
-            }
+            sendBootAction(BootModeService.ACTION_RESUME)
+        } else if (savedInstanceState == null && !SyncState.inProgress && shouldAutoStartBootMode()) {
+            // "Start automatically" (Instellingen): opened at the boat, hotspot on -- the mode finds the
+            // W2K-2 and does the first round itself, so no sync of our own on top of it either.
+            showBootModeLog()
+            startBootMode()
         } else if (savedInstanceState == null) {
             // Asked for explicitly: opt-out via Instellingen ("Automatisch downloaden bij
             // starten") for whoever doesn't want opening the app to try reaching the W2K-2 on its
@@ -419,12 +422,45 @@ class MainActivity : AppCompatActivity() {
         // does when it starts (see runSync()); otherwise its lines land in a log nobody can see.
         showingLocalLogbook = false
         setLogExpanded(true)
-        val action = if (BootModeStateStore(this).isActive) BootModeService.ACTION_STOP else BootModeService.ACTION_START
+        if (BootModeStateStore(this).isActive) sendBootAction(BootModeService.ACTION_STOP) else startBootMode()
+    }
+
+    /** Whether opening the app should start the boat mode by itself: the setting is on, the W2K-2
+     * credentials are filled in and this device's hotspot (the W2K-2 joins it) is up right now. */
+    private fun shouldAutoStartBootMode(): Boolean =
+        settingsStore.bootAutoStart && settingsStore.isW2k2ConfigComplete && HotspotDetector.detectSubnetPrefix() != null
+
+    private fun startBootMode() {
+        sendBootAction(BootModeService.ACTION_START)
+        askBatteryOptimisationExemptionOnce()
+    }
+
+    private fun sendBootAction(action: String) {
         try {
             BootModeService.send(this, action)
         } catch (e: Exception) {
             handleLogLine("[error] ${e.message}")
         }
+    }
+
+    /** With the phone lying still in port, Android's Doze can hold back the mode's alarms and network
+     * access; an app that is not battery-optimised is left alone. Asked once, when the mode is first
+     * started: the dialog opens the system list where the app is set to "not optimised" (no special
+     * permission needed for that, unlike asking for the exemption directly). */
+    private fun askBatteryOptimisationExemptionOnce() {
+        val power = getSystemService(POWER_SERVICE) as PowerManager
+        if (power.isIgnoringBatteryOptimizations(packageName)) return
+        val prefs = getSharedPreferences("app_state", MODE_PRIVATE)
+        if (prefs.getBoolean(KEY_BATTERY_PROMPTED, false)) return
+        prefs.edit().putBoolean(KEY_BATTERY_PROMPTED, true).apply()
+        AlertDialog.Builder(this)
+            .setTitle(R.string.dialog_battery_title)
+            .setMessage(R.string.dialog_battery_message)
+            .setPositiveButton(R.string.dialog_battery_open_settings) { _, _ ->
+                startActivity(Intent(Settings.ACTION_IGNORE_BATTERY_OPTIMIZATION_SETTINGS))
+            }
+            .setNegativeButton(R.string.dialog_battery_later, null)
+            .show()
     }
 
     /** Filled clock while the boat mode runs, outline while it is off. */
@@ -1884,6 +1920,7 @@ class MainActivity : AppCompatActivity() {
         // How much of the log file to show when the boat mode is open in a process that has no log text yet.
         private const val BOOT_LOG_TAIL_LINES = 60
 
+        private const val KEY_BATTERY_PROMPTED = "boot_battery_prompted_v1"
         private const val KEY_EBL_INDEXED_FOR_PC = "ebl_indexed_for_pc_v1"
     }
 }

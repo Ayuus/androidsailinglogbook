@@ -131,7 +131,7 @@
     <string name="checkbox_boat_final_left">Dernière ronde quand j\'ai quitté le bateau</string>
     <string name="label_boat_left_minutes">Quitté le bateau : W2K-2 injoignable depuis (minutes)</string>
     <string name="checkbox_boat_stop_after_final">Désactiver le mode bateau après la dernière ronde</string>
-    <string name="checkbox_boat_auto_start">Démarrer automatiquement quand le W2K-2 est trouvé</string>
+    <string name="checkbox_boat_auto_start">Démarrer automatiquement quand l\'application est ouverte près du W2K-2 (point d\'accès activé)</string>
     <string name="tooltip_boat_mode">Démarrer le mode bateau</string>
     <string name="tooltip_boat_mode_on">Arrêter le mode bateau</string>
     <string name="boat_log_simulation">Mode bateau (simulation) : le temps passe 30 fois plus vite, rien n\'est réellement téléchargé ni publié.</string>
@@ -149,6 +149,10 @@
     <string name="boat_status_publish_failed">Mode bateau : échec de la publication, nouvel essai à %1$s.</string>
     <string name="boat_status_stopped">Mode bateau arrêté.</string>
     <string name="log_boat_busy">Le mode bateau est occupé par une ronde ou une publication ; réessayez dans un instant.</string>
+    <string name="dialog_battery_title">Mode bateau et batterie</string>
+    <string name="dialog_battery_message">Quand le téléphone reste immobile au port, Android peut retenir les minuteurs et le réseau du mode bateau. Réglez cette application sur \"Non optimisée\" dans les paramètres de batterie pour que les rondes continuent.</string>
+    <string name="dialog_battery_open_settings">Ouvrir les paramètres</string>
+    <string name="dialog_battery_later">Plus tard</string>
     <string name="boat_notif_channel_name">Mode bateau</string>
     <string name="boat_notif_channel_description">Notifications tant que le mode bateau est actif : l\'état et un moyen de l\'arrêter</string>
     <string name="boat_notif_action_now">Maintenant</string>

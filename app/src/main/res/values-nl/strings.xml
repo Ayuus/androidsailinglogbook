@@ -135,7 +135,7 @@
     <string name="checkbox_boat_final_left">Laatste ronde als ik van boord ben</string>
     <string name="label_boat_left_minutes">Van boord: W2K-2 niet bereikbaar gedurende (minuten)</string>
     <string name="checkbox_boat_stop_after_final">Boot-modus zelf uitzetten na de laatste ronde</string>
-    <string name="checkbox_boat_auto_start">Automatisch beginnen als de W2K-2 wordt gevonden</string>
+    <string name="checkbox_boat_auto_start">Automatisch beginnen als de app wordt geopend bij de W2K-2 (hotspot aan)</string>
     <string name="tooltip_boat_mode">Boot-modus starten</string>
     <string name="tooltip_boat_mode_on">Boot-modus stoppen</string>
     <string name="boat_log_simulation">Boot-modus (simulatie): de tijd loopt 30 keer sneller en er wordt niets echt gedownload of gepubliceerd.</string>
@@ -153,6 +153,10 @@
     <string name="boat_status_publish_failed">Boot-modus: publiceren mislukt, opnieuw om %1$s.</string>
     <string name="boat_status_stopped">Boot-modus gestopt.</string>
     <string name="log_boat_busy">De boot-modus is bezig met een ronde of publicatie; probeer het zo opnieuw.</string>
+    <string name="dialog_battery_title">Boot-modus en batterij</string>
+    <string name="dialog_battery_message">Als de telefoon stil in de haven ligt, kan Android de timers en het netwerk van de boot-modus vasthouden. Zet deze app in de batterij-instellingen op \"Niet optimaliseren\", zodat de rondes blijven lopen.</string>
+    <string name="dialog_battery_open_settings">Instellingen openen</string>
+    <string name="dialog_battery_later">Later</string>
     <string name="boat_notif_channel_name">Boot-modus</string>
     <string name="boat_notif_channel_description">Meldingen zolang de boot-modus aan staat: de status en een manier om te stoppen</string>
     <string name="boat_notif_action_now">Nu</string>
