@@ -141,7 +141,7 @@
     <string name="boat_log_simulation">Boot-modus (simulatie): de tijd loopt 30 keer sneller en er wordt niets echt gedownload of gepubliceerd.</string>
     <string name="boat_status_searching">Boot-modus: zoeken naar de W2K-2...</string>
     <string name="boat_status_round_started">Boot-modus: ronde gestart (downloaden en bouwen)...</string>
-    <string name="boat_status_round_done">Boot-modus: ronde klaar.</string>
+    <string name="boat_status_round_done">Boot-modus: ronde klaar, volgende ronde om %1$s.</string>
     <string name="boat_status_round_failed">Boot-modus: ronde mislukt, opnieuw proberen.</string>
     <string name="boat_status_w2k2_not_found_retry">Boot-modus: W2K-2 niet bereikbaar, opnieuw om %1$s.</string>
     <string name="boat_status_harbour_final">Boot-modus: de boot ligt in de haven, laatste ronde.</string>
@@ -152,6 +152,7 @@
     <string name="boat_status_publish_ok">Boot-modus: gepubliceerd.</string>
     <string name="boat_status_publish_failed">Boot-modus: publiceren mislukt, opnieuw om %1$s.</string>
     <string name="boat_status_stopped">Boot-modus gestopt.</string>
+    <string name="log_boat_busy">De boot-modus is bezig met een ronde of publicatie; probeer het zo opnieuw.</string>
     <string name="boat_notif_channel_name">Boot-modus</string>
     <string name="boat_notif_channel_description">Meldingen zolang de boot-modus aan staat: de status en een manier om te stoppen</string>
     <string name="boat_notif_title">Boot-modus</string>

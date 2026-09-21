@@ -31,6 +31,8 @@ class FakeBootModeExecutor : BootModeExecutor {
         handler.postDelayed({ reply(publishes != 1) }, 1000)
     }
 
+    override fun cancel() {}
+
     private fun underway() = JSONObject()
         .put("underway", true).put("stationary_since", JSONObject.NULL).put("stationary_seconds", JSONObject.NULL)
         .put("engine_running", true).put("engine_off_seconds", JSONObject.NULL)

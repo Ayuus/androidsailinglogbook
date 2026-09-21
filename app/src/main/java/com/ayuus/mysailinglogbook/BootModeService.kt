@@ -47,7 +47,7 @@ class BootModeService : Service() {
         when {
             action == ACTION_STOP -> ctl.stop()
             action == ACTION_START && !(fresh && store.isActive) -> {
-                if (!store.isActive) AppLog.post(this, "[info] " + getString(R.string.boat_log_simulation))
+                if (!store.isActive && store.simulation) AppLog.post(this, "[info] " + getString(R.string.boat_log_simulation))
                 ctl.start()
             }
             // A new process with persisted state: whatever was running is gone, so redo it -- this
@@ -71,9 +71,11 @@ class BootModeService : Service() {
         val lock = power.newWakeLock(PowerManager.PARTIAL_WAKE_LOCK, "MySailingLogbook:BootMode")
             .apply { setReferenceCounted(false) }
         wakeLock = lock
+        val simulation = store.simulation
+        val inner = if (simulation) FakeBootModeExecutor() else W2kBootExecutor(applicationContext, settings) { showProgress(it) }
         return BootModeController(
-            executor = WakeLockedExecutor(FakeBootModeExecutor(), lock),
-            clock = BootClock(store.clockBase, SIMULATION_SCALE),
+            executor = WakeLockedExecutor(inner, lock),
+            clock = BootClock(store.clockBase, if (simulation) SIMULATION_SCALE else 1.0),
             configJson = { settings.bootModeConfigJson() },
             userRunBusy = { SyncState.inProgress },
             scheduleTick = { realAt -> scheduleAlarm(realAt) },
@@ -90,6 +92,13 @@ class BootModeService : Service() {
         scheduleAlarm(null)
         ServiceCompat.stopForeground(this, ServiceCompat.STOP_FOREGROUND_REMOVE)
         stopSelf()
+    }
+
+    /** What the current round is doing ("Downloading: 3/12...", "Building the logbook: 40/300"): only the
+     * notification's text, not the log, which has its own (Python's) lines. From any thread. */
+    private fun showProgress(text: String) {
+        statusText = text
+        (getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager).notify(NOTIFICATION_ID, buildNotification())
     }
 
     private fun showStatus(kind: String, nextAt: Long?) {
@@ -154,6 +163,8 @@ class BootModeService : Service() {
             hold()
             inner.publish { ok -> release(); reply(ok) }
         }
+
+        override fun cancel() = inner.cancel()
     }
 
     companion object {
@@ -169,7 +180,7 @@ class BootModeService : Service() {
         private const val REQUEST_STOP = 12
         private const val WAKE_LOCK_TIMEOUT_MS = 30 * 60 * 1000L
 
-        // Minutes run this much faster while the simulation (FakeBootModeExecutor) is in use.
+        // Minutes run this much faster while the simulation (BootModeStateStore.simulation) is in use.
         private const val SIMULATION_SCALE = 30.0
 
         /** Sends [action] to the service, starting it (in the foreground) when it is not running yet. */

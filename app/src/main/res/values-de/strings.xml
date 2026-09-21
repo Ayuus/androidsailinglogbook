@@ -137,7 +137,7 @@
     <string name="boat_log_simulation">Boot-Modus (Simulation): Die Zeit läuft 30-mal schneller, es wird nichts wirklich heruntergeladen oder veröffentlicht.</string>
     <string name="boat_status_searching">Boot-Modus: Suche nach dem W2K-2...</string>
     <string name="boat_status_round_started">Boot-Modus: Runde gestartet (Herunterladen und Erstellen)...</string>
-    <string name="boat_status_round_done">Boot-Modus: Runde abgeschlossen.</string>
+    <string name="boat_status_round_done">Boot-Modus: Runde abgeschlossen, nächste Runde um %1$s.</string>
     <string name="boat_status_round_failed">Boot-Modus: Runde fehlgeschlagen, neuer Versuch.</string>
     <string name="boat_status_w2k2_not_found_retry">Boot-Modus: W2K-2 nicht erreichbar, neuer Versuch um %1$s.</string>
     <string name="boat_status_harbour_final">Boot-Modus: Das Boot liegt im Hafen, letzte Runde.</string>
@@ -148,6 +148,7 @@
     <string name="boat_status_publish_ok">Boot-Modus: veröffentlicht.</string>
     <string name="boat_status_publish_failed">Boot-Modus: Veröffentlichen fehlgeschlagen, neuer Versuch um %1$s.</string>
     <string name="boat_status_stopped">Boot-Modus beendet.</string>
+    <string name="log_boat_busy">Der Boot-Modus ist mit einer Runde oder Veröffentlichung beschäftigt; versuchen Sie es gleich noch einmal.</string>
     <string name="boat_notif_channel_name">Boot-Modus</string>
     <string name="boat_notif_channel_description">Benachrichtigungen, solange der Boot-Modus läuft: der Status und eine Möglichkeit zum Beenden</string>
     <string name="boat_notif_title">Boot-Modus</string>

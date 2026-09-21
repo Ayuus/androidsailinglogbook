@@ -20,6 +20,11 @@ class BootModeStateStore(context: Context) {
         get() = prefs.getLong(KEY_CLOCK_BASE, 0L)
         set(value) = prefs.edit().putLong(KEY_CLOCK_BASE, value).apply()
 
+    /** Developer switch (set with `adb shell run-as ... `): run the mode on the simulation, in 30x
+     * speed, without touching the network. Off unless set. */
+    val simulation: Boolean
+        get() = prefs.getBoolean(KEY_SIMULATION, false)
+
     /** Whether the persisted state says the mode is on. */
     val isActive: Boolean
         get() = phaseOf(stateJson) != "OFF"
@@ -27,6 +32,7 @@ class BootModeStateStore(context: Context) {
     companion object {
         private const val KEY_STATE = "state"
         private const val KEY_CLOCK_BASE = "clock_base"
+        private const val KEY_SIMULATION = "simulation"
 
         fun phaseOf(stateJson: String): String =
             if (stateJson.isEmpty()) "OFF" else runCatching { JSONObject(stateJson).getString("phase") }.getOrDefault("OFF")

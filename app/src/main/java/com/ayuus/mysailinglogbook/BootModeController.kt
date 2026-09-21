@@ -10,8 +10,8 @@ import java.util.concurrent.Executors
  * Carries out the actions of the boat mode's state machine. All decisions live in Python
  * (nmea2log/bootmode.py, `step()`): this class only feeds events in as JSON and does what the returned
  * actions say -- the timer through [scheduleTick], the work through a [BootModeExecutor] -- so the same
- * controller works with the simulation used for now ([FakeBootModeExecutor]) and the real
- * download/build/publish later. It is owned by [BootModeService], which persists the state it reports.
+ * controller works with the real work ([W2kBootExecutor]) and with a simulation ([FakeBootModeExecutor]).
+ * It is owned by [BootModeService], which persists the state it reports.
  */
 
 /** What a round produced, before it is turned into the JSON event the state machine expects. */
@@ -27,6 +27,9 @@ interface BootModeExecutor {
     fun probeW2k(reply: (found: Boolean, hasNewFiles: Boolean) -> Unit)
     fun startRound(reply: (BootRoundResult) -> Unit)
     fun publish(reply: (ok: Boolean) -> Unit)
+
+    /** The mode is being stopped: end what is running as soon as it can be (the reply may still come). */
+    fun cancel()
 }
 
 /**
@@ -71,7 +74,10 @@ class BootModeController(
 
     fun start() = post(event("start"))
 
-    fun stop() = post(event("stop"))
+    fun stop() {
+        executor.cancel()
+        post(event("stop"))
+    }
 
     /** The timer fired (or the user asked for a round right now). */
     fun tick() = post(event("tick").put("busy", userRunBusy()))

@@ -28,6 +28,13 @@ object SyncState {
     @Volatile
     var uploading = false
 
+    /** True while the boat-mode service runs a round or a publish. Kept apart from [inProgress] (which
+     * the UI reads as "a sync of the Activity is running", with its notification and progress bar); the
+     * Activity's own runs check it so they never overlap with the service's, and the service's ticks
+     * check [inProgress] the other way round. */
+    @Volatile
+    var bootBusy = false
+
     /** True only while MainActivity.updateSyncButtonAvailability()'s own background discovery
      * scan is running -- process-wide for the same reason inProgress is: guards against
      * onCreate() then onResume() firing in quick succession (a fresh launch does both) starting

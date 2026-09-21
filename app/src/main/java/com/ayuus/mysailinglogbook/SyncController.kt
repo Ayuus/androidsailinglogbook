@@ -34,6 +34,10 @@ interface SyncController {
      * notification. */
     fun onDownloadComplete()
 
+    /** Called right before [onResult], with where the boat stands at the end of the processed data
+     * (tripbuilder.BoatState.to_dict() as JSON), or null when the run produced none. For the boat mode. */
+    fun onBoatState(boatStateJson: String?)
+
     /** Called exactly once, right before sync_from_w2k2()/build_from_local_files() returns, with
      * the same outcome as their return value's own "ok"/"error"/"cancelled"/"trip_count"/
      * "html_path"/"downloaded_count" dict entries -- but as plain primitive arguments to a real

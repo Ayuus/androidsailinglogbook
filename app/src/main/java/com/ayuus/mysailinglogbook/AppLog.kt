@@ -36,6 +36,21 @@ object AppLog {
         }
     }
 
+    /** Adds an already stamped line to the running log text (SyncState.lastLogText) -- one at a time,
+     * as lines come in from the main thread, the sync thread and the boat-mode service. */
+    fun append(stampedLine: String) {
+        synchronized(fileLock) {
+            SyncState.lastLogText = if (SyncState.lastLogText.isEmpty()) stampedLine else "${SyncState.lastLogText}\n$stampedLine"
+        }
+    }
+
+    /** A line Python has already stamped and written to the log file itself (log.py): kept in the running
+     * log text and shown by the visible Activity, if there is one. */
+    fun show(line: String) {
+        append(line)
+        SyncState.active?.refreshLogView()
+    }
+
     /**
      * A line from outside MainActivity: stamped, written to the log file, kept in the running log text
      * and shown by the visible Activity, if there is one.
@@ -43,7 +58,6 @@ object AppLog {
     fun post(context: Context, rawLine: String) {
         val line = stamp(rawLine)
         appendToFile(context, line)
-        SyncState.lastLogText = if (SyncState.lastLogText.isEmpty()) line else "${SyncState.lastLogText}\n$line"
-        SyncState.active?.refreshLogView()
+        show(line)
     }
 }

@@ -60,27 +60,8 @@ class MainActivity : AppCompatActivity() {
     private val notificationPermissionLauncher =
         registerForActivityResult(ActivityResultContracts.RequestPermission()) { /* no-op either way */ }
 
-    // Matches log.py's "[info] ...decoded 42/1940 logfile(s) so far" (see
-    // _DECODE_PROGRESS_INTERVAL_S in cli.py / android_entry.py) -- two groups (not one "42/1940"
-    // group) so the progress bar (see updateProgressBar()) can set current/max separately,
-    // without also having to re-parse the notification's own copy of this same text.
-    private val decodeProgressRegex = Regex("""decoded (\d+)/(\d+) logfile\(s\) so far""")
-
-    // The trip-building phase after decode (android_entry.py/cli.py/tripbuilder.py's own
-    // checkpoint log() calls, added purely as a diagnostic aid -- see their own comments) has no
-    // "current/total" numbers of its own the way decodeProgressRegex's line does, just four fixed
-    // checkpoints in a always-the-same order -- so BUILD_PHASE_MARKERS below just counts which one
-    // last matched as "step X of 4" instead. Asked for explicitly: found in practice, the
-    // notification was still showing "opbouwen 2012/2012" (decodeProgressRegex's own last message,
-    // stale-but-not-wrong text left behind once decode itself was done) all the way through this
-    // phase, with nothing of its own updating it since build_trips() can run for a real,
-    // non-trivial amount of time on a full season's worth of samples.
-    private val buildPhaseMarkers = listOf(
-        Regex("""Building trips from \d+ GPS position\(s\)"""),
-        Regex("""\d+ navigation samples merged, classifying trips"""),
-        Regex("""\d+ run\(s\) classified, computing per-trip statistics"""),
-        Regex("""\d+ trip\(s\) found, writing logbook"""),
-    )
+    private val decodeProgressRegex = SyncProgress.decodeRegex
+    private val buildPhaseMarkers = SyncProgress.buildPhaseMarkers
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -677,8 +658,17 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
+    /** True (with a line in the log) while the boat-mode service is running a round or a publish: the
+     * user's own run would work on the same files at the same time, so it waits. */
+    private fun bootModeBusy(): Boolean {
+        if (!SyncState.bootBusy) return false
+        handleLogLine("[info] " + getString(R.string.log_boat_busy))
+        return true
+    }
+
     private fun runSync() {
         if (SyncState.inProgress) return
+        if (bootModeBusy()) return
         if (!settingsStore.isW2k2ConfigComplete) {
             handleLogLine("[info] " + getString(R.string.log_fill_w2k2_credentials))
             return
@@ -894,6 +884,7 @@ class MainActivity : AppCompatActivity() {
      * end of it. */
     private fun runPublish() {
         if (SyncState.inProgress) return
+        if (bootModeBusy()) return
         // Both, not just SFTP -- found in practice, a real bug: an owner with only REST
         // configured (no SFTP at all, the whole point of preferring REST) tapped ☁️ and got told
         // to fill in "de publiceer-instellingen (SFTP)" even though publishing itself would have
@@ -914,22 +905,9 @@ class MainActivity : AppCompatActivity() {
         val downloadedCount: Int?,
     )
 
-    /** Makes .ebl files visible when browsing this device from a PC over USB (MTP). Files this
-     * app writes straight into its own external folder are not reported to Android's media index,
-     * and MTP lists that index rather than the folder itself (found in practice on Android 8.1:
-     * the whole Actisense folder was missing in Windows Explorer while adb showed 2326 files).
-     * Only files modified at or after ``modifiedSince`` (epoch ms) are handed over -- a sync passes
-     * its own start time, so a normal run only ever scans what it just downloaded. Asynchronous:
-     * the platform's scanner service does the work, this returns immediately. */
-    private fun indexEblFilesForPc(actisenseDir: File, modifiedSince: Long) {
-        val paths = actisenseDir.walkTopDown()
-            .filter { it.isFile && it.extension == "ebl" && it.lastModified() >= modifiedSince }
-            .map { it.absolutePath }
-            .toList()
-        if (paths.isNotEmpty()) {
-            MediaScannerConnection.scanFile(applicationContext, paths.toTypedArray(), null, null)
-        }
-    }
+    /** See EblStorage.indexForPc(). */
+    private fun indexEblFilesForPc(actisenseDir: File, modifiedSince: Long) =
+        EblStorage.indexForPc(applicationContext, actisenseDir, modifiedSince)
 
     /** One-time catch-up for .ebl files downloaded before indexEblFilesForPc() existed (already
      * sitting in the folder, never reported to the media index). Off the main thread; remembered
@@ -946,38 +924,9 @@ class MainActivity : AppCompatActivity() {
         }.start()
     }
 
-    /** Where downloaded .ebl files live -- app-specific *external* storage (Android/data/
-     * <package>/files/Actisense), not filesDir (internal storage, completely inaccessible from
-     * outside the app) -- asked for explicitly: the raw .ebl archive gets large over a full
-     * season and the owner wants to browse/copy it from a PC over USB, which only works for
-     * external storage. No extra permission needed for an app's own external directory (unlike
-     * the public Downloads folder, which would need "All files access" -- incompatible with an
-     * eventual Play Store release).
-     *
-     * One-time migration on top: earlier versions of this app kept the same folder under filesDir
-     * -- moved wholesale into place here (not deleted-and-redownloaded) the first time this runs
-     * after updating, so a real, possibly gigabytes-large existing archive doesn't have to come
-     * back down over the W2K-2's own slow hotspot connection again. Falls back to the internal
-     * folder (old behavior) if external storage isn't currently available at all (rare -- e.g.
-     * briefly right after boot on some devices) or the migration copy itself fails partway --
-     * either way, nothing already downloaded is lost, and a failed copy's partial leftovers are
-     * cleaned up so the next launch retries instead of getting stuck thinking it already moved. */
+    /** Where downloaded .ebl files live (see EblStorage.downloadDir()), logged once per run. */
     private fun eblDownloadDir(): File {
-        val oldDir = File(filesDir, "Actisense")
-        val result = run {
-            val externalBase = getExternalFilesDir(null) ?: return@run oldDir
-            val newDir = File(externalBase, "Actisense")
-            if (oldDir.exists() && !newDir.exists()) {
-                try {
-                    oldDir.copyRecursively(newDir, overwrite = false)
-                    oldDir.deleteRecursively()
-                } catch (e: Exception) {
-                    newDir.deleteRecursively()
-                    return@run oldDir
-                }
-            }
-            newDir
-        }
+        val result = EblStorage.downloadDir(this)
         // Asked for explicitly, now that USB file transfer to this exact path is the owner's own
         // way to browse the .ebl archive from a PC -- one line per sync/offline-build run (both
         // callers only ever call this once each), not spammy. "/storage/emulated/0/" dropped
@@ -1061,6 +1010,9 @@ class MainActivity : AppCompatActivity() {
             override fun onDownloadComplete() {
                 indexEblFilesForPc(downloadDir, syncStartedAt)
             }
+
+            // Only the boat mode needs the boat state (see W2kBootExecutor).
+            override fun onBoatState(boatStateJson: String?) {}
 
             override fun onResult(
                 ok: Boolean,
@@ -1157,7 +1109,7 @@ class MainActivity : AppCompatActivity() {
         // The accumulator, not logView.text itself -- logView may belong to an orphaned
         // instance, or there may be no active instance at all right now (see withActiveActivity),
         // so the running log has to live somewhere that survives either.
-        SyncState.lastLogText = if (SyncState.lastLogText.isEmpty()) line else "${SyncState.lastLogText}\n$line"
+        AppLog.append(line)
         withActiveActivity { refreshLogView() }
         // A "[warning]" line (a failed attempt being retried, e.g. connection lost) means
         // report()'s own "current/total" notification text is about to sit frozen and
@@ -1468,6 +1420,7 @@ class MainActivity : AppCompatActivity() {
      * before this was shared. */
     private fun buildFromLocalFilesAndMaybePublish(forcePublish: Boolean) {
         if (SyncState.inProgress) return
+        if (bootModeBusy()) return
         SyncState.inProgress = true
         SyncState.runInitiator = if (forcePublish) RunInitiator.PUBLISH else RunInitiator.BUILD
         // Reset here too, not only in runSync(): a cancelled earlier run leaves it true, which
@@ -1585,6 +1538,9 @@ class MainActivity : AppCompatActivity() {
             override fun onLogLine(line: String) = handleLogLine(line)
             override fun onDownloadComplete() {}
 
+            // Only the boat mode needs the boat state (see W2kBootExecutor).
+            override fun onBoatState(boatStateJson: String?) {}
+
             override fun onResult(
                 ok: Boolean,
                 error: String?,
@@ -1625,71 +1581,19 @@ class MainActivity : AppCompatActivity() {
     /** Uploads the fresh logbook (always, if SFTP or REST publish settings are filled in) --
      * called after a successful sync, still on its background Thread. Runs at most once per
      * sync; failures here are reported in the log but never hide the logbook that's already
-     * showing in the WebView by that point.
-     *
-     * No longer gated on wifi-vs-mobile-data (removed, asked for explicitly): the logbook upload
-     * is small enough now that the data cost is negligible, so it always runs regardless of
-     * connection type instead of silently skipping on cellular. */
-    private fun uploadIfConfigured(htmlPath: String): Boolean {
-        // REST (see RestUploader.kt) is preferred over SFTP whenever both happen to be
-        // configured, same choice cli.py's own _run() makes -- needs no SSH key/password on this
-        // device at all, just a WordPress Application Password. Not "REST, falling back to SFTP
-        // if REST fails" within the same run: a failed upload should surface as a failed upload,
-        // not silently retry a completely different transport the owner may not have intended to
-        // lean on at all.
-        val useRest = settingsStore.isRestUploadConfigComplete
-        if (!useRest && !settingsStore.isSftpConfigComplete) {
-            handleLogLine("[skip] " + getString(R.string.log_upload_not_configured))
-            return false
+     * showing in the WebView by that point. The upload itself is LogbookPublisher's. */
+    private fun uploadIfConfigured(htmlPath: String): Boolean =
+        LogbookPublisher.publish(this, settingsStore, File(htmlPath), ::handleLogLine) {
+            // Also pushed to the OS notification itself, not just the log -- asked for explicitly:
+            // SyncState.uploading means closing the app mid-upload no longer interrupts it, so the
+            // notification is the only place this phase is visible at all while the owner is not
+            // looking at the app. Shorter than the log line, without "(naar WordPress)"/"(via SFTP)":
+            // that detail belongs in the log.
+            startSyncNotification(
+                Intent(this, SyncNotificationService::class.java)
+                    .putExtra(SyncNotificationService.EXTRA_STATUS_TEXT, getString(R.string.notif_uploading)),
+            )
         }
-        val statusText = if (useRest) getString(R.string.status_uploading_wordpress) else getString(R.string.status_uploading_sftp)
-        handleLogLine("[info] $statusText")
-        // Also pushed to the OS notification itself, not just the log -- asked for explicitly:
-        // SyncState.uploading below (see its own doc comment) means closing the app
-        // mid-upload no longer interrupts it, so the notification is now the only place this
-        // phase is visible at all for as long as the owner's actually looking at it instead of
-        // the app. Without this it kept showing whatever the last download/decode-phase text
-        // happened to be, well past the point that was still true. Shorter than the log line
-        // above, without "(naar WordPress)"/"(via SFTP)" -- asked for explicitly, that detail belongs
-        // in the log (which is right there to check), not repeated in the notification too.
-        startSyncNotification(
-            Intent(this, SyncNotificationService::class.java)
-                .putExtra(SyncNotificationService.EXTRA_STATUS_TEXT, getString(R.string.notif_uploading)),
-        )
-        // Sets SyncState.uploading for SyncNotificationService.onTaskRemoved() -- unlike a
-        // download (resumes cleanly next run over HTTP Range, see w2k2_download.py) or a decode/
-        // build (re-runs from wherever it was, backed by the sample cache), a publish isn't
-        // itself safely resumable mid-request, and it's comparatively fast anyway (asked for
-        // explicitly: closing the app should be free to interrupt everything else, just not
-        // this). Always reset in finally, including on the early-return failure paths below.
-        SyncState.uploading = true
-        try {
-            if (useRest) {
-                RestUploader.uploadLogbook(
-                    this, settingsStore.restUploadUrl, settingsStore.restUploadUser,
-                    settingsStore.restUploadPassword, File(htmlPath),
-                )
-                handleLogLine("[ok] " + getString(R.string.log_upload_ok_wordpress, settingsStore.restUploadUrl))
-            } else {
-                SftpUploader.uploadLogbookAtomic(this, settingsStore, File(htmlPath))
-                handleLogLine(
-                    "[ok] " + getString(
-                        R.string.log_upload_ok_sftp,
-                        settingsStore.sftpUser, settingsStore.sftpHost, settingsStore.sftpRemotePath,
-                    ),
-                )
-            }
-        } catch (e: RestUploadError) {
-            handleLogLine("[error] " + getString(R.string.log_upload_failed_wordpress, e.message))
-            return false
-        } catch (e: SftpUploadError) {
-            handleLogLine("[error] " + getString(R.string.log_upload_failed_sftp, e.message))
-            return false
-        } finally {
-            SyncState.uploading = false
-        }
-        return true
-    }
 
     // Set by showOfflineOrCloseDialog() when it couldn't show right away because the Activity
     // wasn't visible -- shown as soon as onResume() sees it's non-null instead.

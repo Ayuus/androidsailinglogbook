@@ -137,7 +137,7 @@
     <string name="boat_log_simulation">Mode bateau (simulation) : le temps passe 30 fois plus vite, rien n\'est réellement téléchargé ni publié.</string>
     <string name="boat_status_searching">Mode bateau : recherche du W2K-2...</string>
     <string name="boat_status_round_started">Mode bateau : ronde démarrée (téléchargement et construction)...</string>
-    <string name="boat_status_round_done">Mode bateau : ronde terminée.</string>
+    <string name="boat_status_round_done">Mode bateau : ronde terminée, prochaine ronde à %1$s.</string>
     <string name="boat_status_round_failed">Mode bateau : ronde échouée, nouvel essai.</string>
     <string name="boat_status_w2k2_not_found_retry">Mode bateau : W2K-2 injoignable, nouvel essai à %1$s.</string>
     <string name="boat_status_harbour_final">Mode bateau : le bateau est au port, dernière ronde.</string>
@@ -148,6 +148,7 @@
     <string name="boat_status_publish_ok">Mode bateau : publié.</string>
     <string name="boat_status_publish_failed">Mode bateau : échec de la publication, nouvel essai à %1$s.</string>
     <string name="boat_status_stopped">Mode bateau arrêté.</string>
+    <string name="log_boat_busy">Le mode bateau est occupé par une ronde ou une publication ; réessayez dans un instant.</string>
     <string name="boat_notif_channel_name">Mode bateau</string>
     <string name="boat_notif_channel_description">Notifications tant que le mode bateau est actif : l\'état et un moyen de l\'arrêter</string>
     <string name="boat_notif_title">Mode bateau</string>
