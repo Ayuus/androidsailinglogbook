@@ -47,6 +47,10 @@ class SyncNotificationService : Service() {
         // run had moved on to later phases with no progress update of their own reaching it).
         val progressMax = intent?.getIntExtra(EXTRA_PROGRESS_MAX, -1) ?: -1
         val progressCurrent = intent?.getIntExtra(EXTRA_PROGRESS_CURRENT, -1) ?: -1
+        // Whether a file is genuinely being fetched right now, as opposed to the decode/build
+        // phase after it (found in practice, reported: the animated download icon stayed up
+        // through the whole build too, though nothing was downloading by then).
+        val isDownloading = current >= 0 && total >= 0 && fileName != null
         // Tapping the notification opens the app (asked for explicitly) -- without a
         // setContentIntent, tapping it did nothing at all. FLAG_IMMUTABLE is required since API 31
         // (Android 12); this app's minSdk 24 means the flag itself must still be built
@@ -73,12 +77,13 @@ class SyncNotificationService : Service() {
         val notification = NotificationCompat.Builder(this, CHANNEL_ID)
             .setContentTitle(getString(R.string.app_name))
             .setContentText(contentText)
-            // The animated version (Android's own classic "download in progress" icon) -- the only
-            // one of the four notifications this class posts that is genuinely still in progress
-            // when shown; the other three (interrupted, not found, completed) use the static
-            // stat_sys_download_done instead, found in practice: an animated "still downloading"
-            // icon next to "Voltooid" read as a contradiction.
-            .setSmallIcon(android.R.drawable.stat_sys_download)
+            // The animated system "download in progress" icon only while a file is genuinely being
+            // fetched; the build button's own static icon (ic_refresh_24, see MainActivity) once
+            // that is done and decode/build is running instead -- found in practice: the download
+            // icon staying up through the whole build too read as still downloading when it wasn't.
+            // The other three notifications this class posts (interrupted, not found, completed)
+            // are never in progress when shown, so they use the static stat_sys_download_done.
+            .setSmallIcon(if (isDownloading) android.R.drawable.stat_sys_download else R.drawable.ic_refresh_24)
             .setOngoing(true)
             .setPriority(NotificationCompat.PRIORITY_DEFAULT)
             .setContentIntent(contentIntent)
