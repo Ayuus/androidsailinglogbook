@@ -5,7 +5,7 @@
     <string name="app_name" tools:ignore="MissingTranslation">My Sailing Logbook</string>
 
     <!-- Toolbar tooltips -->
-    <string name="tooltip_sync">Sync</string>
+    <string name="tooltip_sync">Download</string>
     <string name="tooltip_hotspot_not_on">This device\'s hotspot isn\'t on</string>
     <string name="tooltip_w2k2_not_found">No Actisense W2K-2 found</string>
     <string name="tooltip_w2k2_checking">Looking for an Actisense W2K-2…</string>
@@ -23,18 +23,18 @@
          "[skip]" tags are prepended in code, not baked into the resource, so they stay literal
          English in every language, matching the untranslated tags log.py's own Python-side log
          lines always use (see translations.py's module docstring on CSV/GPX staying English). -->
-    <string name="log_hotspot_precheck_skipped">Hotspot not on (cheap pre-check) -- automatic sync skipped.</string>
-    <string name="log_sync_hotspot_not_on">Hotspot not on -- sync button disabled.</string>
-    <string name="log_sync_w2k2_not_found">No Actisense W2K-2 found -- sync button disabled.</string>
+    <string name="log_hotspot_precheck_skipped">Hotspot not on (cheap pre-check) -- automatic download skipped.</string>
+    <string name="log_sync_hotspot_not_on">Hotspot not on -- download button disabled.</string>
+    <string name="log_sync_w2k2_not_found">No Actisense W2K-2 found -- download button disabled.</string>
     <string name="notif_w2k2_not_found">W2K-2 not found.</string>
     <string name="log_fill_w2k2_credentials">Fill in the W2K-2 username and password via Settings first.</string>
     <string name="status_checking_hotspot">Checking hotspot...</string>
-    <string name="status_hotspot_off">Hotspot is off (or the W2K-2 isn\'t connected to it). Turn it on to sync.</string>
+    <string name="status_hotspot_off">Hotspot is off (or the W2K-2 isn\'t connected to it). Turn it on to download.</string>
     <string name="status_listing_files">Fetching file list (subnet %1$s0/24)...</string>
     <string name="log_sync_done_at">Done: %1$s</string>
     <string name="notif_sync_done_at">Done %1$s</string>
-    <string name="error_unexpected_sync">Unexpected error during sync: %1$s</string>
-    <string name="log_no_logbook_to_view">No logbook to view yet -- sync first.</string>
+    <string name="error_unexpected_sync">Unexpected error during download: %1$s</string>
+    <string name="log_no_logbook_to_view">No logbook to view yet -- download first.</string>
     <string name="log_no_ebl_files_to_build">No .ebl files on this device yet -- nothing to build.</string>
     <string name="log_publish_not_configured">No publish destination configured -- publish button disabled.</string>
     <string name="log_fill_publish_settings">Fill in the publish settings (REST or SFTP) via Settings first.</string>
@@ -51,14 +51,14 @@
     <string name="status_ready_updated">Ready (logbook updated).</string>
     <string name="status_ready_with_download">Ready: %1$d trip(s), %2$d file(s) downloaded.</string>
     <string name="status_ready_no_download">Ready: %1$d trip(s) (existing data, not re-downloaded).</string>
-    <string name="status_sync_stopped">Sync stopped. Next time it will resume where it left off.</string>
+    <string name="status_sync_stopped">Download stopped. Next time it will resume where it left off.</string>
     <string name="status_build_stopped">Build stopped. Next time it will resume where it left off.</string>
     <string name="error_generic_prefix">Error: %1$s</string>
     <string name="error_unknown">unknown error</string>
     <string name="error_logbook_display_failed">logbook could not be displayed: %1$s</string>
     <string name="dialog_build_logbook_button">Build logbook...</string>
     <string name="dialog_close_app_button">Close app</string>
-    <string name="status_sync_cancelled">Sync cancelled.</string>
+    <string name="status_sync_cancelled">Download cancelled.</string>
     <string name="status_build_cancelled">Build cancelled.</string>
     <string name="status_building_with_existing_data">Building logbook with existing data...</string>
     <string name="error_unexpected">Unexpected error: %1$s</string>
@@ -80,12 +80,12 @@
     <string name="log_notification_could_not_be_shown">notification could not be shown: %1$s</string>
 
     <!-- Notifications -->
-    <string name="notif_channel_name">Sync</string>
+    <string name="notif_channel_name">Download</string>
     <string name="notif_channel_description">Shows when the app is fetching and processing the logbook.</string>
     <string name="notif_app_closing_after_upload">App will close once the upload has finished.</string>
     <string name="notif_sync_interrupted_by_close">Interrupted by closing -- will resume next time.</string>
     <string name="notif_action_view_live_site">View live site</string>
-    <string name="status_sync_already_running_fallback">Sync already running...</string>
+    <string name="status_sync_already_running_fallback">Download already running...</string>
     <string name="status_downloading_processing_fallback">Downloading and processing...</string>
 
     <!-- Settings screen -->
@@ -118,9 +118,9 @@
     <string name="toast_cache_cleared">Cache cleared</string>
     <string name="button_cancel">Cancel</string>
     <string name="button_cache_data">Cache: Data</string>
-    <string name="dialog_clear_data_cache_message">Clear all decoded and built trip data? The next sync will decode and process every .ebl file again from scratch (takes longer, but nothing is lost -- the .ebl files themselves stay in place).</string>
+    <string name="dialog_clear_data_cache_message">Clear all decoded and built trip data? The next download will decode and process every .ebl file again from scratch (takes longer, but nothing is lost -- the .ebl files themselves stay in place).</string>
     <string name="button_cache_places">Cache: Place names</string>
-    <string name="dialog_clear_places_cache_message">Clear all looked-up place names, weather and wave data? The next sync will look these up again (uses extra mobile data).</string>
+    <string name="dialog_clear_places_cache_message">Clear all looked-up place names, weather and wave data? The next download will look these up again (uses extra mobile data).</string>
     <string name="button_save">Save</string>
     <string name="toast_username_password_required">Username and password are required</string>
     <string name="toast_settings_saved">Settings saved</string>
@@ -142,6 +142,7 @@
     <string name="checkbox_boat_auto_start">Start automatically when the app is opened at the W2K-2 (hotspot on)</string>
     <string name="tooltip_boat_mode">Start boat mode</string>
     <string name="tooltip_boat_mode_on">Stop boat mode</string>
+    <string name="boat_log_enabled">Boat mode is on (started via the clock button or Instellingen).</string>
     <string name="boat_log_simulation">Boat mode (simulation): time runs 30x faster and nothing is really downloaded or published.</string>
     <string name="boat_status_searching">Boat mode: looking for the W2K-2...</string>
     <string name="boat_status_round_started">Boat mode: round started (download and build)...</string>

@@ -24,7 +24,7 @@ import java.io.File
  * Plain form for the settings SettingsStore holds -- W2K-2 login, boat identity, and SFTP publish
  * settings. Only W2K-2 user/password are required to Save -- SFTP fields can stay empty until the
  * owner is ready to publish; that's checked separately (isSftpConfigComplete) when the ☁️ icon is
- * tapped or a sync's own auto-publish runs (see MainActivity.uploadIfConfigured()).
+ * tapped or a download's own auto-publish runs (see MainActivity.uploadIfConfigured()).
  */
 class SettingsActivity : AppCompatActivity() {
 
@@ -264,7 +264,7 @@ class SettingsActivity : AppCompatActivity() {
         // small file per decoded .ebl file, see sample_cache.py's own module docstring for why),
         // not a plain file despite the name; delete() alone silently does nothing to a non-empty
         // directory. Harmless to call on a file that doesn't exist (or doesn't exist at all yet,
-        // e.g. before the very first sync) -- deleteRecursively() returns false either way and
+        // e.g. before the very first download) -- deleteRecursively() returns false either way and
         // there's nothing further to do.
         fun clearCacheButton(label: String, confirmMessage: String, files: () -> List<File>) {
             layout.addView(

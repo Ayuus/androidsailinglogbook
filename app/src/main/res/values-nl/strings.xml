@@ -4,7 +4,7 @@
          at all, since renaming the launcher icon label wasn't asked for. -->
 
     <!-- Toolbar tooltips -->
-    <string name="tooltip_sync">Synchroniseren</string>
+    <string name="tooltip_sync">Downloaden</string>
     <string name="tooltip_hotspot_not_on">Hotspot van dit toestel staat niet aan</string>
     <string name="tooltip_w2k2_not_found">Geen Actisense W2K-2 gevonden</string>
     <string name="tooltip_w2k2_checking">Actisense W2K-2 zoeken…</string>
@@ -19,18 +19,18 @@
     <string name="error_settings_load_failed">Instellingen konden niet worden geladen:\n%1$s\n\nProbeer de app opnieuw te openen.</string>
 
     <!-- Sync flow -->
-    <string name="log_hotspot_precheck_skipped">Hotspot niet aan (cheap pre-check) -- automatische sync overgeslagen.</string>
-    <string name="log_sync_hotspot_not_on">Hotspot niet aan -- sync-knop uitgeschakeld.</string>
-    <string name="log_sync_w2k2_not_found">Geen Actisense W2K-2 gevonden -- sync-knop uitgeschakeld.</string>
+    <string name="log_hotspot_precheck_skipped">Hotspot niet aan (snelle controle) -- automatisch downloaden overgeslagen.</string>
+    <string name="log_sync_hotspot_not_on">Hotspot niet aan -- downloadknop uitgeschakeld.</string>
+    <string name="log_sync_w2k2_not_found">Geen Actisense W2K-2 gevonden -- downloadknop uitgeschakeld.</string>
     <string name="notif_w2k2_not_found">W2K-2 niet gevonden.</string>
     <string name="log_fill_w2k2_credentials">Vul eerst de W2K-2 gebruikersnaam en het wachtwoord in via Instellingen.</string>
     <string name="status_checking_hotspot">Hotspot controleren...</string>
-    <string name="status_hotspot_off">Hotspot staat uit (of de W2K-2 is er niet mee verbonden). Zet \'m aan om te synchroniseren.</string>
+    <string name="status_hotspot_off">Hotspot staat uit (of de W2K-2 is er niet mee verbonden). Zet \'m aan om te downloaden.</string>
     <string name="status_listing_files">Bestandenlijst ophalen (subnet %1$s0/24)...</string>
     <string name="log_sync_done_at">Voltooid: %1$s</string>
     <string name="notif_sync_done_at">Voltooid %1$s</string>
-    <string name="error_unexpected_sync">Onverwachte fout tijdens synchroniseren: %1$s</string>
-    <string name="log_no_logbook_to_view">Nog geen logboek om te bekijken -- synchroniseer eerst.</string>
+    <string name="error_unexpected_sync">Onverwachte fout tijdens downloaden: %1$s</string>
+    <string name="log_no_logbook_to_view">Nog geen logboek om te bekijken -- download eerst.</string>
     <string name="log_no_ebl_files_to_build">Nog geen .ebl-bestanden op dit toestel -- niets om te bouwen.</string>
     <string name="log_publish_not_configured">Geen publicatiebestemming ingesteld -- publiceerknop uitgeschakeld.</string>
     <string name="log_fill_publish_settings">Vul eerst de publiceer-instellingen (REST of SFTP) in via Instellingen.</string>
@@ -47,14 +47,14 @@
     <string name="status_ready_updated">Klaar (logboek bijgewerkt).</string>
     <string name="status_ready_with_download">Klaar: %1$d reis(en), %2$d bestand(en) gedownload.</string>
     <string name="status_ready_no_download">Klaar: %1$d reis(en) (bestaande gegevens, niet opnieuw gedownload).</string>
-    <string name="status_sync_stopped">Synchronisatie gestopt. Volgende keer wordt verdergegaan waar het gebleven was.</string>
+    <string name="status_sync_stopped">Downloaden gestopt. Volgende keer wordt verdergegaan waar het gebleven was.</string>
     <string name="status_build_stopped">Bouwen gestopt. Volgende keer wordt verdergegaan waar het gebleven was.</string>
     <string name="error_generic_prefix">Fout: %1$s</string>
     <string name="error_unknown">onbekende fout</string>
     <string name="error_logbook_display_failed">logboek kon niet worden getoond: %1$s</string>
     <string name="dialog_build_logbook_button">Logboek bouwen...</string>
     <string name="dialog_close_app_button">App sluiten</string>
-    <string name="status_sync_cancelled">Synchronisatie geannuleerd.</string>
+    <string name="status_sync_cancelled">Downloaden geannuleerd.</string>
     <string name="status_build_cancelled">Bouwen geannuleerd.</string>
     <string name="status_building_with_existing_data">Logboek opbouwen met bestaande gegevens...</string>
     <string name="error_unexpected">Onverwachte fout: %1$s</string>
@@ -76,12 +76,12 @@
     <string name="log_notification_could_not_be_shown">melding kon niet worden getoond: %1$s</string>
 
     <!-- Notifications -->
-    <string name="notif_channel_name">Synchronisatie</string>
+    <string name="notif_channel_name">Downloaden</string>
     <string name="notif_channel_description">Toont wanneer de app bezig is met het ophalen en verwerken van het logboek.</string>
     <string name="notif_app_closing_after_upload">App wordt afgesloten nadat upload voltooid is.</string>
     <string name="notif_sync_interrupted_by_close">Onderbroken door sluiten -- wordt hervat bij de volgende keer.</string>
     <string name="notif_action_view_live_site">Bekijk live site</string>
-    <string name="status_sync_already_running_fallback">Synchronisatie loopt al...</string>
+    <string name="status_sync_already_running_fallback">Downloaden loopt al...</string>
     <string name="status_downloading_processing_fallback">Bezig met downloaden en verwerken...</string>
 
     <!-- Settings screen -->
@@ -114,9 +114,9 @@
     <string name="toast_cache_cleared">Cache geleegd</string>
     <string name="button_cancel">Annuleren</string>
     <string name="button_cache_data">Cache: Data</string>
-    <string name="dialog_clear_data_cache_message">Alle gedecodeerde en opgebouwde reisdata wissen? De eerstvolgende synchronisatie decodeert en verwerkt dan alle .ebl-bestanden opnieuw vanaf het begin (duurt langer, maar er gaat niets verloren -- de .ebl-bestanden zelf blijven staan).</string>
+    <string name="dialog_clear_data_cache_message">Alle gedecodeerde en opgebouwde reisdata wissen? Bij het eerstvolgende downloaden worden dan alle .ebl-bestanden opnieuw gedecodeerd en verwerkt vanaf het begin (duurt langer, maar er gaat niets verloren -- de .ebl-bestanden zelf blijven staan).</string>
     <string name="button_cache_places">Cache: Plaatsnamen</string>
-    <string name="dialog_clear_places_cache_message">Alle opgezochte plaatsnamen, weer- en golfgegevens wissen? De eerstvolgende synchronisatie zoekt deze dan opnieuw op (kost extra mobiele data).</string>
+    <string name="dialog_clear_places_cache_message">Alle opgezochte plaatsnamen, weer- en golfgegevens wissen? Bij het eerstvolgende downloaden worden deze dan opnieuw opgezocht (kost extra mobiele data).</string>
     <string name="button_save">Opslaan</string>
     <string name="toast_username_password_required">Gebruikersnaam en wachtwoord zijn verplicht</string>
     <string name="toast_settings_saved">Instellingen opgeslagen</string>
@@ -138,6 +138,7 @@
     <string name="checkbox_boat_auto_start">Automatisch beginnen als de app wordt geopend bij de W2K-2 (hotspot aan)</string>
     <string name="tooltip_boat_mode">Boot-modus starten</string>
     <string name="tooltip_boat_mode_on">Boot-modus stoppen</string>
+    <string name="boat_log_enabled">Boot-modus staat aan (gestart via het klokje of Instellingen).</string>
     <string name="boat_log_simulation">Boot-modus (simulatie): de tijd loopt 30 keer sneller en er wordt niets echt gedownload of gepubliceerd.</string>
     <string name="boat_status_searching">Boot-modus: zoeken naar de W2K-2...</string>
     <string name="boat_status_round_started">Boot-modus: ronde gestart (downloaden en bouwen)...</string>

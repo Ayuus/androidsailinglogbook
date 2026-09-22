@@ -52,13 +52,13 @@ class SettingsStore(context: Context) {
     // On by default (preserves the original, always-on behavior for anyone upgrading) -- asked
     // for explicitly: the owner wants to choose whether opening the app tries to reach the W2K-2
     // right away (see MainActivity.onCreate()'s own autoStartSyncWithSettingsRetry() call) or
-    // only ever syncs on an explicit ↺ tap.
+    // only ever downloads on an explicit tap of the download button.
     var autoSyncOnLaunch: Boolean
         get() = prefs.getBoolean(KEY_AUTO_SYNC_ON_LAUNCH, true)
         set(value) = prefs.edit().putBoolean(KEY_AUTO_SYNC_ON_LAUNCH, value).apply()
 
     // On by default too (same reasoning as autoSyncOnLaunch above) -- asked for explicitly: the
-    // owner wants to choose whether a successful sync/offline-build also publishes on its own
+    // owner wants to choose whether a successful download/offline-build also publishes on its own
     // (see MainActivity.uploadIfConfigured()'s two call sites) or just builds the logbook locally
     // -- checked via MainActivity's own new 📖 button (viewLocalLogbook()) and the ☁️ button still
     // publishes on demand either way.

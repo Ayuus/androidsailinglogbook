@@ -16,7 +16,7 @@ import androidx.core.app.NotificationCompat
 import androidx.core.app.NotificationManagerCompat
 
 /**
- * Hosts the sync-in-progress notification as a real foreground service, not a notification
+ * Hosts the download-in-progress notification as a real foreground service, not a notification
  * posted from a plain background Thread -- found in practice (real device test) that a plain
  * ongoing notification has no OS guarantee of being cleared if the process dies before its own
  * cleanup code runs (force-stop, the OS killing a background thread, a crash), and setOngoing(true)
@@ -73,7 +73,7 @@ class SyncNotificationService : Service() {
         val notification = NotificationCompat.Builder(this, CHANNEL_ID)
             .setContentTitle(getString(R.string.app_name))
             .setContentText(contentText)
-            .setSmallIcon(android.R.drawable.stat_notify_sync)
+            .setSmallIcon(android.R.drawable.stat_sys_download)
             .setOngoing(true)
             .setPriority(NotificationCompat.PRIORITY_DEFAULT)
             .setContentIntent(contentIntent)
@@ -158,7 +158,7 @@ class SyncNotificationService : Service() {
     }
 
     private fun createChannel() {
-        // Once per process, not on every single onStartCommand() (a fresh sync's first call, and
+        // Once per process, not on every single onStartCommand() (a fresh download's first call, and
         // every progress update after it -- easily dozens of calls per run) -- deleting a channel
         // that was already deleted, and recreating one that already exists with identical
         // settings, are both wasted binder calls to NotificationManager on every single call,
@@ -188,7 +188,7 @@ class SyncNotificationService : Service() {
         // Process-wide, not an instance field -- a new Service instance is created each time it's
         // (re)started after fully stopping, but the channel itself, once created, persists at the
         // OS level regardless; re-checking per process avoids redoing that work needlessly on a
-        // later sync within the same still-running process, without wrongly skipping it after a
+        // later download within the same still-running process, without wrongly skipping it after a
         // genuine process restart.
         private var channelCreated = false
         private const val OLD_CHANNEL_ID = "sync"
@@ -214,7 +214,7 @@ class SyncNotificationService : Service() {
         const val EXTRA_PROGRESS_CURRENT = "progress_current"
         const val EXTRA_PROGRESS_MAX = "progress_max"
 
-        /** Posted by onTaskRemoved() above in place of the ongoing sync notification, when the
+        /** Posted by onTaskRemoved() above in place of the ongoing download notification, when the
          * app got closed (swipe-away/"Alles sluiten") while something interruptible -- anything
          * but an upload, see SyncState.uploading -- was still running (asked for explicitly).
          * Posted under NOTIFICATION_ID, same "replace in place" reasoning as
@@ -239,7 +239,7 @@ class SyncNotificationService : Service() {
             val notification = NotificationCompat.Builder(context, CHANNEL_ID)
                 .setContentTitle(context.getString(R.string.app_name))
                 .setContentText(context.getString(R.string.notif_sync_interrupted_by_close))
-                .setSmallIcon(android.R.drawable.stat_notify_sync)
+                .setSmallIcon(android.R.drawable.stat_sys_download)
                 .setAutoCancel(true)
                 .setTimeoutAfter(STALE_NOTIFICATION_TIMEOUT_MS)
                 .setContentIntent(contentIntent)
@@ -247,14 +247,15 @@ class SyncNotificationService : Service() {
             NotificationManagerCompat.from(context).notify(NOTIFICATION_ID, notification)
         }
 
-        /** Posted in place of the ongoing sync notification when the *automatic*, on-launch sync
-         * attempt (see MainActivity.autoStartSyncWithSettingsRetry()) couldn't reach the W2K-2 --
-         * asked for explicitly: this is the routine, expected outcome of opening the app away
-         * from the boat, not something worth a modal popup (see runSync()'s own isAutoStart
+        /** Posted in place of the ongoing download notification when the *automatic*, on-launch
+         * download attempt (see MainActivity.autoStartSyncWithSettingsRetry()) couldn't reach the
+         * W2K-2 -- asked for explicitly: this is the routine, expected outcome of opening the app
+         * away from the boat, not something worth a modal popup (see runSync()'s own isAutoStart
          * handling) or even a loud in-app status banner -- a plain log line covers the in-app
          * side, and this notification covers being told about it without having to be looking at
-         * the app right when it happens. A manual ↺ tap still gets the normal dialog instead, no
-         * notification of its own needed there since the owner is already looking at the app. */
+         * the app right when it happens. A manual tap on the download button still gets the
+         * normal dialog instead, no notification of its own needed there since the owner is
+         * already looking at the app. */
         fun postNotFoundNotification(context: Context, message: String) {
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU &&
                 ActivityCompat.checkSelfPermission(context, Manifest.permission.POST_NOTIFICATIONS) !=
@@ -266,7 +267,7 @@ class SyncNotificationService : Service() {
             // FLAG_ACTIVITY_NEW_TASK launch -- found in practice, asked for explicitly: a plain
             // launch Intent stacks a brand new MainActivity instance on top even when one is
             // already alive, which re-runs onCreate() and its own autoStartSyncWithSettingsRetry()
-            // call -- so tapping "W2K-2 niet gevonden" started a fresh sync attempt that had no
+            // call -- so tapping "W2K-2 niet gevonden" started a fresh download attempt that had no
             // better chance of finding the W2K-2 than the one that had just failed. SINGLE_TOP/
             // CLEAR_TOP instead bring an already-alive instance to the front via onNewIntent()
             // (a no-op beyond that, see its own doc comment), which just shows the app window.
@@ -283,7 +284,7 @@ class SyncNotificationService : Service() {
             val notification = NotificationCompat.Builder(context, CHANNEL_ID)
                 .setContentTitle(context.getString(R.string.app_name))
                 .setContentText(message)
-                .setSmallIcon(android.R.drawable.stat_notify_sync)
+                .setSmallIcon(android.R.drawable.stat_sys_download)
                 .setAutoCancel(true)
                 .setTimeoutAfter(STALE_NOTIFICATION_TIMEOUT_MS)
                 .setContentIntent(contentIntent)
@@ -291,16 +292,17 @@ class SyncNotificationService : Service() {
             NotificationManagerCompat.from(context).notify(NOTIFICATION_ID, notification)
         }
 
-        /** Replaces the ongoing sync notification with a final, dismissible one once a run
+        /** Replaces the ongoing download notification with a final, dismissible one once a run
          * finishes successfully -- found in practice, asked for explicitly: stopService() alone
          * (MainActivity.runSync()'s own finally) just makes the notification disappear the
-         * instant a sync ends, with nothing left behind to say it actually finished (as opposed
-         * to, say, having been swiped away mid-run) or when. Posted under the same NOTIFICATION_ID
-         * as the ongoing one, so it replaces it in place rather than adding a second entry.
+         * instant a download ends, with nothing left behind to say it actually finished (as
+         * opposed to, say, having been swiped away mid-run) or when. Posted under the same
+         * NOTIFICATION_ID as the ongoing one, so it replaces it in place rather than adding a
+         * second entry.
          *
          * publishedUrl is non-null only when this run's own publish step actually succeeded (see
          * uploadIfConfigured() in MainActivity.kt) -- the "Bekijk live site" action only makes
-         * sense to offer then, not after a sync that only rebuilt the local logbook. */
+         * sense to offer then, not after a download that only rebuilt the local logbook. */
         fun postCompletionNotification(context: Context, resultText: String, publishedUrl: String?) {
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU &&
                 ActivityCompat.checkSelfPermission(context, Manifest.permission.POST_NOTIFICATIONS) !=
@@ -315,15 +317,15 @@ class SyncNotificationService : Service() {
             }
             // Deliberately no setContentIntent() here -- found in practice that reopening
             // MainActivity from a *finished* run's notification looks like it "hangs": the
-            // sync already completed, but a fresh launch starts the whole app (and its own
-            // sync-on-launch flow) from scratch, which reads as the previous run never
+            // download already completed, but a fresh launch starts the whole app (and its own
+            // download-on-launch flow) from scratch, which reads as the previous run never
             // finishing. Tapping the body just dismisses the notification (setAutoCancel);
             // "Bekijk live site" below is its own explicit action for when there's somewhere
             // useful to go.
             val builder = NotificationCompat.Builder(context, CHANNEL_ID)
                 .setContentTitle(context.getString(R.string.app_name))
                 .setContentText(resultText)
-                .setSmallIcon(android.R.drawable.stat_notify_sync)
+                .setSmallIcon(android.R.drawable.stat_sys_download)
                 .setAutoCancel(true)
                 .setTimeoutAfter(STALE_NOTIFICATION_TIMEOUT_MS)
             if (publishedUrl != null) {

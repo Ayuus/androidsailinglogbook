@@ -1,6 +1,6 @@
 <resources>
     <!-- Toolbar tooltips -->
-    <string name="tooltip_sync">Synchronisieren</string>
+    <string name="tooltip_sync">Herunterladen</string>
     <string name="tooltip_hotspot_not_on">Hotspot dieses Geräts ist nicht aktiv</string>
     <string name="tooltip_w2k2_not_found">Kein Actisense W2K-2 gefunden</string>
     <string name="tooltip_w2k2_checking">Suche nach einem Actisense W2K-2…</string>
@@ -15,18 +15,18 @@
     <string name="error_settings_load_failed">Einstellungen konnten nicht geladen werden:\n%1$s\n\nVersuche, die App erneut zu öffnen.</string>
 
     <!-- Sync flow -->
-    <string name="log_hotspot_precheck_skipped">Hotspot nicht an (schnelle Vorabprüfung) -- automatische Synchronisierung übersprungen.</string>
-    <string name="log_sync_hotspot_not_on">Hotspot nicht an -- Sync-Schaltfläche deaktiviert.</string>
-    <string name="log_sync_w2k2_not_found">Kein Actisense W2K-2 gefunden -- Sync-Schaltfläche deaktiviert.</string>
+    <string name="log_hotspot_precheck_skipped">Hotspot nicht an (schnelle Vorabprüfung) -- automatischer Download übersprungen.</string>
+    <string name="log_sync_hotspot_not_on">Hotspot nicht an -- Download-Schaltfläche deaktiviert.</string>
+    <string name="log_sync_w2k2_not_found">Kein Actisense W2K-2 gefunden -- Download-Schaltfläche deaktiviert.</string>
     <string name="notif_w2k2_not_found">W2K-2 nicht gefunden.</string>
     <string name="log_fill_w2k2_credentials">Trage zuerst den W2K-2-Benutzernamen und das Passwort in den Einstellungen ein.</string>
     <string name="status_checking_hotspot">Hotspot wird geprüft...</string>
-    <string name="status_hotspot_off">Der Hotspot ist aus (oder der W2K-2 ist nicht damit verbunden). Schalte ihn ein, um zu synchronisieren.</string>
+    <string name="status_hotspot_off">Der Hotspot ist aus (oder der W2K-2 ist nicht damit verbunden). Schalte ihn ein, um herunterzuladen.</string>
     <string name="status_listing_files">Dateiliste wird abgerufen (Subnetz %1$s0/24)...</string>
     <string name="log_sync_done_at">Fertig: %1$s</string>
     <string name="notif_sync_done_at">Fertig %1$s</string>
-    <string name="error_unexpected_sync">Unerwarteter Fehler während der Synchronisierung: %1$s</string>
-    <string name="log_no_logbook_to_view">Noch kein Bordbuch zum Ansehen -- zuerst synchronisieren.</string>
+    <string name="error_unexpected_sync">Unerwarteter Fehler während des Downloads: %1$s</string>
+    <string name="log_no_logbook_to_view">Noch kein Bordbuch zum Ansehen -- zuerst herunterladen.</string>
     <string name="log_no_ebl_files_to_build">Noch keine .ebl-Dateien auf diesem Gerät -- nichts zu erstellen.</string>
     <string name="log_publish_not_configured">Kein Veröffentlichungsziel eingerichtet -- Veröffentlichen-Schaltfläche deaktiviert.</string>
     <string name="log_fill_publish_settings">Trage zuerst die Veröffentlichungseinstellungen (REST oder SFTP) in den Einstellungen ein.</string>
@@ -43,14 +43,14 @@
     <string name="status_ready_updated">Fertig (Bordbuch aktualisiert).</string>
     <string name="status_ready_with_download">Fertig: %1$d Fahrt(en), %2$d Datei(en) heruntergeladen.</string>
     <string name="status_ready_no_download">Fertig: %1$d Fahrt(en) (vorhandene Daten, nicht erneut heruntergeladen).</string>
-    <string name="status_sync_stopped">Synchronisierung gestoppt. Beim nächsten Mal wird dort fortgesetzt, wo sie aufgehört hat.</string>
+    <string name="status_sync_stopped">Download gestoppt. Beim nächsten Mal wird dort fortgesetzt, wo er aufgehört hat.</string>
     <string name="status_build_stopped">Erstellen gestoppt. Beim nächsten Mal wird dort fortgesetzt, wo es aufgehört hat.</string>
     <string name="error_generic_prefix">Fehler: %1$s</string>
     <string name="error_unknown">unbekannter Fehler</string>
     <string name="error_logbook_display_failed">Bordbuch konnte nicht angezeigt werden: %1$s</string>
     <string name="dialog_build_logbook_button">Bordbuch erstellen...</string>
     <string name="dialog_close_app_button">App schließen</string>
-    <string name="status_sync_cancelled">Synchronisierung abgebrochen.</string>
+    <string name="status_sync_cancelled">Download abgebrochen.</string>
     <string name="status_build_cancelled">Erstellen abgebrochen.</string>
     <string name="status_building_with_existing_data">Bordbuch wird mit vorhandenen Daten erstellt...</string>
     <string name="error_unexpected">Unerwarteter Fehler: %1$s</string>
@@ -72,12 +72,12 @@
     <string name="log_notification_could_not_be_shown">Benachrichtigung konnte nicht angezeigt werden: %1$s</string>
 
     <!-- Notifications -->
-    <string name="notif_channel_name">Synchronisierung</string>
+    <string name="notif_channel_name">Download</string>
     <string name="notif_channel_description">Wird angezeigt, wenn die App das Bordbuch abruft und verarbeitet.</string>
     <string name="notif_app_closing_after_upload">Die App wird geschlossen, sobald der Upload abgeschlossen ist.</string>
     <string name="notif_sync_interrupted_by_close">Durch Schließen unterbrochen -- wird beim nächsten Mal fortgesetzt.</string>
     <string name="notif_action_view_live_site">Live-Website ansehen</string>
-    <string name="status_sync_already_running_fallback">Synchronisierung läuft bereits...</string>
+    <string name="status_sync_already_running_fallback">Download läuft bereits...</string>
     <string name="status_downloading_processing_fallback">Wird heruntergeladen und verarbeitet...</string>
 
     <!-- Settings screen -->
@@ -110,9 +110,9 @@
     <string name="toast_cache_cleared">Cache geleert</string>
     <string name="button_cancel">Abbrechen</string>
     <string name="button_cache_data">Cache: Daten</string>
-    <string name="dialog_clear_data_cache_message">Alle dekodierten und erstellten Fahrtdaten löschen? Die nächste Synchronisierung dekodiert und verarbeitet dann alle .ebl-Dateien erneut von Anfang an (dauert länger, aber es geht nichts verloren -- die .ebl-Dateien selbst bleiben erhalten).</string>
+    <string name="dialog_clear_data_cache_message">Alle dekodierten und erstellten Fahrtdaten löschen? Der nächste Download dekodiert und verarbeitet dann alle .ebl-Dateien erneut von Anfang an (dauert länger, aber es geht nichts verloren -- die .ebl-Dateien selbst bleiben erhalten).</string>
     <string name="button_cache_places">Cache: Ortsnamen</string>
-    <string name="dialog_clear_places_cache_message">Alle abgerufenen Ortsnamen, Wetter- und Wellendaten löschen? Die nächste Synchronisierung ruft diese dann erneut ab (kostet zusätzliche mobile Daten).</string>
+    <string name="dialog_clear_places_cache_message">Alle abgerufenen Ortsnamen, Wetter- und Wellendaten löschen? Der nächste Download ruft diese dann erneut ab (kostet zusätzliche mobile Daten).</string>
     <string name="button_save">Speichern</string>
     <string name="toast_username_password_required">Benutzername und Passwort sind erforderlich</string>
     <string name="toast_settings_saved">Einstellungen gespeichert</string>
@@ -134,6 +134,7 @@
     <string name="checkbox_boat_auto_start">Automatisch starten, wenn die App am W2K-2 geöffnet wird (Hotspot an)</string>
     <string name="tooltip_boat_mode">Boot-Modus starten</string>
     <string name="tooltip_boat_mode_on">Boot-Modus beenden</string>
+    <string name="boat_log_enabled">Der Boot-Modus ist eingeschaltet (gestartet über die Uhr-Schaltfläche oder die Einstellungen).</string>
     <string name="boat_log_simulation">Boot-Modus (Simulation): Die Zeit läuft 30-mal schneller, es wird nichts wirklich heruntergeladen oder veröffentlicht.</string>
     <string name="boat_status_searching">Boot-Modus: Suche nach dem W2K-2...</string>
     <string name="boat_status_round_started">Boot-Modus: Runde gestartet (Herunterladen und Erstellen)...</string>

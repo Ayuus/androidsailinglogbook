@@ -40,11 +40,11 @@ import java.io.File
 import java.security.Security
 
 /**
- * The full sync flow: hotspot detection, download from the W2K-2, decode+build the logbook, show
- * it in-app, then (only if the owner filled in the "Publish to ayuus.com" settings) publish
+ * The full download flow: hotspot detection, download from the W2K-2, decode+build the logbook,
+ * show it in-app, then (only if the owner filled in the "Publish to ayuus.com" settings) publish
  * it via REST or SFTP -- see RestUploader/SftpUploader. Runs automatically once per app
- * launch (see onCreate()'s own savedInstanceState check) and via the manual "Nu synchroniseren" button.
- * WorkManager-based periodic background scheduling (no app open at all) is still a later step.
+ * launch (see onCreate()'s own savedInstanceState check) and via the manual download button.
+ * Boat mode (see BootModeService) covers periodic background work with no app open at all.
  */
 class MainActivity : AppCompatActivity() {
 
@@ -102,8 +102,8 @@ class MainActivity : AppCompatActivity() {
         // no way to intercept a hard process kill from inside the app, so this is the next best
         // guarantee: whatever's stale gets cleared the moment the app is next opened, rather than
         // sitting there forever. Only when nothing is in progress -- a genuinely still-running
-        // sync's own notification must survive a fresh Activity instance being created on top of
-        // it (e.g. a process restart while a sync is still alive), same guard as the other two.
+        // download's own notification must survive a fresh Activity instance being created on top
+        // of it (e.g. a process restart while a download is still alive), same guard as the other two.
         if (!SyncState.inProgress) {
             NotificationManagerCompat.from(this).cancel(SyncNotificationService.NOTIFICATION_ID)
             NotificationManagerCompat.from(this).cancel(SyncNotificationService.REOPEN_NOTIFICATION_ID)
@@ -111,31 +111,24 @@ class MainActivity : AppCompatActivity() {
 
         val padding = (16 * resources.displayMetrics.density).toInt()
 
-        // Icon buttons (asked for explicitly): sync + publish top-left, settings top-right --
-        // plain emoji as the button label, same approach as the language-switcher flags in
-        // html_writer.py, so this doesn't need any drawable/vector icon assets of its own.
-        // ↺ and ⚙ specifically, not 🔄/⚙️ -- found in practice (asked to fix): 🔄's official
-        // Unicode name is "arrows button" and it (and ⚙️, the variation-selected, emoji-
-        // presentation gear) render on this device with a visible rounded-square badge baked
-        // into the glyph itself, inconsistent with ☁️/✕ which don't have one. ↺ (a plain
-        // dingbat, U+21BA) and ⚙ (the same gear character without the U+FE0F emoji variation
-        // selector, requesting *text* presentation instead) render as plain glyphs with no badge.
-        // Tapping this while a sync (or offline build) is already running cancels it instead of
-        // starting a new one -- see cancelSyncStayInApp()'s own doc comment for why.
-        syncButton = iconButton(
-            // -12px was the originally measured value on a ~3.0-density phone; -4dp reproduces
-            // that same on-screen shift there (now density-scaled, see iconButton()) while
-            // scaling down correctly on lower-density screens.
-            getString(R.string.tooltip_sync), emoji = "↺", emojiSize = 30f, emojiBold = true, verticalNudgePx = -4f,
-        ) {
+        // Icon buttons (asked for explicitly): download + publish top-left, settings top-right --
+        // every one a real Material vector icon (see each one's own comment below, and
+        // iconButton()'s own doc comment for the emoji-button option they all moved away from).
+        // Standard Material "download" glyph (ic_download_24), not the ↺ emoji it replaced --
+        // asked for explicitly, alongside renaming "Synchroniseren" to "Downloaden" throughout:
+        // the button downloads new .ebl files from the W2K-2, "sync" was never quite the right
+        // word for that one-directional flow. Tapping it while a download (or offline build) is
+        // already running cancels it instead of starting a new one -- see cancelSyncStayInApp()'s
+        // own doc comment for why.
+        syncButton = iconButton(getString(R.string.tooltip_sync), iconRes = R.drawable.ic_download_24) {
             if (SyncState.inProgress) cancelSyncStayInApp() else runSync()
-        } // ↺
+        }
         // Dedicated, always-enabled build button (ic_cpu_24, a chip/processor glyph) -- decodes
         // and builds the logbook from whatever .ebl files are already on the device, no W2K-2 or
         // publish settings needed. Split out from ☁️ (asked for explicitly, after first trying
-        // ☁️ itself switching modes): sync only ever fetches, so a separate, always-present way
-        // to (re)build from what's already local reads clearer than one button quietly changing
-        // what it does depending on Instellingen.
+        // ☁️ itself switching modes): the download button only ever fetches, so a separate,
+        // always-present way to (re)build from what's already local reads clearer than one button
+        // quietly changing what it does depending on Instellingen.
         buildButton = iconButton(getString(R.string.tooltip_build_local), iconRes = R.drawable.ic_cpu_24) {
             // While its own run is in progress this is the (only enabled) cancel button, see
             // updatePublishButtonEnabled().
@@ -149,8 +142,8 @@ class MainActivity : AppCompatActivity() {
         publishButton = iconButton(getString(R.string.tooltip_publish), iconRes = R.drawable.ic_upload_24) {
             if (SyncState.inProgress) cancelSyncStayInApp() else runPublish()
         }
-        // Loads whatever logbook.html is already on the phone into the WebView, without syncing
-        // or publishing anything -- asked for explicitly, for when the owner just wants to check
+        // Loads whatever logbook.html is already on the phone into the WebView, without
+        // downloading or publishing anything -- asked for explicitly, for when the owner just wants to check
         // the already-built logbook (e.g. after switching "Automatisch publiceren na bouwen" off
         // in Instellingen) without that also sending it to ayuus.com. Material's "article" icon
         // (ic_article_24), not the 📖 emoji it replaced -- asked for explicitly, found in
@@ -163,17 +156,20 @@ class MainActivity : AppCompatActivity() {
         bootButton = iconButton(getString(R.string.tooltip_boat_mode), iconRes = R.drawable.ic_schedule_24) {
             toggleBootMode()
         }
-        val settingsButton = iconButton(getString(R.string.tooltip_settings), emoji = "⚙") {
+        // Material's own "settings" icon (ic_settings_24), not the ⚙ emoji it replaced -- asked
+        // for explicitly, so every toolbar icon is a real Material vector, uniformly.
+        val settingsButton = iconButton(getString(R.string.tooltip_settings), iconRes = R.drawable.ic_settings_24) {
             startActivity(Intent(this@MainActivity, SettingsActivity::class.java))
-        } // ⚙
+        }
         // No standalone toolbar close button (removed -- asked for explicitly, found in
-        // practice: unclear what tapping it actually did, since it both cancelled a running sync
-        // and left the app entirely in one tap). The back button/swiping away from Recents cover
-        // "actually leave" on their own (see onDestroy()/onTaskRemoved(), both of which already
-        // stop a running sync and post the same "tap to reopen" notification
+        // practice: unclear what tapping it actually did, since it both cancelled a running
+        // download and left the app entirely in one tap). The back button/swiping away from
+        // Recents cover "actually leave" on their own (see onDestroy()/onTaskRemoved(), both of
+        // which already stop a running download and post the same "tap to reopen" notification
         // closeAppAndCancelSync() does -- that function itself stays, still used by the
         // offline/close dialog's own "App sluiten" button, see showOfflineOrCloseDialog()), and
-        // ↺ now separately covers "cancel without leaving" (see cancelSyncStayInApp()).
+        // the download button now separately covers "cancel without leaving" (see
+        // cancelSyncStayInApp()).
 
         // Shows the exact same "[info]"/"[ok]"/"[skip]"/"[warning]" lines the desktop CLI prints
         // (see log.py's set_log_sink(), wired up in android_entry.py) -- the only progress/status
@@ -212,18 +208,17 @@ class MainActivity : AppCompatActivity() {
             visibility = View.GONE
         }
 
-        // Sync + publish + view-local icons top-left, settings top-right (asked for explicitly)
-        // -- a weight-1 empty spacer pushes settingsButton to the far right without needing a
-        // second, nested layout.
+        // Download + publish + view-local icons top-left, settings top-right (asked for
+        // explicitly) -- a weight-1 empty spacer pushes settingsButton to the far right without
+        // needing a second, nested layout.
         val buttonRow = LinearLayout(this).apply {
             orientation = LinearLayout.HORIZONTAL
             // Off by default a horizontal LinearLayout aligns children on their text baseline --
-            // harmless while every button used the same emoji textSize, but syncButton's larger,
-            // bolder ↺ (see iconButton()'s emojiSize/emojiBold) sits on a different baseline than
-            // the plain-icon buttons (no text at all) and settingsButton's smaller ⚙, so it drifted
-            // a few pixels above the rest (found in practice). Centering vertically instead ignores
-            // baselines entirely and keeps every button's visual center aligned regardless of its
-            // own content size.
+            // was needed while these buttons still mixed plain-icon (no text at all) and
+            // plain-emoji-text ones, which drifted a few pixels apart on their own baselines
+            // (found in practice); left in place now that every button is a plain-icon one, since
+            // centering vertically is at least as correct and one less thing to revisit if a
+            // future button goes back to a plain-emoji label.
             isBaselineAligned = false
             gravity = Gravity.CENTER_VERTICAL
             addView(syncButton)
@@ -312,8 +307,12 @@ class MainActivity : AppCompatActivity() {
         // themselves.
         if (savedInstanceState == null && BootModeStateStore(this).isActive) {
             // The boat mode is running in its service (the app was closed and is opened again, e.g. from
-            // its notification): show what it is doing, and leave the rounds to it -- no sync of our own.
+            // its notification): show what it is doing, and leave the rounds to it -- no download of our
+            // own. Logged explicitly, every fresh open, not left to be inferred from the state machine's
+            // own status lines (which only fire on its own phase changes, not on the app simply reopening) --
+            // asked for explicitly, so it is never in doubt whether the mode is still on.
             showBootModeLog()
+            handleLogLine("[info] " + getString(R.string.boat_log_enabled))
             sendBootAction(BootModeService.ACTION_RESUME)
         } else if (savedInstanceState == null && !SyncState.inProgress && shouldAutoStartBootMode()) {
             // "Start automatically" (Instellingen): opened at the boat, hotspot on -- the mode finds the
@@ -323,14 +322,15 @@ class MainActivity : AppCompatActivity() {
         } else if (savedInstanceState == null) {
             // Asked for explicitly: opt-out via Instellingen ("Automatisch downloaden bij
             // starten") for whoever doesn't want opening the app to try reaching the W2K-2 on its
-            // own -- a manual ↺ tap still works exactly the same either way.
+            // own -- a manual tap on the download button still works exactly the same either way.
             if (settingsStore.autoSyncOnLaunch) {
                 autoStartSyncWithSettingsRetry()
             } else {
                 // Shows whatever's already on the phone right away (asked for explicitly) --
                 // exactly what tapping 📖 itself does, not a separate code path of its own. Without
                 // this, the log's own placeholder text would sit there doing nothing until the
-                // owner tapped something (📖, or ↺ to sync anyway) -- onResume(), called right
+                // owner tapped something (📖, or the download button to download anyway) --
+                // onResume(), called right
                 // after this either way, only loads the file into the WebView underneath; it
                 // doesn't also switch to 📖's fully-covering layout the way this does.
                 viewLocalLogbook()
@@ -376,12 +376,12 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
-    /** Restores full live sync state (log, progress bar) from SyncState's own cached fields (see
-     * there) -- called whenever this Activity instance becomes the active one while a sync is
-     * already known to be in progress, instead of showing a static, never-updating placeholder
-     * (found in practice, a real bug -- see SyncState.active's own doc comment). Harmless to call
-     * even when nothing has been cached yet (a sync that's only just started, before its very
-     * first progress update reached SyncState). */
+    /** Restores full live download state (log, progress bar) from SyncState's own cached fields
+     * (see there) -- called whenever this Activity instance becomes the active one while a
+     * download is already known to be in progress, instead of showing a static, never-updating
+     * placeholder (found in practice, a real bug -- see SyncState.active's own doc comment).
+     * Harmless to call even when nothing has been cached yet (a download that's only just
+     * started, before its very first progress update reached SyncState). */
     private fun restoreLiveSyncUi() {
         logView.text = SyncState.lastLogText
         logScroll.post { logScroll.fullScroll(View.FOCUS_DOWN) }
@@ -504,8 +504,8 @@ class MainActivity : AppCompatActivity() {
     private fun updatePublishButtonEnabled() {
         // While a run is in progress, the button that started it stays enabled and turns into a
         // stop button (tapping it cancels, see cancelSyncStayInApp()) -- the same toggle for the
-        // sync button, the build button and the publish button alike -- while the other two stay
-        // disabled.
+        // download button, the build button and the publish button alike -- while the other two
+        // stay disabled.
         val initiator = if (SyncState.inProgress) SyncState.runInitiator ?: RunInitiator.SYNC else null
         val running = initiator != null
         buildButton.isEnabled = !running || initiator == RunInitiator.BUILD
@@ -517,6 +517,7 @@ class MainActivity : AppCompatActivity() {
         }
         setCancelAppearance(buildButton, initiator == RunInitiator.BUILD, R.drawable.ic_cpu_24)
         setCancelAppearance(publishButton, initiator == RunInitiator.PUBLISH, R.drawable.ic_upload_24)
+        setCancelAppearance(syncButton, initiator == RunInitiator.SYNC, R.drawable.ic_download_24)
         ViewCompat.setTooltipText(
             publishButton,
             getString(
@@ -532,13 +533,12 @@ class MainActivity : AppCompatActivity() {
             getString(if (initiator == RunInitiator.BUILD) R.string.tooltip_cancel else R.string.tooltip_build_local),
         )
         if (running) {
-            // The sync button only ever cancels a sync it started itself; while a build/publish
-            // runs it is just disabled (updateSyncButtonAvailability() takes over again after).
+            // The download button only ever cancels a download it started itself; while a
+            // build/publish runs it is just disabled (updateSyncButtonAvailability() takes over
+            // again once nothing is running -- its own hotspot/W2K-2 check decides isEnabled
+            // then, not this function).
             syncButton.isEnabled = initiator == RunInitiator.SYNC
-            syncButton.text = if (initiator == RunInitiator.SYNC) "■" else "↺"
             if (initiator == RunInitiator.SYNC) ViewCompat.setTooltipText(syncButton, getString(R.string.tooltip_cancel))
-        } else {
-            syncButton.text = "↺"
         }
     }
 
@@ -547,30 +547,31 @@ class MainActivity : AppCompatActivity() {
         button.setCompoundDrawablesWithIntrinsicBounds(if (cancelling) R.drawable.ic_stop_24 else normalIconRes, 0, 0, 0)
     }
 
-    /** ↺ is disabled with an explanatory tooltip until a real scan confirms the W2K-2 is actually
-     * reachable -- asked for explicitly: HotspotDetector's own cheap, local, no-network-I/O check
-     * (still used first, below) only tells whether this device's own hotspot looks on, not
-     * whether the W2K-2 itself ever joined it, so a boat with the hotspot up but the W2K-2
-     * switched off (or just not yet connected) used to show ↺ as enabled right up until tapping
-     * it actually failed. Real confirmation needs android_entry.discover_w2k2_only() -- the same
-     * network scan a real sync does as its own first step (~1s, see w2k2_download.discover_w2k2's
-     * own doc comment), just standing alone and reported via DiscoverController instead of also
-     * downloading/building anything. Run off the main thread; HotspotDetector's cheap check still
-     * gates it first so a scan is only ever attempted when there's a real chance of finding
-     * something (this app's own history already avoided scanning on every single launch for no
-     * benefit, see autoStartSyncWithSettingsRetry()'s own doc comment). Like
-     * updatePublishButtonEnabled(), never overrides syncButton while a sync is already in
-     * progress (it deliberately stays enabled then, to double as the cancel button) -- and a scan
-     * already in flight when this is called again (e.g. onCreate() then onResume() in quick
-     * succession) is left to finish on its own rather than started twice. */
+    /** The download button is disabled with an explanatory tooltip until a real scan confirms
+     * the W2K-2 is actually reachable -- asked for explicitly: HotspotDetector's own cheap,
+     * local, no-network-I/O check (still used first, below) only tells whether this device's own
+     * hotspot looks on, not whether the W2K-2 itself ever joined it, so a boat with the hotspot
+     * up but the W2K-2 switched off (or just not yet connected) used to show the button as
+     * enabled right up until tapping it actually failed. Real confirmation needs
+     * android_entry.discover_w2k2_only() -- the same network scan a real download does as its
+     * own first step (~1s, see w2k2_download.discover_w2k2's own doc comment), just standing
+     * alone and reported via DiscoverController instead of also downloading/building anything.
+     * Run off the main thread; HotspotDetector's cheap check still gates it first so a scan is
+     * only ever attempted when there's a real chance of finding something (this app's own
+     * history already avoided scanning on every single launch for no benefit, see
+     * autoStartSyncWithSettingsRetry()'s own doc comment). Like updatePublishButtonEnabled(),
+     * never overrides syncButton while a download is already in progress (it deliberately stays
+     * enabled then, to double as the cancel button) -- and a scan already in flight when this is
+     * called again (e.g. onCreate() then onResume() in quick succession) is left to finish on its
+     * own rather than started twice. */
     private fun updateSyncButtonAvailability(logIfNotFound: Boolean = true) {
         if (SyncState.inProgress) return
         val subnetPrefix = HotspotDetector.detectSubnetPrefix()
         if (subnetPrefix == null) {
             // Its own tooltip, distinct from tooltip_w2k2_not_found below -- asked for
-            // explicitly: the two look the same at a glance (↺ just disabled either way) but mean
-            // different things -- this one means no scan was even attempted (nothing to scan
-            // *for* without a subnet to scan), while w2k2_not_found means a real scan ran and
+            // explicitly: the two look the same at a glance (the download button just disabled
+            // either way) but mean different things -- this one means no scan was even attempted
+            // (nothing to scan *for* without a subnet to scan), while w2k2_not_found means a real scan ran and
             // came back empty. Conflating them under one message misled into thinking a real
             // check had already ruled out the W2K-2, when nothing had actually been tried yet.
             //
@@ -602,14 +603,14 @@ class MainActivity : AppCompatActivity() {
                         // Same reasoning as the hotspot-not-on branch above: the tooltip alone
                         // isn't actually visible on a touch-only screen, so this is the log
                         // line most people will actually see. Not logged on success -- found
-                        // is the expected, self-explanatory outcome (↺ just works), nothing to
-                        // explain, and this can run again on every onResume() while the app
-                        // stays open near the boat, so a repeated "found" line would just be
-                        // noise for no benefit. logIfNotFound=false right after a sync just
-                        // finished (see its own call site): that check already logged this
-                        // exact same "not found" at the start of the run, so saying it again
-                        // right under a just-completed sync's own success line reads as if
-                        // something had gone wrong, when nothing changed at all.
+                        // is the expected, self-explanatory outcome (the download button just
+                        // works), nothing to explain, and this can run again on every onResume()
+                        // while the app stays open near the boat, so a repeated "found" line
+                        // would just be noise for no benefit. logIfNotFound=false right after a
+                        // download just finished (see its own call site): that check already
+                        // logged this exact same "not found" at the start of the run, so saying
+                        // it again right under a just-completed download's own success line
+                        // reads as if something had gone wrong, when nothing changed at all.
                         handleLogLine("[info] " + getString(R.string.log_sync_w2k2_not_found))
                     }
                     withActiveActivity {
@@ -652,24 +653,24 @@ class MainActivity : AppCompatActivity() {
         // background right now -- SyncNotificationService's android:stopWithTask="false" means
         // closing the app (or it getting recreated for any other reason) doesn't stop it (found
         // in practice: a fresh instance's own settings re-check raced against this and showed
-        // "vul eerst je instellingen in" over a sync that was actually still progressing fine,
+        // "vul eerst je instellingen in" over a download that was actually still progressing fine,
         // confusing but not actually broken). Nothing to auto-start in that case.
         //
         // Full live state is restored here too (found in practice, a second real bug on top of
         // the first): a brand new Activity instance's log/progress bar always start out blank/
         // hidden, and returning here without touching them left that placeholder state on screen
-        // indefinitely, even though the sync was genuinely progressing the whole time.
+        // indefinitely, even though the download was genuinely progressing the whole time.
         if (SyncState.inProgress) {
             restoreLiveSyncUi()
             return
         }
         if (settingsStore.isW2k2ConfigComplete) {
-            // Only actually starts a sync when the W2K-2's own hotspot looks reachable right now
-            // (a cheap, local, synchronous check -- see HotspotDetector, no network I/O) -- asked
-            // for explicitly: always trying (and usually failing, away from the boat) on every
-            // single app launch used to mean a visible "Hotspot controleren..." cycle each time,
-            // for no benefit when there was never any real chance of finding it. A real full sync
-            // (see runSync()) still does its own, more thorough discover_w2k2() scan, which can
+            // Only actually starts a download when the W2K-2's own hotspot looks reachable right
+            // now (a cheap, local, synchronous check -- see HotspotDetector, no network I/O) --
+            // asked for explicitly: always trying (and usually failing, away from the boat) on
+            // every single app launch used to mean a visible "Hotspot controleren..." cycle each
+            // time, for no benefit when there was never any real chance of finding it. A real full
+            // download (see runSync()) still does its own, more thorough discover_w2k2() scan, which can
             // still come back "not found" (the hotspot's on, but the W2K-2 itself never actually
             // joined it) -- that outcome (and this cheap check's own, right below) is always a
             // quiet log line + notification rather than a popup, auto-started or manual alike.
@@ -775,10 +776,10 @@ class MainActivity : AppCompatActivity() {
                     stopService(Intent(this, SyncNotificationService::class.java))
                     SyncState.notificationForegrounded = false
                     SyncState.notificationStartFailed = false
-                    // No popup, auto-started or manual ↺ tap alike (asked for explicitly) --
-                    // "W2K-2 not reachable yet" is the expected, common outcome of not being at
-                    // the boat, not something worth a modal interruption; the log line above plus
-                    // a real Android notification (in place of the ongoing sync one this
+                    // No popup, auto-started or manual download tap alike (asked for explicitly)
+                    // -- "W2K-2 not reachable yet" is the expected, common outcome of not being
+                    // at the boat, not something worth a modal interruption; the log line above
+                    // plus a real Android notification (in place of the ongoing download one this
                     // replaces) are enough either way.
                     SyncNotificationService.postNotFoundNotification(this, message)
                     SyncState.inProgress = false
@@ -799,8 +800,8 @@ class MainActivity : AppCompatActivity() {
                 startSyncNotification(listingIntent)
             }
             // Hoisted above the try block so the finally below can still see the outcome --
-            // needed to decide between a plain "sync stopped" cleanup and posting the "Voltooid"
-            // completion notification (see SyncNotificationService.postCompletionNotification()).
+            // needed to decide between a plain "download stopped" cleanup and posting the
+            // "Voltooid" completion notification (see SyncNotificationService.postCompletionNotification()).
             var syncSucceeded = false
             var didPublish = false
             try {
@@ -855,8 +856,8 @@ class MainActivity : AppCompatActivity() {
             } finally {
                 // Real, must-always-happen state -- not gated behind withActiveActivity (which
                 // no-ops when nothing is currently active, e.g. the app is fully backgrounded
-                // right as the sync finishes): SyncState.inProgress staying stuck true forever
-                // would block every later sync attempt, and this instance is a valid Context for
+                // right as the download finishes): SyncState.inProgress staying stuck true forever
+                // would block every later download attempt, and this instance is a valid Context for
                 // stopService()/postCompletionNotification() regardless of whether it's the
                 // currently active one.
                 stopService(Intent(this, SyncNotificationService::class.java))
@@ -904,7 +905,7 @@ class MainActivity : AppCompatActivity() {
         }
         showingLocalLogbook = true
         // Fully hides the log rather than leaving setLogExpanded(false)'s own small collapsed
-        // strip (still used as-is after a normal sync/publish completes) -- asked for explicitly,
+        // strip (still used as-is after a normal download/publish completes) -- asked for explicitly,
         // this view is meant to cover the whole screen, not share it with a log peek.
         logScroll.layoutParams = LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, 0)
         webView.layoutParams = LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, 0, 1f)
@@ -1279,9 +1280,9 @@ class MainActivity : AppCompatActivity() {
             setLogExpanded(false)
             loadLogbookIntoWebView(result.htmlPath)
         } else if (result.cancelled) {
-            // The app was closed mid-sync (see onDestroy()) -- by the time this runs the Activity
-            // is normally already gone, so this mostly matters when cancellation raced a rotation
-            // (config change) instead. The next "Nu synchroniseren" simply resumes where it left
+            // The app was closed mid-download (see onDestroy()) -- by the time this runs the
+            // Activity is normally already gone, so this mostly matters when cancellation raced a
+            // rotation (config change) instead. The next download simply resumes where it left
             // off, no special handling needed (see _needs_download() in w2k2_download.py).
             // The build and publish buttons end up here too: say which one was stopped.
             val resultText = getString(
@@ -1437,13 +1438,14 @@ class MainActivity : AppCompatActivity() {
         android.os.Process.killProcess(android.os.Process.myPid())
     }
 
-    /** Tapping ↺ again while the app's own auto-start sync (see autoStartSyncWithSettingsRetry())
-     * is already running it -- asked for explicitly: that auto-start has no way to be skipped, so
-     * opening the app to use ☁️ Publiceren on its own (re-send an already-built logbook.html
-     * without a fresh sync) was never actually reachable, both buttons stay disabled for as long
-     * as the auto-started sync keeps running. Unlike closeAppAndCancelSync(), the app stays open
-     * and runSync()'s own Thread (once it notices the cancellation, same as any other cancelled
-     * sync) re-enables both buttons itself in its finally block -- nothing else to do here. */
+    /** Tapping the download button again while the app's own auto-start download (see
+     * autoStartSyncWithSettingsRetry()) is already running it -- asked for explicitly: that
+     * auto-start has no way to be skipped, so opening the app to use ☁️ Publiceren on its own
+     * (re-send an already-built logbook.html without a fresh download) was never actually
+     * reachable, both buttons stay disabled for as long as the auto-started download keeps
+     * running. Unlike closeAppAndCancelSync(), the app stays open and runSync()'s own Thread
+     * (once it notices the cancellation, same as any other cancelled download) re-enables both
+     * buttons itself in its finally block -- nothing else to do here. */
     private fun cancelSyncStayInApp() {
         cancelSync()
         val cancelledText = getString(
@@ -1713,13 +1715,15 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
-    /** A Button that's just a toolbar icon (tight padding, no background) -- either a single
-     * emoji glyph (still used for ↺/⚙, which never had a legibility complaint), or a real
+    /** A Button that's just a toolbar icon (tight padding, no background) -- either a real
      * Material vector icon (iconRes) shown as a compound "drawable" with no text, tinted to
-     * match the button's own default text color so it follows the app's DayNight theme the same
-     * way the emoji glyphs already did (found in practice: ☁️ alone for "publish" and 📖 for
-     * "view the logbook" both read as unclear/too old-fashioned respectively -- asked for
-     * explicitly to replace with recognizable Material icons instead: ic_upload_24, ic_article_24).
+     * match the button's own default text color so it follows the app's DayNight theme, or a
+     * single emoji glyph (no call site uses this any more -- every toolbar button became a real
+     * Material vector eventually, asked for explicitly each time, for uniformity: ic_upload_24
+     * and ic_article_24 replaced ☁️/📖 for reading as unclear/too old-fashioned, ic_download_24
+     * replaced ↺, ic_settings_24 replaced ⚙ last -- but kept as an option here, being the
+     * cheapest way to add a button with no Material icon of its own, same approach as the
+     * language-switcher flags in html_writer.py's HTML output).
      * tooltip shows on a long-press (standard Android behavior for View.setTooltipText(), asked
      * for explicitly, covers both styles the same way). */
     private fun iconButton(
@@ -1727,8 +1731,6 @@ class MainActivity : AppCompatActivity() {
         emoji: String? = null,
         iconRes: Int? = null,
         emojiSize: Float = 26f,
-        emojiBold: Boolean = false,
-        verticalNudgePx: Float = 0f,
         onClick: () -> Unit,
     ): Button {
         val size = (16 * resources.displayMetrics.density).toInt()
@@ -1747,29 +1749,16 @@ class MainActivity : AppCompatActivity() {
                 // The button's own per-state text colors (not valueOf(currentTextColor), a single
                 // fixed color): that made a disabled icon button look exactly like an enabled one
                 // (found in practice: the ☁️ publish icon looked active while it was disabled,
-                // whereas ↺, being text, dimmed on its own).
+                // whereas a text button dims on its own).
                 compoundDrawableTintList = textColors
             } else {
                 text = emoji
                 // Bumped up from 20f (asked for explicitly, found in practice: next to the real
-                // 24dp Material icons above, the plain-text emoji glyphs read noticeably smaller
-                // even at the same nominal size) -- brings ↺/⚙ closer to the same visual weight.
-                // syncButton overrides emojiSize/emojiBold further still (asked for explicitly:
-                // ↺ alone still read too small/thin after this general bump).
+                // 24dp Material icons above, the plain-text ⚙ glyph read noticeably smaller even
+                // at the same nominal size) -- brings it closer to their visual weight.
                 textSize = emojiSize
-                if (emojiBold) setTypeface(typeface, android.graphics.Typeface.BOLD)
             }
             setPadding(size, size / 2, size, size / 2)
-            // Row-level centering (see buttonRow's isBaselineAligned/gravity) aligns each button's
-            // whole bounding box, not the visible ink inside it -- doesn't help when a specific
-            // glyph's own font metrics place its ink off-center within that box. Measured directly
-            // on-device (found in practice): ↺ at emojiBold/30f sits ~12px lower than the vector
-            // icons' visible ink even though their boxes now line up, so it alone gets nudged.
-            // verticalNudgePx is in dp, scaled to this device's actual pixel density here -- found
-            // in practice on a second, lower-density tablet: a raw (un-scaled) px nudge tuned on
-            // one phone's screen translated to a visibly larger shift (the icon sitting noticeably
-            // too high) on a device with fewer pixels per dp.
-            if (verticalNudgePx != 0f) translationY = verticalNudgePx * resources.displayMetrics.density
             setBackgroundResource(backgroundValue.resourceId)
             minWidth = 0
             minimumWidth = 0
@@ -1827,26 +1816,26 @@ class MainActivity : AppCompatActivity() {
         updatePublishButtonEnabled()
         updateSyncButtonAvailability()
         updateBootButton()
-        // Brings logView/the progress bar up to date with whatever a sync -- still in
+        // Brings logView/the progress bar up to date with whatever a download -- still in
         // progress, or one that already finished while this Activity wasn't the active one --
         // has produced so far. Not gated on SyncState.inProgress alone: found in practice, a
-        // real, reported "app hangs" bug -- a sync that finishes while the app is backgrounded
-        // runs its own finally block (showSyncResult()/hideProgressBar()) entirely through
-        // withActiveActivity, which no-ops with nothing active to update; by the time this
-        // Activity resumes, inProgress is already back to false, so the old "still in progress"-
-        // only condition here skipped restoring anything at all, leaving whatever mid-sync
-        // progress bar/log text was on screen before backgrounding frozen there indefinitely --
-        // looking exactly like a hang, even though the sync itself had completed normally.
-        // lastStatusText is only ever null before the very first sync this install has ever run,
-        // in which case there's nothing to restore and onCreate()'s own placeholder text is
-        // still correct as-is.
+        // real, reported "app hangs" bug -- a download that finishes while the app is
+        // backgrounded runs its own finally block (showSyncResult()/hideProgressBar()) entirely
+        // through withActiveActivity, which no-ops with nothing active to update; by the time
+        // this Activity resumes, inProgress is already back to false, so the old "still in
+        // progress"-only condition here skipped restoring anything at all, leaving whatever
+        // mid-download progress bar/log text was on screen before backgrounding frozen there
+        // indefinitely -- looking exactly like a hang, even though the download itself had
+        // completed normally. lastStatusText is only ever null before the very first download
+        // this install has ever run, in which case there's nothing to restore and onCreate()'s
+        // own placeholder text is still correct as-is.
         if (SyncState.inProgress || SyncState.lastStatusText != null) {
             restoreLiveSyncUi()
         }
         // Same background-completion gap as above, but for the WebView specifically: loading the
         // freshly-built logbook only ever happens inside showSyncResult()'s own success branch,
         // which (like the rest of that finally block) silently no-ops via withActiveActivity if
-        // this Activity wasn't the active one when a sync finished. Without this, the status text
+        // this Activity wasn't the active one when a download finished. Without this, the status text
         // above would correctly say "Klaar: N reis(en)..." after reopening the app, while the map/
         // table underneath it kept showing whatever logbook (possibly none at all) was loaded
         // before backgrounding -- reopening the app to check on the wait wouldn't actually show
