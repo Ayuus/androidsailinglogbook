@@ -138,6 +138,8 @@
     <string name="boat_log_enabled">Le mode bateau est activé (démarré via le bouton horloge ou les Paramètres).</string>
     <string name="boat_log_simulation">Mode bateau (simulation) : le temps passe 30 fois plus vite, rien n\'est réellement téléchargé ni publié.</string>
     <string name="boat_status_searching">Mode bateau : recherche du W2K-2...</string>
+    <string name="boat_notif_last_check_with_next">(dernier contrôle %1$s, prochain %2$s)</string>
+    <string name="boat_notif_last_check">(dernier contrôle %1$s)</string>
     <string name="boat_status_round_started">Mode bateau : ronde démarrée (téléchargement et construction)...</string>
     <string name="boat_status_round_done">Mode bateau : ronde terminée, prochaine ronde à %1$s.</string>
     <string name="boat_status_round_failed">Mode bateau : ronde échouée, nouvel essai.</string>

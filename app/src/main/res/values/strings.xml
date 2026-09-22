@@ -146,6 +146,10 @@
     <string name="boat_log_enabled">Boat mode is on (started via the clock button or Instellingen).</string>
     <string name="boat_log_simulation">Boat mode (simulation): time runs 30x faster and nothing is really downloaded or published.</string>
     <string name="boat_status_searching">Boat mode: looking for the W2K-2...</string>
+    <!-- Quiet notification-only addition (no log line) while the search above keeps retrying with
+         nothing new to report; see BootModeService.refreshLastProbeTime(). -->
+    <string name="boat_notif_last_check_with_next">(last check %1$s, next %2$s)</string>
+    <string name="boat_notif_last_check">(last check %1$s)</string>
     <string name="boat_status_round_started">Boat mode: round started (download and build)...</string>
     <string name="boat_status_round_done">Boat mode: round done, next round at %1$s.</string>
     <string name="boat_status_round_failed">Boat mode: round failed, trying again.</string>

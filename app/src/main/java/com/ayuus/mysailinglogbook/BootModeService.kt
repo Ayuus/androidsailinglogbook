@@ -27,6 +27,9 @@ class BootModeService : Service() {
     private var controller: BootModeController? = null
     private var wakeLock: PowerManager.WakeLock? = null
     private var statusText: String = ""
+    // A quiet, no-log addition to statusText -- see refreshLastProbeTime() -- cleared whenever a
+    // real status arrives (showStatus/showProgress) so it never survives onto unrelated text.
+    private var lastProbeSuffix: String = ""
 
     override fun onBind(intent: Intent?): IBinder? = null
 
@@ -85,6 +88,7 @@ class BootModeService : Service() {
             userRunBusy = { SyncState.inProgress },
             scheduleTick = { realAt -> scheduleAlarm(realAt) },
             onStatus = { kind, nextAt -> showStatus(kind, nextAt) },
+            onProbeCompleted = { nextCheckAt -> refreshLastProbeTime(nextCheckAt) },
             onStateChanged = { json -> store.stateJson = json },
             onActiveChanged = { SyncState.active?.updateBootButton() },
             onStopService = { finish() },
@@ -103,6 +107,7 @@ class BootModeService : Service() {
      * notification's text, not the log, which has its own (Python's) lines. From any thread. */
     private fun showProgress(text: String) {
         statusText = text
+        lastProbeSuffix = ""
         (getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager).notify(NOTIFICATION_ID, buildNotification())
     }
 
@@ -110,8 +115,28 @@ class BootModeService : Service() {
         val text = BootStatusText.format(this, kind, nextAt) ?: return
         AppLog.post(this, "[info] $text")
         statusText = text
+        lastProbeSuffix = ""
         (getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager).notify(NOTIFICATION_ID, buildNotification())
     }
+
+    /** A probe just found nothing new to report -- the state machine itself deliberately raises
+     * no status for a repeated miss (see BootModeController's own onProbeCompleted doc), so
+     * without this the notification text would sit unchanged for as long as the search keeps
+     * retrying, reading as stuck (asked for explicitly, found in practice). Only the notification
+     * updates, appended onto the existing status text rather than replacing it -- no log line, so
+     * this can fire every few minutes without spamming the log the state machine stays quiet
+     * about on purpose. */
+    private fun refreshLastProbeTime(nextCheckAt: Long?) {
+        val now = timeFormat().format(java.util.Date())
+        lastProbeSuffix = if (nextCheckAt != null) {
+            " " + getString(R.string.boat_notif_last_check_with_next, now, timeFormat().format(java.util.Date(nextCheckAt)))
+        } else {
+            " " + getString(R.string.boat_notif_last_check, now)
+        }
+        (getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager).notify(NOTIFICATION_ID, buildNotification())
+    }
+
+    private fun timeFormat() = java.text.SimpleDateFormat("HH:mm", java.util.Locale.getDefault())
 
     private fun scheduleAlarm(realAt: Long?) {
         val alarms = getSystemService(Context.ALARM_SERVICE) as AlarmManager
@@ -134,10 +159,11 @@ class BootModeService : Service() {
     private fun buildNotification(): Notification {
         val working = BootModeStateStore.isWorking(BootModeStateStore(this).stateJson)
         val icon = if (working) android.R.drawable.stat_sys_download else R.drawable.ic_schedule_filled_24
+        val displayText = statusText + lastProbeSuffix
         return NotificationCompat.Builder(this, CHANNEL_ID)
             .setContentTitle(getString(R.string.app_name))
-            .setContentText(statusText)
-            .setStyle(NotificationCompat.BigTextStyle().bigText(statusText))
+            .setContentText(displayText)
+            .setStyle(NotificationCompat.BigTextStyle().bigText(displayText))
             .setSmallIcon(icon)
             .setOngoing(true)
             .setOnlyAlertOnce(true)

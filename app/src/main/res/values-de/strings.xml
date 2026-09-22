@@ -138,6 +138,8 @@
     <string name="boat_log_enabled">Der Boot-Modus ist eingeschaltet (gestartet über die Uhr-Schaltfläche oder die Einstellungen).</string>
     <string name="boat_log_simulation">Boot-Modus (Simulation): Die Zeit läuft 30-mal schneller, es wird nichts wirklich heruntergeladen oder veröffentlicht.</string>
     <string name="boat_status_searching">Boot-Modus: Suche nach dem W2K-2...</string>
+    <string name="boat_notif_last_check_with_next">(letzte Prüfung %1$s, nächste %2$s)</string>
+    <string name="boat_notif_last_check">(letzte Prüfung %1$s)</string>
     <string name="boat_status_round_started">Boot-Modus: Runde gestartet (Herunterladen und Erstellen)...</string>
     <string name="boat_status_round_done">Boot-Modus: Runde abgeschlossen, nächste Runde um %1$s.</string>
     <string name="boat_status_round_failed">Boot-Modus: Runde fehlgeschlagen, neuer Versuch.</string>

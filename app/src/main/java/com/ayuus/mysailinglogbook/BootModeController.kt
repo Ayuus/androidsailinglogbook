@@ -55,6 +55,14 @@ class BootModeController(
     private val scheduleTick: (realAt: Long?) -> Unit,
     /** A status the user should be told (main thread): [kind] is a bootmode.Status name, [nextAt] a virtual time or null. */
     private val onStatus: (kind: String, nextAt: Long?) -> Unit,
+    /** A probe just came back with nothing new to report -- no Notify at all this step, which the
+     * state machine deliberately skips on a repeated miss (see bootmode.py's SEARCHING/IDLE
+     * handling: one more failed retry is not news worth a fresh log line every few minutes).
+     * [nextCheckRealAt] is the real time of the retry this same step just scheduled (main
+     * thread). Lets the notification show it is still alive without touching the log (asked for
+     * explicitly, found in practice: the notification text sat unchanged for hours of genuinely
+     * still-retrying probes, reading as stuck). */
+    private val onProbeCompleted: (nextCheckRealAt: Long?) -> Unit,
     /** The state machine's new state as JSON, to be persisted; after every step, on the worker thread. */
     private val onStateChanged: (stateJson: String) -> Unit,
     /** Called with true once the mode runs and false once it is off again (main thread). */
@@ -98,7 +106,26 @@ class BootModeController(
         stateJson = state.toString()
         onStateChanged(stateJson)
         val actions = result.getJSONArray("actions")
-        for (i in 0 until actions.length()) perform(actions.getJSONObject(i))
+        var notified = false
+        var scheduledAt: Long? = null
+        var hasScheduleAction = false
+        for (i in 0 until actions.length()) {
+            val action = actions.getJSONObject(i)
+            perform(action)
+            when (action.getString("type")) {
+                "notify" -> notified = true
+                "schedule_tick" -> {
+                    hasScheduleAction = true
+                    scheduledAt = if (action.isNull("at")) null else clock.realAt(action.getLong("at"))
+                }
+            }
+        }
+        // A probe that came back with literally nothing to say (no notify at all this step) is
+        // exactly bootmode.py's silent "still searching/waiting, try again later" case -- the
+        // only one onProbeCompleted() needs to fire for.
+        if (event.getString("type") == "probe" && !notified && hasScheduleAction) {
+            handler.post { onProbeCompleted(scheduledAt) }
+        }
         val active = state.getString("phase") != "OFF"
         if (active != wasActive) {
             wasActive = active

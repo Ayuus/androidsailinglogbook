@@ -142,6 +142,8 @@
     <string name="boat_log_enabled">Boot-modus staat aan (gestart via het klokje of Instellingen).</string>
     <string name="boat_log_simulation">Boot-modus (simulatie): de tijd loopt 30 keer sneller en er wordt niets echt gedownload of gepubliceerd.</string>
     <string name="boat_status_searching">Boot-modus: zoeken naar de W2K-2...</string>
+    <string name="boat_notif_last_check_with_next">(laatste controle %1$s, volgende %2$s)</string>
+    <string name="boat_notif_last_check">(laatste controle %1$s)</string>
     <string name="boat_status_round_started">Boot-modus: ronde gestart (downloaden en bouwen)...</string>
     <string name="boat_status_round_done">Boot-modus: ronde klaar, volgende ronde om %1$s.</string>
     <string name="boat_status_round_failed">Boot-modus: ronde mislukt, opnieuw proberen.</string>
