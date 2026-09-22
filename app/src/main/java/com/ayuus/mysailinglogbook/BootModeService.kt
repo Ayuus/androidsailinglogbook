@@ -1,6 +1,7 @@
 package com.ayuus.mysailinglogbook
 
 import android.app.AlarmManager
+import android.app.Notification
 import android.app.NotificationChannel
 import android.app.NotificationManager
 import android.app.PendingIntent
@@ -126,23 +127,31 @@ class BootModeService : Service() {
         (getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager).createNotificationChannel(channel)
     }
 
-    private fun buildNotification() = NotificationCompat.Builder(this, CHANNEL_ID)
-        .setContentTitle(getString(R.string.app_name))
-        .setContentText(statusText)
-        .setStyle(NotificationCompat.BigTextStyle().bigText(statusText))
-        .setSmallIcon(R.drawable.ic_schedule_filled_24)
-        .setOngoing(true)
-        .setOnlyAlertOnce(true)
-        .setCategory(NotificationCompat.CATEGORY_SERVICE)
-        .setContentIntent(
-            PendingIntent.getActivity(
-                this, 0, Intent(this, MainActivity::class.java),
-                PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
-            ),
-        )
-        .addAction(0, getString(R.string.boat_notif_action_now), servicePendingIntent(this, ACTION_NOW, REQUEST_NOW))
-        .addAction(0, getString(R.string.boat_notif_action_stop), servicePendingIntent(this, ACTION_STOP, REQUEST_STOP))
-        .build()
+    /** The animated system "downloading" icon while a round or a publish is actually running, the
+     * plain filled clock while just searching or waiting for the next one -- same distinction as
+     * SyncNotificationService's own icon, and asked for explicitly, so both notifications tell a
+     * genuinely busy moment apart from an idle one at a glance. */
+    private fun buildNotification(): Notification {
+        val working = BootModeStateStore.isWorking(BootModeStateStore(this).stateJson)
+        val icon = if (working) android.R.drawable.stat_sys_download else R.drawable.ic_schedule_filled_24
+        return NotificationCompat.Builder(this, CHANNEL_ID)
+            .setContentTitle(getString(R.string.app_name))
+            .setContentText(statusText)
+            .setStyle(NotificationCompat.BigTextStyle().bigText(statusText))
+            .setSmallIcon(icon)
+            .setOngoing(true)
+            .setOnlyAlertOnce(true)
+            .setCategory(NotificationCompat.CATEGORY_SERVICE)
+            .setContentIntent(
+                PendingIntent.getActivity(
+                    this, 0, Intent(this, MainActivity::class.java),
+                    PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
+                ),
+            )
+            .addAction(0, getString(R.string.boat_notif_action_now), servicePendingIntent(this, ACTION_NOW, REQUEST_NOW))
+            .addAction(0, getString(R.string.boat_notif_action_stop), servicePendingIntent(this, ACTION_STOP, REQUEST_STOP))
+            .build()
+    }
 
     /** Keeps the device awake while a probe, round or publish runs; released when its reply comes in. */
     private class WakeLockedExecutor(private val inner: BootModeExecutor, private val lock: PowerManager.WakeLock) : BootModeExecutor {

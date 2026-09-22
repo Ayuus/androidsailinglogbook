@@ -1,6 +1,8 @@
 package com.ayuus.mysailinglogbook
 
 import android.Manifest
+import android.animation.ObjectAnimator
+import android.animation.ValueAnimator
 import android.app.ForegroundServiceStartNotAllowedException
 import android.app.NotificationManager
 import android.content.Intent
@@ -56,6 +58,11 @@ class MainActivity : AppCompatActivity() {
     private lateinit var publishButton: Button
     private lateinit var bootButton: Button
     private lateinit var settingsStore: SettingsStore
+
+    // The pulsing animator currently running on a button, one entry per button that has one --
+    // see setBusyAppearance(). A plain map, not a per-button field, since only the small, fixed
+    // set of buttons that can ever be a run's own cancel button (download/build/publish) use this.
+    private val busyAnimators = mutableMapOf<Button, ObjectAnimator>()
     private lateinit var progressLabel: TextView
     private lateinit var progressBar: ProgressBar
 
@@ -123,13 +130,15 @@ class MainActivity : AppCompatActivity() {
         syncButton = iconButton(getString(R.string.tooltip_sync), iconRes = R.drawable.ic_download_24) {
             if (SyncState.inProgress) cancelSyncStayInApp() else runSync()
         }
-        // Dedicated, always-enabled build button (ic_cpu_24, a chip/processor glyph) -- decodes
-        // and builds the logbook from whatever .ebl files are already on the device, no W2K-2 or
-        // publish settings needed. Split out from ☁️ (asked for explicitly, after first trying
-        // ☁️ itself switching modes): the download button only ever fetches, so a separate,
-        // always-present way to (re)build from what's already local reads clearer than one button
-        // quietly changing what it does depending on Instellingen.
-        buildButton = iconButton(getString(R.string.tooltip_build_local), iconRes = R.drawable.ic_cpu_24) {
+        // Dedicated, always-enabled build button (ic_refresh_24 -- asked for explicitly, replacing
+        // the earlier chip/processor glyph; a list-icon option was tried first but sat too close
+        // to viewLocalButton's own document icon right next to it) -- decodes and builds the
+        // logbook from whatever .ebl files are already on the device, no W2K-2 or publish
+        // settings needed. Split out from ☁️ (asked for explicitly, after first trying ☁️ itself
+        // switching modes): the download button only ever fetches, so a separate, always-present
+        // way to (re)build from what's already local reads clearer than one button quietly
+        // changing what it does depending on Instellingen.
+        buildButton = iconButton(getString(R.string.tooltip_build_local), iconRes = R.drawable.ic_refresh_24) {
             // While its own run is in progress this is the (only enabled) cancel button, see
             // updatePublishButtonEnabled().
             if (SyncState.inProgress) cancelSyncStayInApp() else runOfflineBuild()
@@ -502,10 +511,9 @@ class MainActivity : AppCompatActivity() {
      * same as updateSyncButtonAvailability()) -- only when it just *became* unconfigured, so
      * opening Instellingen once and looking at it doesn't spam the log on every later resume. */
     private fun updatePublishButtonEnabled() {
-        // While a run is in progress, the button that started it stays enabled and turns into a
-        // stop button (tapping it cancels, see cancelSyncStayInApp()) -- the same toggle for the
-        // download button, the build button and the publish button alike -- while the other two
-        // stay disabled.
+        // While a run is in progress, the button that started it stays enabled and pulses (tapping
+        // it cancels, see cancelSyncStayInApp()) -- the same toggle for the download button, the
+        // build button and the publish button alike -- while the other two stay disabled.
         val initiator = if (SyncState.inProgress) SyncState.runInitiator ?: RunInitiator.SYNC else null
         val running = initiator != null
         buildButton.isEnabled = !running || initiator == RunInitiator.BUILD
@@ -515,9 +523,9 @@ class MainActivity : AppCompatActivity() {
         if (!running && !configured && wasEnabled) {
             handleLogLine("[info] " + getString(R.string.log_publish_not_configured))
         }
-        setCancelAppearance(buildButton, initiator == RunInitiator.BUILD, R.drawable.ic_cpu_24)
-        setCancelAppearance(publishButton, initiator == RunInitiator.PUBLISH, R.drawable.ic_upload_24)
-        setCancelAppearance(syncButton, initiator == RunInitiator.SYNC, R.drawable.ic_download_24)
+        setBusyAppearance(buildButton, initiator == RunInitiator.BUILD)
+        setBusyAppearance(publishButton, initiator == RunInitiator.PUBLISH)
+        setBusyAppearance(syncButton, initiator == RunInitiator.SYNC)
         ViewCompat.setTooltipText(
             publishButton,
             getString(
@@ -542,9 +550,26 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
-    /** A stop icon in place of the button's own icon while that button is the cancel button. */
-    private fun setCancelAppearance(button: Button, cancelling: Boolean, normalIconRes: Int) {
-        button.setCompoundDrawablesWithIntrinsicBounds(if (cancelling) R.drawable.ic_stop_24 else normalIconRes, 0, 0, 0)
+    /** Pulses the button's own icon (fading in and out, no icon swap) while it is the cancel
+     * button for a run in progress -- one consistent way to show "something long is running here,
+     * tap to stop it" everywhere in the app (asked for explicitly: a separate stop-square icon
+     * read as a different thing from a notification's own animated "busy" icon; this makes both
+     * say the same thing the same way). Idempotent: starting an already-running pulse, or stopping
+     * one that was never started, both no-op rather than restarting/erroring. */
+    private fun setBusyAppearance(button: Button, busy: Boolean) {
+        if (busy) {
+            if (busyAnimators.containsKey(button)) return
+            val animator = ObjectAnimator.ofFloat(button, View.ALPHA, 1f, 0.35f).apply {
+                duration = 500
+                repeatMode = ValueAnimator.REVERSE
+                repeatCount = ValueAnimator.INFINITE
+            }
+            busyAnimators[button] = animator
+            animator.start()
+        } else {
+            busyAnimators.remove(button)?.cancel()
+            button.alpha = 1f
+        }
     }
 
     /** The download button is disabled with an explanatory tooltip until a real scan confirms

@@ -43,5 +43,10 @@ class BootModeStateStore(context: Context) {
 
         fun phaseOf(stateJson: String): String =
             if (stateJson.isEmpty()) "OFF" else runCatching { JSONObject(stateJson).getString("phase") }.getOrDefault("OFF")
+
+        /** Whether a round or a publish is actually running right now (bootmode.py's own "working"
+         * field, ROUND/PUBLISH/null) -- as opposed to just searching or waiting for the next one. */
+        fun isWorking(stateJson: String): Boolean =
+            if (stateJson.isEmpty()) false else runCatching { !JSONObject(stateJson).isNull("working") }.getOrDefault(false)
     }
 }

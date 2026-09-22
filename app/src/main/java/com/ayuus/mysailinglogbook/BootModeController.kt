@@ -115,7 +115,11 @@ class BootModeController(
             "start_round" -> executor.startRound { result -> post(roundEvent(result)) }
             "publish" -> executor.publish { ok -> post(event("publish").put("ok", ok)) }
             "notify" -> {
-                val nextAt = if (action.isNull("next_at")) null else action.getLong("next_at")
+                // next_at is a virtual time, like "schedule_tick"'s own "at" above -- must go through
+                // clock.realAt() the same way, or the displayed time is nonsense once scale != 1.0
+                // (found in practice, on the simulation: showed a real-looking "volgende ronde om
+                // 23:07" that was actually the time-of-day of a date 16 days in the future).
+                val nextAt = if (action.isNull("next_at")) null else clock.realAt(action.getLong("next_at"))
                 val kind = action.getString("kind")
                 handler.post { onStatus(kind, nextAt) }
             }
