@@ -23,12 +23,17 @@ class FakeBootModeExecutor : BootModeExecutor {
     override fun startRound(reply: (BootRoundResult) -> Unit) {
         rounds++
         val boat = if (rounds < 3) underway() else inHarbour("simulated-stay-$rounds")
-        handler.postDelayed({ reply(BootRoundResult.Ok(3, boat)) }, 3000)
+        // Mirrors W2kBootExecutor's own SyncState.bootBusy bracketing (asked for explicitly: without
+        // this, bootModeBusy()'s own guard in MainActivity -- what a user's own download/build/publish
+        // tap checks while a round is running -- could never be exercised via the simulation at all).
+        SyncState.bootBusy = true
+        handler.postDelayed({ SyncState.bootBusy = false; reply(BootRoundResult.Ok(3, boat)) }, 3000)
     }
 
     override fun publish(reply: (ok: Boolean) -> Unit) {
         publishes++
-        handler.postDelayed({ reply(publishes != 1) }, 1000)
+        SyncState.bootBusy = true
+        handler.postDelayed({ SyncState.bootBusy = false; reply(publishes != 1) }, 1000)
     }
 
     override fun cancel() {}

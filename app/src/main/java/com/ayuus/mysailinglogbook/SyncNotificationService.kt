@@ -73,6 +73,11 @@ class SyncNotificationService : Service() {
         val notification = NotificationCompat.Builder(this, CHANNEL_ID)
             .setContentTitle(getString(R.string.app_name))
             .setContentText(contentText)
+            // The animated version (Android's own classic "download in progress" icon) -- the only
+            // one of the four notifications this class posts that is genuinely still in progress
+            // when shown; the other three (interrupted, not found, completed) use the static
+            // stat_sys_download_done instead, found in practice: an animated "still downloading"
+            // icon next to "Voltooid" read as a contradiction.
             .setSmallIcon(android.R.drawable.stat_sys_download)
             .setOngoing(true)
             .setPriority(NotificationCompat.PRIORITY_DEFAULT)
@@ -239,7 +244,7 @@ class SyncNotificationService : Service() {
             val notification = NotificationCompat.Builder(context, CHANNEL_ID)
                 .setContentTitle(context.getString(R.string.app_name))
                 .setContentText(context.getString(R.string.notif_sync_interrupted_by_close))
-                .setSmallIcon(android.R.drawable.stat_sys_download)
+                .setSmallIcon(android.R.drawable.stat_sys_download_done)
                 .setAutoCancel(true)
                 .setTimeoutAfter(STALE_NOTIFICATION_TIMEOUT_MS)
                 .setContentIntent(contentIntent)
@@ -284,7 +289,7 @@ class SyncNotificationService : Service() {
             val notification = NotificationCompat.Builder(context, CHANNEL_ID)
                 .setContentTitle(context.getString(R.string.app_name))
                 .setContentText(message)
-                .setSmallIcon(android.R.drawable.stat_sys_download)
+                .setSmallIcon(android.R.drawable.stat_sys_download_done)
                 .setAutoCancel(true)
                 .setTimeoutAfter(STALE_NOTIFICATION_TIMEOUT_MS)
                 .setContentIntent(contentIntent)
@@ -325,7 +330,7 @@ class SyncNotificationService : Service() {
             val builder = NotificationCompat.Builder(context, CHANNEL_ID)
                 .setContentTitle(context.getString(R.string.app_name))
                 .setContentText(resultText)
-                .setSmallIcon(android.R.drawable.stat_sys_download)
+                .setSmallIcon(android.R.drawable.stat_sys_download_done)
                 .setAutoCancel(true)
                 .setTimeoutAfter(STALE_NOTIFICATION_TIMEOUT_MS)
             if (publishedUrl != null) {
