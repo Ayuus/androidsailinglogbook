@@ -1487,6 +1487,23 @@ class MainActivity : AppCompatActivity() {
         SyncState.lastStatusText = cancelledText
         handleLogLine("[info] $cancelledText")
         hideProgressBar()
+        // The background thread only notices SyncState.cancelled between discrete steps (before
+        // each file, or once a season-wide trip-cache load finishes -- see should_cancel() in
+        // pipeline.py) -- on a slow device that trip-cache load alone can take well over ten
+        // seconds, so nothing else happens in the log for a while after "geannuleerd" (asked for
+        // explicitly, found in practice: reported as a "vreemde logregel" because whatever else
+        // happened to be logged in that gap, e.g. boot mode starting up, ended up sitting right
+        // before the eventual "gestopt" line, making it look connected to that when it wasn't).
+        // SyncState.cancelled is checked again here, not just inProgress, so this stays silent if
+        // a fresh run started in the meantime (its own start resets cancelled to false).
+        android.os.Handler(mainLooper).postDelayed(
+            {
+                if (SyncState.inProgress && SyncState.cancelled) {
+                    handleLogLine("[info] " + getString(R.string.status_cancel_still_stopping))
+                }
+            },
+            3000L,
+        )
     }
 
     /** Builds and shows the logbook from whatever .ebl files are already sitting in

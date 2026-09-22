@@ -60,6 +60,7 @@
     <string name="dialog_close_app_button">Close app</string>
     <string name="status_sync_cancelled">Download cancelled.</string>
     <string name="status_build_cancelled">Build cancelled.</string>
+    <string name="status_cancel_still_stopping">Still stopping; this can take a few more seconds.</string>
     <string name="status_building_with_existing_data">Building logbook with existing data...</string>
     <string name="error_unexpected">Unexpected error: %1$s</string>
 

@@ -52,6 +52,7 @@
     <string name="dialog_close_app_button">Fermer l\'application</string>
     <string name="status_sync_cancelled">Téléchargement annulé.</string>
     <string name="status_build_cancelled">Construction annulée.</string>
+    <string name="status_cancel_still_stopping">Encore en train de s\'arrêter ; cela peut prendre encore quelques secondes.</string>
     <string name="status_building_with_existing_data">Construction du journal avec les données existantes...</string>
     <string name="error_unexpected">Erreur inattendue : %1$s</string>
 

@@ -56,6 +56,7 @@
     <string name="dialog_close_app_button">App sluiten</string>
     <string name="status_sync_cancelled">Downloaden geannuleerd.</string>
     <string name="status_build_cancelled">Bouwen geannuleerd.</string>
+    <string name="status_cancel_still_stopping">Nog bezig met stoppen; dit kan nog een paar seconden duren.</string>
     <string name="status_building_with_existing_data">Logboek opbouwen met bestaande gegevens...</string>
     <string name="error_unexpected">Onverwachte fout: %1$s</string>
 

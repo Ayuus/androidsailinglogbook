@@ -52,6 +52,7 @@
     <string name="dialog_close_app_button">App schließen</string>
     <string name="status_sync_cancelled">Download abgebrochen.</string>
     <string name="status_build_cancelled">Erstellen abgebrochen.</string>
+    <string name="status_cancel_still_stopping">Wird noch beendet; das kann noch ein paar Sekunden dauern.</string>
     <string name="status_building_with_existing_data">Bordbuch wird mit vorhandenen Daten erstellt...</string>
     <string name="error_unexpected">Unerwarteter Fehler: %1$s</string>
 
