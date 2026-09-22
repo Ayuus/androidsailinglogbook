@@ -559,10 +559,10 @@ class MainActivity : AppCompatActivity() {
     private fun setBusyAppearance(button: Button, busy: Boolean) {
         if (busy) {
             if (busyAnimators.containsKey(button)) return
-            // 900ms each way (asked for explicitly, found in practice: 500ms read as flickery,
-            // not a calm "something is happening" pulse).
+            // 1500ms each way (asked for explicitly, found in practice: 500ms read as flickery,
+            // 900ms still too fast; this is a calm "something is happening" pulse).
             val animator = ObjectAnimator.ofFloat(button, View.ALPHA, 1f, 0.35f).apply {
-                duration = 900
+                duration = 1500
                 repeatMode = ValueAnimator.REVERSE
                 repeatCount = ValueAnimator.INFINITE
             }
