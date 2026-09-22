@@ -708,10 +708,16 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
-    /** True (with a line in the log) while the boat-mode service is running a round or a publish: the
-     * user's own run would work on the same files at the same time, so it waits. */
+    /** True (with a line in the log, brought to the front first) while the boat-mode service is
+     * running a round or a publish: the user's own run would work on the same files at the same
+     * time, so it waits. Brings the log to the front itself rather than leaving that to the
+     * caller's own setup (which this short-circuits past) -- found in practice: without it, this
+     * line was written to the log while the logbook's WebView stayed on screen covering it, so
+     * tapping the button while boat mode was busy looked like it silently did nothing at all. */
     private fun bootModeBusy(): Boolean {
         if (!SyncState.bootBusy) return false
+        showingLocalLogbook = false
+        setLogExpanded(true)
         handleLogLine("[info] " + getString(R.string.log_boat_busy))
         return true
     }
