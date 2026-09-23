@@ -1,0 +1,21 @@
+<!-- Boat-mode button while the mode is on (filled, where ic_sailboat_24 is the outline); also
+     used for BootModeService's own notification icon while idle/searching (not android.R.
+     drawable.stat_sys_download, which is reserved for actually working, see BootModeService's
+     own doc comment). Replaces ic_schedule_24/ic_schedule_filled_24, asked for explicitly: a
+     boat reads more directly as "boat mode" than a clock ever did. fillColor is only a
+     placeholder, see ic_sailboat_24.xml. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="24dp"
+    android:height="24dp"
+    android:viewportWidth="24"
+    android:viewportHeight="24">
+    <path
+        android:fillColor="#FF000000"
+        android:pathData="M11.5,4L12.5,4L12.5,15L11.5,15Z"/>
+    <path
+        android:fillColor="#FF000000"
+        android:pathData="M12,5L17,14L12,14Z"/>
+    <path
+        android:fillColor="#FF000000"
+        android:pathData="M4,15L20,15L17,19L7,19Z"/>
+</vector>

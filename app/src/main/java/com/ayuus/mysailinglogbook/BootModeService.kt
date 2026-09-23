@@ -153,12 +153,12 @@ class BootModeService : Service() {
     }
 
     /** The animated system "downloading" icon while a round or a publish is actually running, the
-     * plain filled clock while just searching or waiting for the next one -- same distinction as
-     * SyncNotificationService's own icon, and asked for explicitly, so both notifications tell a
-     * genuinely busy moment apart from an idle one at a glance. */
+     * plain filled sailboat while just searching or waiting for the next one -- same distinction
+     * as SyncNotificationService's own icon, and asked for explicitly, so both notifications tell
+     * a genuinely busy moment apart from an idle one at a glance. */
     private fun buildNotification(): Notification {
         val working = BootModeStateStore.isWorking(BootModeStateStore(this).stateJson)
-        val icon = if (working) android.R.drawable.stat_sys_download else R.drawable.ic_schedule_filled_24
+        val icon = if (working) android.R.drawable.stat_sys_download else R.drawable.ic_sailboat_filled_24
         val displayText = statusText + lastProbeSuffix
         return NotificationCompat.Builder(this, CHANNEL_ID)
             .setContentTitle(getString(R.string.app_name))

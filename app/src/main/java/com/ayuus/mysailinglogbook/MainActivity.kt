@@ -172,7 +172,7 @@ class MainActivity : AppCompatActivity() {
         }
         // Boat mode on/off (see BootModeController): rounds while the W2K-2 is reachable, a final
         // round in the harbour. Runs on a simulation for now (FakeBootModeExecutor), in BootModeService.
-        bootButton = iconButton(getString(R.string.tooltip_boat_mode), iconRes = R.drawable.ic_schedule_24) {
+        bootButton = iconButton(getString(R.string.tooltip_boat_mode), iconRes = R.drawable.ic_sailboat_24) {
             toggleBootMode()
         }
         // Material's own "settings" icon (ic_settings_24), not the ⚙ emoji it replaced -- asked
@@ -490,11 +490,11 @@ class MainActivity : AppCompatActivity() {
             .show()
     }
 
-    /** Filled clock while the boat mode runs, outline while it is off. */
+    /** Filled sailboat while the boat mode runs, outline while it is off. */
     fun updateBootButton() {
         val active = BootModeStateStore(this).isActive
         bootButton.setCompoundDrawablesWithIntrinsicBounds(
-            if (active) R.drawable.ic_schedule_filled_24 else R.drawable.ic_schedule_24, 0, 0, 0,
+            if (active) R.drawable.ic_sailboat_filled_24 else R.drawable.ic_sailboat_24, 0, 0, 0,
         )
         ViewCompat.setTooltipText(
             bootButton,

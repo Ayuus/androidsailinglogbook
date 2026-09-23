@@ -325,19 +325,29 @@ class SyncNotificationService : Service() {
             } else {
                 PendingIntent.FLAG_UPDATE_CURRENT
             }
-            // Deliberately no setContentIntent() here -- found in practice that reopening
-            // MainActivity from a *finished* run's notification looks like it "hangs": the
-            // download already completed, but a fresh launch starts the whole app (and its own
-            // download-on-launch flow) from scratch, which reads as the previous run never
-            // finishing. Tapping the body just dismisses the notification (setAutoCancel);
-            // "Bekijk live site" below is its own explicit action for when there's somewhere
-            // useful to go.
+            // Tapping the body opens the app (asked for explicitly) -- same ACTION_TOGGLE_FROM_
+            // NOTIFICATION + SINGLE_TOP/CLEAR_TOP pattern as postNotFoundNotification() above,
+            // which brings an already-alive MainActivity to the front via onNewIntent() rather
+            // than starting a fresh one -- this used to deliberately have no content intent at
+            // all, over a concern (from before that pattern existed here) that reopening would
+            // look like it "hangs" by re-running the auto-start-on-launch flow from scratch;
+            // SINGLE_TOP/CLEAR_TOP avoids that exact problem, same as it already does for the
+            // other notifications in this class.
+            val reopenIntent = Intent(context, MainActivity::class.java).apply {
+                action = MainActivity.ACTION_TOGGLE_FROM_NOTIFICATION
+                flags = Intent.FLAG_ACTIVITY_SINGLE_TOP or Intent.FLAG_ACTIVITY_CLEAR_TOP
+            }
+            val contentIntent = PendingIntent.getActivity(context, 0, reopenIntent, pendingIntentFlags)
             val builder = NotificationCompat.Builder(context, CHANNEL_ID)
                 .setContentTitle(context.getString(R.string.app_name))
                 .setContentText(resultText)
-                .setSmallIcon(android.R.drawable.stat_sys_download_done)
+                // The app's own icon, not a download icon (asked for explicitly, found in
+                // practice: shown even after a run that never downloaded anything, e.g. a local
+                // rebuild) -- see ic_notification.xml's own doc comment.
+                .setSmallIcon(R.drawable.ic_notification)
                 .setAutoCancel(true)
                 .setTimeoutAfter(STALE_NOTIFICATION_TIMEOUT_MS)
+                .setContentIntent(contentIntent)
             if (publishedUrl != null) {
                 // A separate action, not the notification's own tap target -- tapping the body
                 // still opens the app itself (consistent with every other notification here),
