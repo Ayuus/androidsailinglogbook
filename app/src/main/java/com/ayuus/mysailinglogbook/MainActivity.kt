@@ -66,6 +66,16 @@ class MainActivity : AppCompatActivity() {
     private lateinit var progressLabel: TextView
     private lateinit var progressBar: ProgressBar
 
+    // Held for the whole length of a manual download/build/publish's own background Thread (see
+    // acquireManualRunWakeLock()) -- boat mode already holds one of its own (BootModeService's
+    // WakeLockedExecutor); a manual run had none at all, only SyncNotificationService's foreground
+    // service, which keeps the process from being killed but does not by itself stop Android from
+    // starving a background Thread of CPU once the screen goes off (asked for explicitly, found in
+    // practice: a real decode on a slow device crawled from ~4 seconds/file with the screen on to
+    // 3-13 *minutes* between files with it off, the log's own timestamps proving it wasn't stuck,
+    // just starved).
+    private var manualRunWakeLock: PowerManager.WakeLock? = null
+
     private val notificationPermissionLauncher =
         registerForActivityResult(ActivityResultContracts.RequestPermission()) { /* no-op either way */ }
 
@@ -735,6 +745,26 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
+    /** Call right before starting a manual run's own background Thread (runSync()/
+     * buildFromLocalFilesAndMaybePublish()); release with releaseManualRunWakeLock() in that
+     * Thread's own finally block, same pairing as SyncState.inProgress. A generous fixed timeout
+     * (see WAKE_LOCK_TIMEOUT_MS), not indefinite -- a safety net only, same reasoning as
+     * BootModeService's own wake lock: the run's own finally block is what actually releases it
+     * the moment it is done, this just guarantees the lock can never outlive a run that crashed
+     * Android hard enough to skip that finally block too. */
+    private fun acquireManualRunWakeLock() {
+        val power = getSystemService(POWER_SERVICE) as PowerManager
+        manualRunWakeLock = power.newWakeLock(PowerManager.PARTIAL_WAKE_LOCK, "MySailingLogbook:ManualRun").apply {
+            setReferenceCounted(false)
+            acquire(WAKE_LOCK_TIMEOUT_MS)
+        }
+    }
+
+    private fun releaseManualRunWakeLock() {
+        manualRunWakeLock?.let { if (it.isHeld) it.release() }
+        manualRunWakeLock = null
+    }
+
     /** True (with a line in the log, brought to the front first) while the boat-mode service is
      * running a round or a publish: the user's own run would work on the same files at the same
      * time, so it waits. Brings the log to the front itself rather than leaving that to the
@@ -794,6 +824,7 @@ class MainActivity : AppCompatActivity() {
         val htmlFile = File(filesDir, "logbook.html")
         val htmlMtimeBeforeThisRun = if (htmlFile.exists()) htmlFile.lastModified() else -1L
 
+        acquireManualRunWakeLock()
         Thread {
             val subnetPrefix = HotspotDetector.detectSubnetPrefix()
             if (subnetPrefix == null) {
@@ -820,6 +851,7 @@ class MainActivity : AppCompatActivity() {
                     updateSyncButtonAvailability()
                     updatePublishButtonEnabled()
                 }
+                releaseManualRunWakeLock()
                 return@Thread
             }
 
@@ -907,6 +939,7 @@ class MainActivity : AppCompatActivity() {
                 SyncState.notificationStartFailed = false
                 SyncState.inProgress = false
                 SyncState.runInitiator = null
+                releaseManualRunWakeLock()
                 // Purely cosmetic UI state, safe to skip when nothing is active right now -- the
                 // next Activity to resume starts from a fresh, already-correct button/progress
                 // state on its own (see onCreate()/restoreLiveSyncUi()).
@@ -1548,6 +1581,7 @@ class MainActivity : AppCompatActivity() {
         showingLocalLogbook = false
         setLogExpanded(true)
 
+        acquireManualRunWakeLock()
         Thread {
             var syncSucceeded = false
             var didPublish = false
@@ -1590,6 +1624,7 @@ class MainActivity : AppCompatActivity() {
                 SyncState.notificationStartFailed = false
                 SyncState.inProgress = false  // must always happen, see runSync()'s own finally
                 SyncState.runInitiator = null
+                releaseManualRunWakeLock()
                 withActiveActivity {
                     // logIfNotFound=false: the button still needs a fresh scan to know whether
                     // to re-enable itself, but the sync that just finished already implies the
@@ -1969,5 +2004,12 @@ class MainActivity : AppCompatActivity() {
 
         private const val KEY_BATTERY_PROMPTED = "boot_battery_prompted_v1"
         private const val KEY_EBL_INDEXED_FOR_PC = "ebl_indexed_for_pc_v1"
+
+        // Safety-net ceiling for acquireManualRunWakeLock() -- a full download-and-build of a big,
+        // mostly-uncached archive can genuinely run for hours on a slow device (found in practice:
+        // over two hours for under 1,400 of 2,326 files), same order of magnitude as boat mode's
+        // own rounds, so this matches BootModeService's WAKE_LOCK_TIMEOUT_MS rather than a short
+        // one meant for a single quick operation.
+        private const val WAKE_LOCK_TIMEOUT_MS = 6 * 60 * 60 * 1000L
     }
 }
