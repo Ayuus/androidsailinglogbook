@@ -1571,10 +1571,15 @@ class MainActivity : AppCompatActivity() {
         // comment) -- it accumulates across every run this process makes instead.
         SyncState.lastStatusText = getString(R.string.status_building_with_existing_data)
         handleLogLine("[info] ${SyncState.lastStatusText}")
-        // No initial notification text of its own here (unlike runSync()) -- this path doesn't
-        // start the notification until handleLogLine()'s first progress line arrives, so there's
-        // nothing yet for a restore to show; null rather than stale text from a previous run.
-        SyncState.lastNotificationText = null
+        // Shown immediately, same as runSync()'s own startIntent -- asked for explicitly, found
+        // in practice: listing every .ebl file and loading the trip cache can itself take well
+        // over ten seconds on a big archive before handleLogLine()'s first real progress line
+        // ever arrives, during which nothing was visible outside the app at all before this (read
+        // as "no notification at all", not just a slow one, since nobody kept watching that long).
+        SyncState.lastNotificationText = SyncState.lastStatusText
+        val startIntent = Intent(this, SyncNotificationService::class.java)
+            .putExtra(SyncNotificationService.EXTRA_STATUS_TEXT, SyncState.lastStatusText)
+        startSyncNotification(startIntent)
         SyncState.lastProgressPhase = null
         SyncState.lastProgressCurrent = 0
         SyncState.lastProgressTotal = 0
