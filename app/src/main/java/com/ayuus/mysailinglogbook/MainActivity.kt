@@ -636,20 +636,25 @@ class MainActivity : AppCompatActivity() {
             val controller = object : DiscoverController {
                 override fun onDiscoverResult(found: Boolean) {
                     SyncState.discoverScanInProgress = false
-                    if (!found && logIfNotFound) {
+                    // SyncState.lastW2k2Found != false, not just logIfNotFound -- found in
+                    // practice, a real bug: logIfNotFound=false (see the build's own finally
+                    // block, still the main reason this suppresses a repeat) only covers *that*
+                    // one call site; onResume()'s own call to this function (default
+                    // logIfNotFound=true) knew nothing about a run having just logged the exact
+                    // same "not found" moments ago, so simply reopening the app shortly after a
+                    // run logged it again. Comparing against the last scan's own outcome instead
+                    // catches every call site at once: only a genuine change is ever worth a line.
+                    if (!found && logIfNotFound && SyncState.lastW2k2Found != false) {
                         // Same reasoning as the hotspot-not-on branch above: the tooltip alone
                         // isn't actually visible on a touch-only screen, so this is the log
                         // line most people will actually see. Not logged on success -- found
                         // is the expected, self-explanatory outcome (the download button just
                         // works), nothing to explain, and this can run again on every onResume()
                         // while the app stays open near the boat, so a repeated "found" line
-                        // would just be noise for no benefit. logIfNotFound=false right after a
-                        // download just finished (see its own call site): that check already
-                        // logged this exact same "not found" at the start of the run, so saying
-                        // it again right under a just-completed download's own success line
-                        // reads as if something had gone wrong, when nothing changed at all.
+                        // would just be noise for no benefit.
                         handleLogLine("[info] " + getString(R.string.log_sync_w2k2_not_found))
                     }
+                    SyncState.lastW2k2Found = found
                     withActiveActivity {
                         if (!SyncState.inProgress) {
                             syncButton.isEnabled = found

@@ -43,6 +43,18 @@ object SyncState {
     @Volatile
     var discoverScanInProgress = false
 
+    /** The outcome of the most recent updateSyncButtonAvailability() scan that actually completed
+     * (null before the first one ever finishes this process). Lets a "not found" log line fire
+     * only on a genuine change, not on every call site that happens to run one -- found in
+     * practice, a real bug: a run's own finally block already suppresses this exact line right
+     * after it (logIfNotFound=false, nothing changed since the run's own start-of-run check), but
+     * onResume() runs its own scan with the default logIfNotFound=true and has no idea a run just
+     * established the same outcome moments ago, so simply reopening/resuming the app shortly
+     * after a run logged the identical "not found" line again, reading as something having gone
+     * wrong when nothing had. */
+    @Volatile
+    var lastW2k2Found: Boolean? = null
+
     /** Whichever MainActivity instance is currently resumed and visible, or null when none is
      * (backgrounded, or briefly between an old instance pausing and a new one resuming). Set in
      * onResume(), cleared in onPause() -- see both there.
