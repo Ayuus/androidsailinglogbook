@@ -55,6 +55,15 @@ object SyncState {
     @Volatile
     var lastW2k2Found: Boolean? = null
 
+    /** When [lastW2k2Found] was last actually established by a real scan (System.currentTimeMillis(),
+     * 0L before the first one) -- lets updateSyncButtonAvailability() skip a redundant *scan* too,
+     * not just its log line, when one just ran moments ago (asked for explicitly: a run's own
+     * finally block already re-checks this the instant it finishes; onResume() firing right after
+     * -- reopening the app, or the run's own withActiveActivity{} landing right after a rotation --
+     * had no reason to scan the network again for an answer it already just had). */
+    @Volatile
+    var lastW2k2CheckAt = 0L
+
     /** Whichever MainActivity instance is currently resumed and visible, or null when none is
      * (backgrounded, or briefly between an old instance pausing and a new one resuming). Set in
      * onResume(), cleared in onPause() -- see both there.

@@ -626,6 +626,19 @@ class MainActivity : AppCompatActivity() {
             return
         }
         if (SyncState.discoverScanInProgress) return
+        // Reuse a scan that only just finished, rather than hitting the network again for an
+        // answer already in hand (asked for explicitly: a run's own finally block already
+        // re-checks this the instant it finishes, so onResume() firing right after -- reopening
+        // the app, or a rotation landing right after a run -- had no reason to scan again).
+        val cachedFound = SyncState.lastW2k2Found
+        if (cachedFound != null && System.currentTimeMillis() - SyncState.lastW2k2CheckAt < RECENT_SCAN_MS) {
+            syncButton.isEnabled = cachedFound
+            ViewCompat.setTooltipText(
+                syncButton,
+                getString(if (cachedFound) R.string.tooltip_sync else R.string.tooltip_w2k2_not_found),
+            )
+            return
+        }
         SyncState.discoverScanInProgress = true
         syncButton.isEnabled = false
         ViewCompat.setTooltipText(syncButton, getString(R.string.tooltip_w2k2_checking))
@@ -655,6 +668,7 @@ class MainActivity : AppCompatActivity() {
                         handleLogLine("[info] " + getString(R.string.log_sync_w2k2_not_found))
                     }
                     SyncState.lastW2k2Found = found
+                    SyncState.lastW2k2CheckAt = System.currentTimeMillis()
                     withActiveActivity {
                         if (!SyncState.inProgress) {
                             syncButton.isEnabled = found
@@ -2029,5 +2043,13 @@ class MainActivity : AppCompatActivity() {
         // own rounds, so this matches BootModeService's WAKE_LOCK_TIMEOUT_MS rather than a short
         // one meant for a single quick operation.
         private const val WAKE_LOCK_TIMEOUT_MS = 6 * 60 * 60 * 1000L
+
+        // How long a completed W2K-2 scan (SyncState.lastW2k2Found/lastW2k2CheckAt) is trusted
+        // without a fresh one -- see updateSyncButtonAvailability()'s own doc comment. Short on
+        // purpose: long enough to skip a redundant scan when onResume() fires right after a run's
+        // own finally block already checked, nowhere near long enough to miss the W2K-2 actually
+        // coming into range while the owner keeps the app open (still re-checked every time this
+        // function is next called after that, e.g. the next onResume()).
+        private const val RECENT_SCAN_MS = 10_000L
     }
 }
