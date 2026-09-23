@@ -77,13 +77,14 @@ class SyncNotificationService : Service() {
         val notification = NotificationCompat.Builder(this, CHANNEL_ID)
             .setContentTitle(getString(R.string.app_name))
             .setContentText(contentText)
-            // The animated system "download in progress" icon only while a file is genuinely being
-            // fetched; the build button's own static icon (ic_refresh_24, see MainActivity) once
-            // that is done and decode/build is running instead -- found in practice: the download
-            // icon staying up through the whole build too read as still downloading when it wasn't.
-            // The other three notifications this class posts (interrupted, not found, completed)
-            // are never in progress when shown, so they use the static stat_sys_download_done.
-            .setSmallIcon(if (isDownloading) android.R.drawable.stat_sys_download else R.drawable.ic_refresh_24)
+            // The action's own static icon -- download while a file is genuinely being fetched,
+            // build (ic_refresh_24) for the decode/build phase after it -- never the animated
+            // system "download in progress" icon (asked for explicitly: Android has no way to
+            // animate a *custom* icon shape in the status bar the way the app's own toolbar
+            // buttons pulse, only its own built-in stat_sys_download; found in practice, before
+            // this: that icon staying up through the whole build too read as still downloading
+            // when it wasn't). The progress bar below is the "still busy" signal instead.
+            .setSmallIcon(if (isDownloading) R.drawable.ic_download_24 else R.drawable.ic_refresh_24)
             .setOngoing(true)
             .setPriority(NotificationCompat.PRIORITY_DEFAULT)
             .setContentIntent(contentIntent)
@@ -312,8 +313,13 @@ class SyncNotificationService : Service() {
          *
          * publishedUrl is non-null only when this run's own publish step actually succeeded (see
          * uploadIfConfigured() in MainActivity.kt) -- the "Bekijk live site" action only makes
-         * sense to offer then, not after a download that only rebuilt the local logbook. */
-        fun postCompletionNotification(context: Context, resultText: String, publishedUrl: String?) {
+         * sense to offer then, not after a download that only rebuilt the local logbook.
+         *
+         * iconRes is the same static action icon the ongoing notification used (ic_download_24
+         * for runSync(), ic_refresh_24 for buildFromLocalFilesAndMaybePublish()) -- asked for
+         * explicitly, uniform for both: the icon just stops moving/updating once done, rather
+         * than switching to a generic "done"/app icon that no longer says which action this was. */
+        fun postCompletionNotification(context: Context, resultText: String, publishedUrl: String?, iconRes: Int) {
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU &&
                 ActivityCompat.checkSelfPermission(context, Manifest.permission.POST_NOTIFICATIONS) !=
                     PackageManager.PERMISSION_GRANTED
@@ -341,10 +347,7 @@ class SyncNotificationService : Service() {
             val builder = NotificationCompat.Builder(context, CHANNEL_ID)
                 .setContentTitle(context.getString(R.string.app_name))
                 .setContentText(resultText)
-                // The app's own icon, not a download icon (asked for explicitly, found in
-                // practice: shown even after a run that never downloaded anything, e.g. a local
-                // rebuild) -- see ic_notification.xml's own doc comment.
-                .setSmallIcon(R.drawable.ic_notification)
+                .setSmallIcon(iconRes)
                 .setAutoCancel(true)
                 .setTimeoutAfter(STALE_NOTIFICATION_TIMEOUT_MS)
                 .setContentIntent(contentIntent)

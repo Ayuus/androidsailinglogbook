@@ -933,6 +933,7 @@ class MainActivity : AppCompatActivity() {
                         this,
                         getString(R.string.notif_sync_done_at, timeText),
                         if (didPublish) MainActivity.LIVE_SITE_URL else null,
+                        R.drawable.ic_download_24,
                     )
                 }
                 SyncState.notificationForegrounded = false
@@ -1102,6 +1103,11 @@ class MainActivity : AppCompatActivity() {
                     .putExtra(SyncNotificationService.EXTRA_CURRENT, current)
                     .putExtra(SyncNotificationService.EXTRA_TOTAL, total)
                     .putExtra(SyncNotificationService.EXTRA_FILE_NAME, fileName)
+                    // A real progress bar in the notification too, not just text (asked for
+                    // explicitly, same reasoning as the decode/build-trips phases below -- the
+                    // small icon itself can't animate, see onStartCommand()'s own doc comment).
+                    .putExtra(SyncNotificationService.EXTRA_PROGRESS_CURRENT, current)
+                    .putExtra(SyncNotificationService.EXTRA_PROGRESS_MAX, total)
                 startSyncNotification(progressIntent)
                 updateProgressBar(getString(R.string.phase_downloading), current, total)
             }
@@ -1260,6 +1266,8 @@ class MainActivity : AppCompatActivity() {
             SyncState.lastNotificationText = text
             val progressIntent = Intent(this, SyncNotificationService::class.java)
                 .putExtra(SyncNotificationService.EXTRA_STATUS_TEXT, text)
+                .putExtra(SyncNotificationService.EXTRA_PROGRESS_CURRENT, current)
+                .putExtra(SyncNotificationService.EXTRA_PROGRESS_MAX, total)
             startSyncNotification(progressIntent)
             updateProgressBar(getString(R.string.phase_decoding), current, total)
         } else {
@@ -1612,9 +1620,8 @@ class MainActivity : AppCompatActivity() {
                 // Same "Voltooid"-completion treatment as runSync() -- see its own finally for
                 // the full reasoning. Only posted if a notification was ever actually shown for
                 // this run (see startSyncNotification()'s own eligibility check) -- this path,
-                // unlike runSync(), doesn't start one up front, only lazily once handleLogLine()
-                // sees real decode progress, so a short cache-hit-only rebuild may never have
-                // shown one at all.
+                // Only posted if a notification was ever actually shown for this run (see
+                // startSyncNotification()'s own eligibility check).
                 stopService(Intent(this, SyncNotificationService::class.java))
                 if (syncSucceeded && SyncState.notificationForegrounded) {
                     val timeText = java.text.SimpleDateFormat("HH:mm", java.util.Locale.getDefault())
@@ -1623,6 +1630,7 @@ class MainActivity : AppCompatActivity() {
                         this,
                         getString(R.string.notif_sync_done_at, timeText),
                         if (didPublish) MainActivity.LIVE_SITE_URL else null,
+                        R.drawable.ic_refresh_24,
                     )
                 }
                 SyncState.notificationForegrounded = false
