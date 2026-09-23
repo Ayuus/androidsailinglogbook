@@ -3,7 +3,8 @@
 Android app that syncs voyage data from a boat's [Actisense W2K-2](https://actisense.com) NMEA
 2000-to-WiFi gateway, builds the same HTML sailing logbook the desktop
 [nmea2log](https://github.com/Ayuus/nmea2log) CLI produces, shows it in-app, and (optionally)
-publishes it to a website over SFTP.
+publishes it to a WordPress site or over SFTP. An optional "boat mode" can also do all of the
+above on its own, on an interval, while the app stays closed -- see "Using the app" below.
 
 It does **not** reimplement any of the NMEA 2000 decoding, trip-building, or HTML-generation
 logic. It embeds the real `nmea2log` Python package from the `nmea2log` repo directly
@@ -12,7 +13,7 @@ logic. It embeds the real `nmea2log` Python package from the `nmea2log` repo dir
 copy to keep in sync.
 
 **Looking for testers**: so far this has only been run against one boat's NMEA2000 network (a
-**motorboat**, one Actisense W2K-2) and one physical Android device. Other boats/instrument mixes
+**motorboat**, one Actisense W2K-2) and two physical Android devices. Other boats/instrument mixes
 and other Android versions/devices will likely surface issues this setup never hits. Sailboat
 support in particular is on the wishlist but untested so far -- see the same note in the
 [nmea2log README](https://github.com/Ayuus/nmea2log#readme) for why. Feedback is very welcome via
@@ -34,6 +35,74 @@ expected for any app installed outside a store.
 3. Tap Install.
 
 Requires Android 7.0 (API 24) or newer.
+
+## Using the app
+
+### First-time setup
+
+Open Settings (the gear icon, top right of the toolbar) and fill in:
+
+- **W2K-2 username/password** -- the same login the W2K-2's own web interface uses.
+- **Boat name, MMSI, call sign** -- shown in the logbook's header, not sent anywhere by
+  themselves.
+- **Publishing** (optional) -- either a WordPress Application Password (for an account in the
+  `logboek_editor` role) or SFTP host/user/password/remote path, if you want the built logbook
+  sent to your own website. Leave both blank to keep everything on the phone.
+
+The phone needs to be on the boat's own WiFi -- i.e. the phone runs its own hotspot and the
+W2K-2 joins it as a client, the same setup the W2K-2's own app expects. There is no other way to
+reach it; the app never talks to it over the internet.
+
+### The toolbar
+
+Left to right: **download** (fetch new data from the W2K-2 and build the logbook), **rebuild**
+(build the logbook again from whatever's already on the phone, no W2K-2 needed -- useful to pick
+up a settings change, or just to see the logbook without being near the boat), **publish** (send
+the current logbook to the website configured in Settings), **view logbook** (show the
+already-built logbook full-screen, toggles back to the log), **boat mode** (see below), and
+**settings**.
+
+A long-running action (download/rebuild/publish) shows a pulsing version of its own button --
+tap it again to cancel. The notification shade shows the same thing while the app isn't on
+screen, with a real progress bar.
+
+### Boat mode
+
+Turned on/off via the sailboat button (or the matching checkbox in Settings, which can also
+start it automatically whenever the app opens with the boat's hotspot up). Once on, it keeps
+running in the background -- the app doesn't need to stay open -- and:
+
+1. **Searches** for the W2K-2 every few minutes (configurable in Settings, "Zoekinterval"),
+   without downloading anything yet.
+2. Once found, runs a **round**: downloads new data and rebuilds the logbook, then waits for the
+   configured interval ("A round (download + build) every ...") before the next one.
+3. Recognises being **in harbour** (stationary + engine off, both for a configurable number of
+   minutes) and **having left the boat** (the W2K-2 stops answering for a configurable number of
+   minutes) as two different "the voyage is over for now" signals, each independently switchable
+   to trigger a **final round** (and, if publishing is configured, an actual publish) --
+   see the checkboxes under "Boot-modus" in Settings.
+4. Can optionally switch itself back off after that final round ("Switch boat mode off after the
+   final round"), or keep running and simply start searching again.
+
+Android's own battery optimisation can hold back a background app's timers while the phone lies
+still (e.g. moored in a marina) -- boat mode asks, once, to be exempted from that the first time
+it's turned on. Declining is safe; rounds just become less reliably on-time if the phone has been
+idle for a long while.
+
+See [docs/boat-mode.md](docs/boat-mode.md) for the full technical writeup (states, timers,
+notification behaviour) if you want more detail than this section gives.
+
+### Why place names show up in the logbook
+
+Every trip's departure/arrival, and the boat's last known position, are reverse-geocoded into a
+real place name (e.g. "Écluse du barrage d'Arzal") rather than shown as bare GPS coordinates.
+This uses OpenStreetMap's [Overpass API](https://overpass-api.de/) to find the nearest named
+landmark, falling back to [Nominatim](https://nominatim.org/) for a plain address when nothing
+suitable is nearby -- the same two-step lookup the desktop `nmea2log` CLI does, see the
+[nmea2log README](https://github.com/Ayuus/nmea2log#readme) for the full explanation. Both need a
+working internet connection on the phone at build/publish time (not from the W2K-2 -- that part
+never needs internet at all); a lookup that keeps failing gives up for the rest of that run and
+falls back to coordinates instead of retrying forever.
 
 (The sections below are for building this app from source instead -- not needed just to install
 it.)
@@ -188,21 +257,22 @@ closed. Reverse-geocoded into a place name the same way every trip's own depart/
 already is; falls back to plain coordinates when geocoding is off, which Android always keeps off
 (see below).
 
-**Geocoding, weather, and marine (wave/current) lookups are always disabled on Android**
-(`NoGeocoder()`/`NoWeather()`/`NoMarine()` in `android_entry.run_pipeline()`), unlike the desktop
-CLI where they're on by default. Both would otherwise ride the phone's cellular data on every sync,
-and a boat's data plan is not assumed to be generous. No settings toggle for this yet.
+**Geocoding, weather, and marine (wave/current) lookups are enabled by default on Android too**,
+same as the desktop CLI (see `android_entry.run_pipeline()`'s own doc comment) -- this changed
+since an earlier version of this README said otherwise. All three ride the phone's own internet
+connection, not the W2K-2's (which never needs internet at all); no settings toggle exists yet to
+turn them off for someone who'd rather save cellular data than see place names/weather/sea state
+in the logbook.
 
-**The toolbar is emoji-as-button-text, not vector icon assets.** 🔄 (sync), ☁️ (publish), ⚙️
-(settings) -- styled borderless (no background box/shadow, `selectableItemBackgroundBorderless`,
-zero minimum touch target) so they read as plain icons rather than boxed buttons. Chosen for
-simplicity: no drawable resources to add or keep in sync with a design, and the app doesn't need to
-support anything an emoji font can't render.
+**The toolbar uses plain single-path vector drawables, not emoji-as-button-text** (an earlier
+version of this app used 🔄/☁️/⚙️ etc.; replaced once icon *behaviour* -- a pulsing "busy" state,
+matching on/off icon pairs for boat mode -- needed more control than a font glyph gives).
+Borderless (no background box/shadow, `selectableItemBackgroundBorderless`, zero minimum touch
+target) so they still read as plain icons rather than boxed buttons; tint applied at runtime by
+`iconButton()`, so each drawable's own `fillColor` is just a placeholder.
 
 ## Not yet built
 
-- **Periodic background sync** (`WorkManager`, so a sync can happen without the app being opened at
-  all). Right now a sync only ever starts from a manual tap or once automatically per app launch.
 - **Local `.ebl` cleanup** after a file is confirmed both decoded and backed up remotely -- the
   desktop CLI deliberately keeps every `.ebl` forever (its whole project directory is already
   backed up via OneDrive), but that reasoning doesn't hold on a phone's own storage.
