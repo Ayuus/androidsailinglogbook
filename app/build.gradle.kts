@@ -65,11 +65,15 @@ android {
             optimization {
                 enable = false
             }
-            // Bundles native debug symbols (Chaquopy's own libpython/libchaquopy_java.so, the
-            // only native code here) into the AAB -- purely additive metadata for Play Console's
-            // native crash/ANR symbolication, no behavior change. FULL (not the lighter
-            // SYMBOL_TABLE) since these are third-party libraries this project doesn't build
-            // itself, so there's no separate symbol archive to fall back to later.
+            // A no-op in practice, checked directly (the built AAB has no
+            // BUNDLE-METADATA/com.android.tools.build.debugsymbols/ entry despite this): every
+            // .so here (libpython/libchaquopy_java/...) is a pre-built third-party binary
+            // Chaquopy bundles as-is, not something this Gradle module compiles itself, so AGP
+            // has no unstripped intermediate output of its own to attach symbols from -- Play
+            // Console's "no debug symbols uploaded" warning is expected and not fixable from this
+            // project (Chaquopy does not publish a separate symbol archive for these either).
+            // Left in, harmless, for the day this module ever gains native code of its own to
+            // build (CMake/ndk-build), which this setting would then actually apply to.
             ndk {
                 debugSymbolLevel = "FULL"
             }
