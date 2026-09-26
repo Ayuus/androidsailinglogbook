@@ -46,8 +46,13 @@ Open Settings (the gear icon, top right of the toolbar) and fill in:
 - **Boat name, MMSI, call sign** -- shown in the logbook's header, not sent anywhere by
   themselves.
 - **Publishing** (optional) -- either a WordPress Application Password (for an account in the
-  `logboek_editor` role) or SFTP host/user/password/remote path, if you want the built logbook
-  sent to your own website. Leave both blank to keep everything on the phone.
+  `logboek_editor` role) plus the REST URL (`https://your-site.example/wp-json/nmea2log/v1/logbook`
+  -- **not** just your site's own homepage or the logbook's own page URL: that gets redirected to
+  a login page instead of uploading anything, found in practice, since fixed to at least raise a
+  clear error instead of silently reporting success -- see the `nmea2log` README's own
+  "Per-trip remarks, login-gated, via WordPress" section for the WordPress side of this setup) or
+  SFTP host/user/password/remote path, if you want the built logbook sent to your own website.
+  Leave both blank to keep everything on the phone.
 
 The phone needs to be on the boat's own WiFi -- i.e. the phone runs its own hotspot and the
 W2K-2 joins it as a client, the same setup the W2K-2's own app expects. There is no other way to
