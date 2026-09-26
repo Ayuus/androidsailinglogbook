@@ -2100,9 +2100,9 @@ class MainActivity : AppCompatActivity() {
         // background color of its own, just whatever the theme gives it.
         private val LOG_ERROR_COLOR = Color.parseColor("#D32F2F")
 
-        // Material's "amber 700" for styledLogText()'s own "[hotspot]" highlight -- readable
-        // against both a light and a dark system theme, same reasoning as LOG_ERROR_COLOR.
-        private val LOG_WARNING_COLOR = Color.parseColor("#FFA000")
+        // Material's "yellow 600" for styledLogText()'s own warning highlight -- "amber 700"
+        // (#FFA000) read as orange in practice, not yellow.
+        private val LOG_WARNING_COLOR = Color.parseColor("#FDD835")
 
         // How long a completed W2K-2 scan (SyncState.lastW2k2Found/lastW2k2CheckAt) is trusted
         // without a fresh one -- see updateSyncButtonAvailability()'s own doc comment. Short on
