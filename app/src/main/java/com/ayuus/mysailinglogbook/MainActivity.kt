@@ -626,7 +626,7 @@ class MainActivity : AppCompatActivity() {
             // line -- always visible, no interaction needed -- is what most people actually see.
             syncButton.isEnabled = false
             ViewCompat.setTooltipText(syncButton, getString(R.string.tooltip_hotspot_not_on))
-            handleLogLine("[info] " + getString(R.string.log_sync_hotspot_not_on))
+            handleLogLine("[hotspot] " + getString(R.string.log_sync_hotspot_not_on))
             return
         }
         if (SyncState.discoverScanInProgress) return
@@ -747,7 +747,7 @@ class MainActivity : AppCompatActivity() {
                 if (existing.exists()) {
                     loadLogbookIntoWebView(existing.absolutePath)
                 }
-                handleLogLine("[info] " + getString(R.string.log_hotspot_precheck_skipped))
+                handleLogLine("[hotspot] " + getString(R.string.log_hotspot_precheck_skipped))
                 // A real Android notification too, not just the in-app log (asked for explicitly)
                 // -- this can fire well before the owner ever looks at the app again (e.g. the
                 // very first check after a fresh launch), so it's the only way to learn about it
@@ -856,7 +856,7 @@ class MainActivity : AppCompatActivity() {
                 // further down in this same Thread -- that one already gets a log line for free,
                 // from discover_w2k2()'s own log() calls in Python. This one didn't have an
                 // equivalent until now, so it's added explicitly here to match.
-                handleLogLine("[info] $message")
+                handleLogLine("[hotspot] $message")
                 withActiveActivity {
                     stopService(Intent(this, SyncNotificationService::class.java))
                     SyncState.notificationForegrounded = false
@@ -1247,22 +1247,27 @@ class MainActivity : AppCompatActivity() {
     }
 
     /** [text] (the log's own accumulated lines) with every line containing "[error]" shown bold
-     * and in a warning color -- asked for explicitly, found in practice: a single error line
-     * easily got lost among dozens of plain "[info]" ones around it, especially once the log
-     * stays expanded rather than being read right as it happens. A whole line at a time (from the
-     * newline before the tag to the one after, not just the tag itself), so the timestamp and the
-     * rest of the message stand out too, not just the literal word "[error]". */
+     * and in red, and every "[hotspot]" line (asked for explicitly, its own tag rather than
+     * reusing "[warning]" -- that one already means something specific, see handleLogLine()'s own
+     * "connection lost, retrying" branch, which would misfire if a hotspot-off line carried it
+     * too) shown bold and in amber -- found in practice: a single line like this easily got lost
+     * among dozens of plain "[info]" ones around it, especially once the log stays expanded
+     * rather than being read right as it happens. A whole line at a time (from the newline before
+     * the tag to the one after, not just the tag itself), so the timestamp and the rest of the
+     * message stand out too, not just the tag word itself. */
     private fun styledLogText(text: String): CharSequence {
         val builder = SpannableStringBuilder(text)
-        var searchFrom = 0
-        while (searchFrom <= text.length) {
-            val tagIndex = text.indexOf("[error]", searchFrom)
-            if (tagIndex < 0) break
-            val lineStart = text.lastIndexOf('\n', tagIndex).let { if (it < 0) 0 else it + 1 }
-            val lineEnd = text.indexOf('\n', tagIndex).let { if (it < 0) text.length else it }
-            builder.setSpan(StyleSpan(Typeface.BOLD), lineStart, lineEnd, Spannable.SPAN_EXCLUSIVE_EXCLUSIVE)
-            builder.setSpan(ForegroundColorSpan(LOG_ERROR_COLOR), lineStart, lineEnd, Spannable.SPAN_EXCLUSIVE_EXCLUSIVE)
-            searchFrom = lineEnd + 1
+        for ((tag, color) in listOf("[error]" to LOG_ERROR_COLOR, "[hotspot]" to LOG_WARNING_COLOR)) {
+            var searchFrom = 0
+            while (searchFrom <= text.length) {
+                val tagIndex = text.indexOf(tag, searchFrom)
+                if (tagIndex < 0) break
+                val lineStart = text.lastIndexOf('\n', tagIndex).let { if (it < 0) 0 else it + 1 }
+                val lineEnd = text.indexOf('\n', tagIndex).let { if (it < 0) text.length else it }
+                builder.setSpan(StyleSpan(Typeface.BOLD), lineStart, lineEnd, Spannable.SPAN_EXCLUSIVE_EXCLUSIVE)
+                builder.setSpan(ForegroundColorSpan(color), lineStart, lineEnd, Spannable.SPAN_EXCLUSIVE_EXCLUSIVE)
+                searchFrom = lineEnd + 1
+            }
         }
         return builder
     }
@@ -2086,6 +2091,10 @@ class MainActivity : AppCompatActivity() {
         // readable against both a light and a dark system theme, since the log view itself has no
         // background color of its own, just whatever the theme gives it.
         private val LOG_ERROR_COLOR = Color.parseColor("#D32F2F")
+
+        // Material's "amber 700" for styledLogText()'s own "[hotspot]" highlight -- readable
+        // against both a light and a dark system theme, same reasoning as LOG_ERROR_COLOR.
+        private val LOG_WARNING_COLOR = Color.parseColor("#FFA000")
 
         // How long a completed W2K-2 scan (SyncState.lastW2k2Found/lastW2k2CheckAt) is trusted
         // without a fresh one -- see updateSyncButtonAvailability()'s own doc comment. Short on
