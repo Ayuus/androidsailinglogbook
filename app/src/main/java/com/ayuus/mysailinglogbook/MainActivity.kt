@@ -1247,23 +1247,23 @@ class MainActivity : AppCompatActivity() {
     }
 
     /** [text] (the log's own accumulated lines) with every "[error]" line shown bold and in red,
-     * and every "[warning]"/"[hotspot]"/"[not-found]" line shown bold and in amber -- asked for
-     * explicitly, found in practice: a single line like this easily got lost among dozens of
-     * plain "[info]" ones around it, especially once the log stays expanded rather than being
-     * read right as it happens. "[hotspot]" (hotspot off) and "[not-found]" (W2K-2 not found) are
-     * their own tags, not literally "[warning]", even though they read identically here -- that
-     * one already means something specific elsewhere (handleLogLine()'s own "connection lost,
+     * and every "[warning]"/"[hotspot]" line shown bold and in amber -- asked for explicitly,
+     * found in practice: a single line like this easily got lost among dozens of plain "[info]"
+     * ones around it, especially once the log stays expanded rather than being read right as it
+     * happens. "[not-found]" (W2K-2 not found) is tagged but deliberately left unstyled here --
+     * asked for explicitly, plain log severity, not a warning. "[hotspot]" (hotspot off) is its
+     * own tag, not literally "[warning]", even though it reads identically here -- that one
+     * already means something specific elsewhere (handleLogLine()'s own "connection lost,
      * retrying" branch, which would misfire and overwrite the notification text with the wrong
-     * message if either of these carried it too). A whole line at a time (from the newline before
-     * the tag to the one after, not just the tag itself), so the timestamp and the rest of the
-     * message stand out too, not just the tag word itself. */
+     * message if this carried it too). A whole line at a time (from the newline before the tag to
+     * the one after, not just the tag itself), so the timestamp and the rest of the message stand
+     * out too, not just the tag word itself. */
     private fun styledLogText(text: String): CharSequence {
         val builder = SpannableStringBuilder(text)
         val tagColors = listOf(
             "[error]" to LOG_ERROR_COLOR,
             "[warning]" to LOG_WARNING_COLOR,
             "[hotspot]" to LOG_WARNING_COLOR,
-            "[not-found]" to LOG_WARNING_COLOR,
         )
         for ((tag, color) in tagColors) {
             var searchFrom = 0
