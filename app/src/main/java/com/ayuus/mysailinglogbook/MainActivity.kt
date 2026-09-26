@@ -1744,10 +1744,19 @@ class MainActivity : AppCompatActivity() {
 
     /** Uploads the fresh logbook (always, if SFTP or REST publish settings are filled in) --
      * called after a successful sync, still on its background Thread. Runs at most once per
-     * sync; failures here are reported in the log but never hide the logbook that's already
-     * showing in the WebView by that point. The upload itself is LogbookPublisher's. */
-    private fun uploadIfConfigured(htmlPath: String): Boolean =
-        LogbookPublisher.publish(this, settingsStore, File(htmlPath), ::handleLogLine) {
+     * sync. The upload itself is LogbookPublisher's.
+     *
+     * A failure here brings the log back to the front, covering the logbook that's already
+     * showing in the WebView by that point -- reverses an earlier, deliberate choice to leave
+     * the WebView alone and only report a failure in the log, asked for explicitly, found in
+     * practice: a build that succeeds always shows a normal-looking, correctly-dated logbook
+     * right there regardless of whether the publish after it worked, so attention naturally goes
+     * there -- the failure line, tucked into the log's own small collapsed strip underneath, was
+     * too easy to miss entirely. Only for a genuine failure, not for "nothing configured" (not
+     * an error, nothing to draw attention to). */
+    private fun uploadIfConfigured(htmlPath: String): Boolean {
+        val attempted = settingsStore.isRestUploadConfigComplete || settingsStore.isSftpConfigComplete
+        val ok = LogbookPublisher.publish(this, settingsStore, File(htmlPath), ::handleLogLine) {
             // Also pushed to the OS notification itself, not just the log -- asked for explicitly:
             // SyncState.uploading means closing the app mid-upload no longer interrupts it, so the
             // notification is the only place this phase is visible at all while the owner is not
@@ -1758,6 +1767,18 @@ class MainActivity : AppCompatActivity() {
                     .putExtra(SyncNotificationService.EXTRA_STATUS_TEXT, getString(R.string.notif_uploading)),
             )
         }
+        if (attempted && !ok) {
+            withActiveActivity {
+                showingLocalLogbook = false
+                setLogExpanded(true)
+                // setLogExpanded() alone only changes layout, not scroll position -- without
+                // this, expanding a log that already had a long scrollback could still leave the
+                // failure line (just appended, at the very end) off the bottom of the screen.
+                logScroll.post { logScroll.fullScroll(View.FOCUS_DOWN) }
+            }
+        }
+        return ok
+    }
 
     // Set by showOfflineOrCloseDialog() when it couldn't show right away because the Activity
     // wasn't visible -- shown as soon as onResume() sees it's non-null instead.
