@@ -17,7 +17,7 @@ copy to keep in sync.
 and other Android versions/devices will likely surface issues this setup never hits. Sailboat
 support in particular is on the wishlist but untested so far -- see the same note in the
 [nmea2log README](https://github.com/Ayuus/nmea2log#readme) for why. Feedback is very welcome via
-[GitHub issues](https://github.com/Ayuus/androidsailinglogbook/issues).
+[GitHub issues](https://github.com/Ayuus/mysailinglogbook-android/issues).
 
 ## Installation
 
@@ -25,7 +25,7 @@ support in particular is on the wishlist but untested so far -- see the same not
 automatically.
 
 **Or, the APK directly**: grab it from the
-[latest release](https://github.com/Ayuus/androidsailinglogbook/releases/latest) instead. This is
+[latest release](https://github.com/Ayuus/mysailinglogbook-android/releases/latest) instead. This is
 signed but not distributed via the Play Store, so Android will warn you before installing it --
 expected for any app installed outside a store.
 
@@ -134,7 +134,7 @@ it.)
    ```
    Github/
      NMEA/                    <- nmea2log
-     androidsailinglogbook/   <- this repo
+     mysailinglogbook-android/   <- this repo
    ```
    (they don't have to be literal siblings -- any two paths work, see step 2 -- but that's the
    layout this project has been built and tested with).
