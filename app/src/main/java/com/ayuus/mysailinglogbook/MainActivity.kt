@@ -10,9 +10,14 @@ import android.os.PowerManager
 import android.provider.Settings
 import android.content.pm.PackageManager
 import android.media.MediaScannerConnection
+import android.graphics.Color
 import android.graphics.Typeface
 import android.os.Build
 import android.os.Bundle
+import android.text.Spannable
+import android.text.SpannableStringBuilder
+import android.text.style.ForegroundColorSpan
+import android.text.style.StyleSpan
 import android.util.TypedValue
 import android.view.Gravity
 import android.view.View
@@ -401,7 +406,7 @@ class MainActivity : AppCompatActivity() {
      * Harmless to call even when nothing has been cached yet (a download that's only just
      * started, before its very first progress update reached SyncState). */
     private fun restoreLiveSyncUi() {
-        logView.text = SyncState.lastLogText
+        logView.text = styledLogText(SyncState.lastLogText)
         logScroll.post { logScroll.fullScroll(View.FOCUS_DOWN) }
         val phase = SyncState.lastProgressPhase
         if (phase != null && SyncState.lastProgressTotal > 0) {
@@ -1234,11 +1239,32 @@ class MainActivity : AppCompatActivity() {
     fun refreshLogView() {
         runOnUiThread {
             val wasAtBottom = isLogScrolledToBottom()
-            logView.text = SyncState.lastLogText
+            logView.text = styledLogText(SyncState.lastLogText)
             if (wasAtBottom) {
                 logScroll.post { logScroll.fullScroll(View.FOCUS_DOWN) }
             }
         }
+    }
+
+    /** [text] (the log's own accumulated lines) with every line containing "[error]" shown bold
+     * and in a warning color -- asked for explicitly, found in practice: a single error line
+     * easily got lost among dozens of plain "[info]" ones around it, especially once the log
+     * stays expanded rather than being read right as it happens. A whole line at a time (from the
+     * newline before the tag to the one after, not just the tag itself), so the timestamp and the
+     * rest of the message stand out too, not just the literal word "[error]". */
+    private fun styledLogText(text: String): CharSequence {
+        val builder = SpannableStringBuilder(text)
+        var searchFrom = 0
+        while (searchFrom <= text.length) {
+            val tagIndex = text.indexOf("[error]", searchFrom)
+            if (tagIndex < 0) break
+            val lineStart = text.lastIndexOf('\n', tagIndex).let { if (it < 0) 0 else it + 1 }
+            val lineEnd = text.indexOf('\n', tagIndex).let { if (it < 0) text.length else it }
+            builder.setSpan(StyleSpan(Typeface.BOLD), lineStart, lineEnd, Spannable.SPAN_EXCLUSIVE_EXCLUSIVE)
+            builder.setSpan(ForegroundColorSpan(LOG_ERROR_COLOR), lineStart, lineEnd, Spannable.SPAN_EXCLUSIVE_EXCLUSIVE)
+            searchFrom = lineEnd + 1
+        }
+        return builder
     }
 
     private fun handleLogLine(rawLine: String) {
@@ -2055,6 +2081,11 @@ class MainActivity : AppCompatActivity() {
         // own rounds, so this matches BootModeService's WAKE_LOCK_TIMEOUT_MS rather than a short
         // one meant for a single quick operation.
         private const val WAKE_LOCK_TIMEOUT_MS = 6 * 60 * 60 * 1000L
+
+        // A mid-tone red (Material's "red 700") for styledLogText()'s own "[error]" highlight --
+        // readable against both a light and a dark system theme, since the log view itself has no
+        // background color of its own, just whatever the theme gives it.
+        private val LOG_ERROR_COLOR = Color.parseColor("#D32F2F")
 
         // How long a completed W2K-2 scan (SyncState.lastW2k2Found/lastW2k2CheckAt) is trusted
         // without a fresh one -- see updateSyncButtonAvailability()'s own doc comment. Short on
