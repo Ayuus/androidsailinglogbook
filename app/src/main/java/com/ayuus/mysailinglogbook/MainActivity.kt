@@ -910,17 +910,21 @@ class MainActivity : AppCompatActivity() {
                     }
                 }
                 syncSucceeded = result.ok
-                withActiveActivity { showSyncResult(result) }
-                // After showing the logbook, not before -- an upload problem (misconfigured
-                // credentials, server unreachable) shouldn't hide the fact that the download and
-                // decode themselves already succeeded. Still on this same background Thread, not
-                // re-dispatched: SftpUploader's calls are blocking network I/O same as the
-                // download itself was. Gated on the setting (asked for explicitly) -- off, this
-                // sync only ever builds the logbook locally; the owner checks it via 📖 and
-                // publishes on their own terms via ☁️ (runPublish(), unaffected by this setting).
+                // Before showing the logbook, not after -- asked for explicitly, found in
+                // practice: showing it first and then covering it back up with the log a moment
+                // later, once a publish problem turned up, looked like a glitch (the logbook
+                // flashing on screen and immediately disappearing again). Still on this same
+                // background Thread, not re-dispatched: SftpUploader's calls are blocking network
+                // I/O same as the download itself was. Gated on the setting (asked for explicitly)
+                // -- off, this sync only ever builds the logbook locally; the owner checks it via
+                // 📖 and publishes on their own terms via ☁️ (runPublish(), unaffected by this
+                // setting).
+                var publishFailed = false
                 if (result.ok && result.htmlPath != null && settingsStore.autoPublishAfterBuild) {
                     didPublish = uploadIfConfigured(result.htmlPath)
+                    publishFailed = !didPublish && (settingsStore.isRestUploadConfigComplete || settingsStore.isSftpConfigComplete)
                 }
+                withActiveActivity { showSyncResult(result, publishFailed) }
                 if (syncSucceeded) {
                     // A plain Kotlin-originated line (not one of log.py's own), reused through
                     // the exact same accumulator/log-view path as every other line -- asked for
@@ -1348,7 +1352,13 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
-    private fun showSyncResult(result: SyncResult) {
+    /** publishFailed: the build succeeded but a publish attempted right after it (still before
+     * this is called -- see runSync()/buildFromLocalFilesAndMaybePublish()'s own comments on the
+     * ordering) failed. The "Klaar: ..." line is still logged either way (the build itself did
+     * succeed), but the WebView switch is skipped so the log -- which by now already has the
+     * publish failure's own [error] line in it -- stays in front instead of covering it back up
+     * a moment after showing it. */
+    private fun showSyncResult(result: SyncResult, publishFailed: Boolean = false) {
         if (result.ok && result.htmlPath != null) {
             // tripCount is null specifically for runSync()'s own "result.ok came back false with
             // no error text, but logbook.html's mtime proves it actually succeeded" recovery --
@@ -1365,8 +1375,13 @@ class MainActivity : AppCompatActivity() {
             }
             SyncState.lastStatusText = resultText
             handleLogLine("[info] $resultText")
-            setLogExpanded(false)
-            loadLogbookIntoWebView(result.htmlPath)
+            if (publishFailed) {
+                setLogExpanded(true)
+                logScroll.post { logScroll.fullScroll(View.FOCUS_DOWN) }
+            } else {
+                setLogExpanded(false)
+                loadLogbookIntoWebView(result.htmlPath)
+            }
         } else if (result.cancelled) {
             // The app was closed mid-download (see onDestroy()) -- by the time this runs the
             // Activity is normally already gone, so this mostly matters when cancellation raced a
@@ -1615,12 +1630,15 @@ class MainActivity : AppCompatActivity() {
             try {
                 val result = buildFromLocalFiles()
                 syncSucceeded = result.ok
-                withActiveActivity { showSyncResult(result) }
+                // Before showing the logbook, not after -- see runSync()'s own matching comment.
                 // Same "Automatisch publiceren na bouwen" gate as runSync()'s own matching call,
                 // unless forcePublish overrides it (see this function's own doc comment).
+                var publishFailed = false
                 if (result.ok && result.htmlPath != null && (forcePublish || settingsStore.autoPublishAfterBuild)) {
                     didPublish = uploadIfConfigured(result.htmlPath)
+                    publishFailed = !didPublish && (settingsStore.isRestUploadConfigComplete || settingsStore.isSftpConfigComplete)
                 }
+                withActiveActivity { showSyncResult(result, publishFailed) }
                 if (syncSucceeded) {
                     val timeText = java.text.SimpleDateFormat("HH:mm", java.util.Locale.getDefault())
                         .format(java.util.Date())
@@ -1743,20 +1761,12 @@ class MainActivity : AppCompatActivity() {
     }
 
     /** Uploads the fresh logbook (always, if SFTP or REST publish settings are filled in) --
-     * called after a successful sync, still on its background Thread. Runs at most once per
-     * sync. The upload itself is LogbookPublisher's.
-     *
-     * A failure here brings the log back to the front, covering the logbook that's already
-     * showing in the WebView by that point -- reverses an earlier, deliberate choice to leave
-     * the WebView alone and only report a failure in the log, asked for explicitly, found in
-     * practice: a build that succeeds always shows a normal-looking, correctly-dated logbook
-     * right there regardless of whether the publish after it worked, so attention naturally goes
-     * there -- the failure line, tucked into the log's own small collapsed strip underneath, was
-     * too easy to miss entirely. Only for a genuine failure, not for "nothing configured" (not
-     * an error, nothing to draw attention to). */
-    private fun uploadIfConfigured(htmlPath: String): Boolean {
-        val attempted = settingsStore.isRestUploadConfigComplete || settingsStore.isSftpConfigComplete
-        val ok = LogbookPublisher.publish(this, settingsStore, File(htmlPath), ::handleLogLine) {
+     * called after a successful build/sync, before that result is shown (see runSync()/
+     * buildFromLocalFilesAndMaybePublish()'s own comments on why that order, not the reverse),
+     * still on the background Thread. Runs at most once per sync. The upload itself is
+     * LogbookPublisher's; this just relays its own progress line to the notification too. */
+    private fun uploadIfConfigured(htmlPath: String): Boolean =
+        LogbookPublisher.publish(this, settingsStore, File(htmlPath), ::handleLogLine) {
             // Also pushed to the OS notification itself, not just the log -- asked for explicitly:
             // SyncState.uploading means closing the app mid-upload no longer interrupts it, so the
             // notification is the only place this phase is visible at all while the owner is not
@@ -1767,18 +1777,6 @@ class MainActivity : AppCompatActivity() {
                     .putExtra(SyncNotificationService.EXTRA_STATUS_TEXT, getString(R.string.notif_uploading)),
             )
         }
-        if (attempted && !ok) {
-            withActiveActivity {
-                showingLocalLogbook = false
-                setLogExpanded(true)
-                // setLogExpanded() alone only changes layout, not scroll position -- without
-                // this, expanding a log that already had a long scrollback could still leave the
-                // failure line (just appended, at the very end) off the bottom of the screen.
-                logScroll.post { logScroll.fullScroll(View.FOCUS_DOWN) }
-            }
-        }
-        return ok
-    }
 
     // Set by showOfflineOrCloseDialog() when it couldn't show right away because the Activity
     // wasn't visible -- shown as soon as onResume() sees it's non-null instead.
