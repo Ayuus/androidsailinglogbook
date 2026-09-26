@@ -8,6 +8,7 @@ import android.app.NotificationManager
 import android.content.Intent
 import android.os.PowerManager
 import android.provider.Settings
+import androidx.activity.enableEdgeToEdge
 import android.content.pm.PackageManager
 import android.media.MediaScannerConnection
 import android.graphics.Color
@@ -88,6 +89,12 @@ class MainActivity : AppCompatActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        // Replaces the theme's own (now-removed) android:statusBarColor -- deprecated as of
+        // Android 15's enforced edge-to-edge, flagged directly by Play Console's pre-launch
+        // report. Draws transparent system bars across every supported API level; the existing
+        // WindowInsetsCompat listener below (unchanged) is what actually keeps content clear of
+        // them, same as before.
+        enableEdgeToEdge()
 
         // Without this, sshj (used once Milestone B adds SFTP publishing) can't do Ed25519 key
         // operations on Android -- see spike 4 in docs/android-app-plan.md for the full story.
