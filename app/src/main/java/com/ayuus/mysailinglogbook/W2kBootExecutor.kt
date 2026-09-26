@@ -2,7 +2,6 @@ package com.ayuus.mysailinglogbook
 
 import android.content.Context
 import com.chaquo.python.Python
-import com.chaquo.python.android.AndroidPlatform
 import org.json.JSONObject
 import java.io.File
 
@@ -149,7 +148,7 @@ class W2kBootExecutor(
     private fun logLine(line: String) = AppLog.post(context, line)
 
     private fun entry() = run {
-        if (!Python.isStarted()) Python.start(AndroidPlatform(context))
+        PythonStarter.ensureStarted(context)
         Python.getInstance().getModule("nmea2log.android_entry")
     }
 

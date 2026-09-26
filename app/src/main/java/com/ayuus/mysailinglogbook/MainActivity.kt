@@ -36,7 +36,6 @@ import androidx.core.view.ViewCompat
 import androidx.core.view.WindowInsetsCompat
 import androidx.lifecycle.Lifecycle
 import com.chaquo.python.Python
-import com.chaquo.python.android.AndroidPlatform
 import org.bouncycastle.jce.provider.BouncyCastleProvider
 import java.io.File
 import java.security.Security
@@ -643,9 +642,7 @@ class MainActivity : AppCompatActivity() {
         syncButton.isEnabled = false
         ViewCompat.setTooltipText(syncButton, getString(R.string.tooltip_w2k2_checking))
         Thread {
-            if (!Python.isStarted()) {
-                Python.start(AndroidPlatform(this))
-            }
+            PythonStarter.ensureStarted(this)
             val controller = object : DiscoverController {
                 override fun onDiscoverResult(found: Boolean) {
                     SyncState.discoverScanInProgress = false
@@ -1083,9 +1080,7 @@ class MainActivity : AppCompatActivity() {
      * startup plus decoding real multi-MB .ebl files easily takes several seconds (found in
      * practice during spike 3 -- ANR otherwise). */
     private fun syncFromW2k2(subnetPrefix: String): SyncResult {
-        if (!Python.isStarted()) {
-            Python.start(AndroidPlatform(this))
-        }
+        PythonStarter.ensureStarted(this)
         val py = Python.getInstance()
         val androidEntry = py.getModule("nmea2log.android_entry")
 
@@ -1674,9 +1669,7 @@ class MainActivity : AppCompatActivity() {
     /** Chaquopy call to android_entry.build_from_local_files() -- decode/build/write only, no
      * discovery or download, over every .ebl file already present under eblDownloadDir(). */
     private fun buildFromLocalFiles(): SyncResult {
-        if (!Python.isStarted()) {
-            Python.start(AndroidPlatform(this))
-        }
+        PythonStarter.ensureStarted(this)
         val androidEntry = Python.getInstance().getModule("nmea2log.android_entry")
 
         val downloadDir = eblDownloadDir()
