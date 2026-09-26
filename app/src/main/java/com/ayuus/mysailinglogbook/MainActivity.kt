@@ -667,7 +667,7 @@ class MainActivity : AppCompatActivity() {
                         // works), nothing to explain, and this can run again on every onResume()
                         // while the app stays open near the boat, so a repeated "found" line
                         // would just be noise for no benefit.
-                        handleLogLine("[not-found] " + getString(R.string.log_sync_w2k2_not_found))
+                        handleLogLine("[info] " + getString(R.string.log_sync_w2k2_not_found))
                     }
                     SyncState.lastW2k2Found = found
                     SyncState.lastW2k2CheckAt = System.currentTimeMillis()
@@ -1250,14 +1250,13 @@ class MainActivity : AppCompatActivity() {
      * and every "[warning]"/"[hotspot]" line shown bold and in amber -- asked for explicitly,
      * found in practice: a single line like this easily got lost among dozens of plain "[info]"
      * ones around it, especially once the log stays expanded rather than being read right as it
-     * happens. "[not-found]" (W2K-2 not found) is tagged but deliberately left unstyled here --
-     * asked for explicitly, plain log severity, not a warning. "[hotspot]" (hotspot off) is its
-     * own tag, not literally "[warning]", even though it reads identically here -- that one
-     * already means something specific elsewhere (handleLogLine()'s own "connection lost,
-     * retrying" branch, which would misfire and overwrite the notification text with the wrong
-     * message if this carried it too). A whole line at a time (from the newline before the tag to
-     * the one after, not just the tag itself), so the timestamp and the rest of the message stand
-     * out too, not just the tag word itself. */
+     * happens. "[hotspot]" (hotspot off) is its own tag, not literally "[warning]", even though it
+     * reads identically here -- that one already means something specific elsewhere
+     * (handleLogLine()'s own "connection lost, retrying" branch, which would misfire and
+     * overwrite the notification text with the wrong message if this carried it too). W2K-2 not
+     * found stays plain "[info]" (asked for explicitly): not a warning. A whole line at a time
+     * (from the newline before the tag to the one after, not just the tag itself), so the
+     * timestamp and the rest of the message stand out too, not just the tag word itself. */
     private fun styledLogText(text: String): CharSequence {
         val builder = SpannableStringBuilder(text)
         val tagColors = listOf(
@@ -1447,7 +1446,7 @@ class MainActivity : AppCompatActivity() {
                 if (existing.exists()) {
                     loadLogbookIntoWebView(existing.absolutePath)
                 }
-                handleLogLine("[not-found] ${result.error}")
+                handleLogLine("[info] ${result.error}")
                 // Plain statement, not "tik om..." -- tapping this notification does exactly
                 // what tapping any notification does (opens the app), nothing beyond that
                 // specific to this one (found in practice: worded like there was a dedicated
